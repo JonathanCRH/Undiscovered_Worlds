@@ -10,8 +10,11 @@ For more information, and to complain about bugs, please visit the blog: https:/
 * The code
 
 Please note that this code requires the following libraries to work:
+
 NanoGUI - https://github.com/mitsuba-renderer/nanogui
+
 SFML - https://www.sfml-dev.org/
+
 stb_image - https://github.com/nothings/stb
 
 The code is offered under the GNU General Public Licence - https://choosealicense.com/licenses/gpl-3.0/. Feel free to make whatever use of it you like, but please credit me if you repurpose any of it!
@@ -39,8 +42,11 @@ This screen displays a map of your world, shown at a scale of approximately 1 pi
 The four icons in the bottom left have the following functions:
 
 Ruler (top left) - recentre and resize the map.
+
 Palette (bottom left) - open the settings to change the map appearance (see below).
+
 Pin (top right) - select a point on the map. Information about this point will appear below the map.
+
 Zoom (bottom right) - open up the regional map screen for the selected point.
 
 * The regional map screen
@@ -94,8 +100,11 @@ The buttons to the left are in two main groups:
 "Import" - these buttons are for importing your own maps. They must be 2048x1025 pixels, in .png format. The program will interpret them in the following way:
 
 land map - only the red value is used. 0 indicates sea, and any higher value is elevation above sea level, in increments of 10.
+
 sea map - only the red value is used. 0 indicates land, and any higher value is depth below sea level, in increnements of 50.
+
 mountains map - only the red value is used. It shows the peak elevation above the surrounding land, in increments of 50.
+
 volanoes map - the red value shows the peak elevation above the surrounding land, in increments of 50. A blue value of 0 indicates a shield volcano, or a higher value indicates a stratovolcano. A green value of 0 indicates an extinct volcano, or a higher value indicates an active volcano.
 
 In theory you only need a land map - the others are optional. It's important to note that the land map shouldn't show mountain ranges. Undiscovered Worlds does not treat mountain ranges as normal elevation. If you want to define your own mountain ranges, you must import a mountains map, on which you have drawn the lines of the main mountain ranges as indicated above.

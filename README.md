@@ -5,9 +5,9 @@ Undiscovered Worlds is a simple world creation and viewing tool. It can create m
 
 For more information, and to complain about bugs, please visit the blog: https://undiscoveredworlds.blogspot.com/2019/01/what-is-undiscovered-worlds.html
 
-~~~~
+----
 
-* The code *
+* The code
 
 Please note that this code requires the following libraries to work:
 NanoGUI - https://github.com/mitsuba-renderer/nanogui
@@ -16,9 +16,9 @@ stb_image - https://github.com/nothings/stb
 
 The code is offered under the GNU General Public Licence - https://choosealicense.com/licenses/gpl-3.0/. Feel free to make whatever use of it you like, but please credit me if you repurpose any of it!
 
-~~~~
+----
 
-* How to use Undiscovered Worlds *
+* How to use Undiscovered Worlds
 
 When you start the program, you are prompted to enter a seed number for the new world. You can choose a random number or enter your own, before clicking "OK" to begin the generation process.
 
@@ -26,7 +26,7 @@ Alternatively, you can load a previously created world, or import your own maps 
 
 When the world is ready, you will see the global map screen.
 
-* The global map screen *
+* The global map screen
 
 This screen displays a map of your world, shown at a scale of approximately 1 pixel to 16km. You can use the mouse to move the map around or zoom in and out. The buttons to the left perform several functions:
 
@@ -43,7 +43,7 @@ Palette (bottom left) - open the settings to change the map appearance (see belo
 Pin (top right) - select a point on the map. Information about this point will appear below the map.
 Zoom (bottom right) - open up the regional map screen for the selected point.
 
-* The regional map screen *
+* The regional map screen
 
 This screen displays a map of a small area of your world, shown at a scale of approximately 1 pixel to 1 km. As with the global map screen, you can use the mouse to move the map around or zoom in and out. The buttons to the left perform several functions:
 
@@ -59,7 +59,7 @@ To the top right of the screen is a minimap showing the current region on a worl
 
 Under the minimap are four arrow icons, which you can also use to move to a new region adjacent to the current one.
 
-* The map appearance settings *
+* The map appearance settings
 
 This window allows you to change the appearance of the relief maps. Note that any changes here will be applied to both global and regional maps. These changes are purely aesthetic - nothing about the world itself is changed here, and none of these changes affects the other maps such as elevation, temperature, etc.
 
@@ -77,13 +77,13 @@ Underneath the colour boxes are several sliders:
 
 The buttons on the left of the map appearance settings window allow you to close the window, load or save settings, and restore the defaults. Note that if you save the world from the global map screen, its appearance settings are saved with it and will be restored if you reload it. So you don't need to save the settings separately unless you plan to load them into other worlds.
 
-* The custom area export screen *
+* The custom area export screen
 
 This window allows you to export maps from a custom-defined area of the world. These maps are at the same scale as the regional map - 1 pixel to 1km - but they can be of larger areas.
 
 Click the "select point" button to the left, and then click a point on the map. Do this again to select a second point, defining a rectangle. You can continue to use the "select point" button to choose new points, to re-define the area. When you have the area you want, click on "export maps".
 
-* The import maps screen *
+* The import maps screen
 
 Please note that this feature is experimental! You may need trial and error to get good results.
 

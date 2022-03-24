@@ -1,0 +1,7 @@
+MSVS2022/.vs
+MSVS2022/x64
+SFML
+nanogui
+stb
+*~
+

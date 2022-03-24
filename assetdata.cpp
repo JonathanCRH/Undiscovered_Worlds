@@ -12,8 +12,8 @@
 #include <stdio.h>
 //#include <unistd.h>
 #include <queue>
-#include <SFML/Graphics.hpp>
-#include <nanogui/nanogui.h>
+//#include <SFML/Graphics.hpp>
+//#include <nanogui/nanogui.h>
 
 #include "classes.hpp"
 #include "planet.hpp"

@@ -330,9 +330,9 @@ void createwindmap(planet &world)
     
     int n=width/pets; // This is how many nodes there will be.
     
-    //vector<vector<int>> windlines(11,vector<int>(11,n)); // 0 holds the x coordinate of that node. 1 to 10 hold the y coordinates of the different lines.
+    vector<vector<int>> windlines(12,vector<int>(n+1,0)); // 0 holds the x coordinate of that node. 1 to 10 hold the y coordinates of the different lines.
     
-    int windlines[12][n+1];
+    //int windlines[12][n+1];
     
     for (int i=0; i<=n; i++)
         windlines[0][i]=i*pets;
@@ -519,7 +519,7 @@ void createwindmap(planet &world)
     
     // Now we fill in the wind directions behind the lines.
     
-    vector<vector<int>> winddir(11,vector<int>(11,3));
+    vector<vector<int>> winddir(11,vector<int>(3,0));
     
     winddir[0][0]=-1;
     winddir[0][1]=2;
@@ -887,9 +887,9 @@ void createseaicemap(planet &world, vector<vector<int>> &fractal)
     int n=(width+1)/pets; // This is how many nodes there will be.
     int equator=height/2;
     
-    //vector<vector<int>> icelines(4,vector<int>(4,n)); // 0 holds the x coordinate of that node. 1 holds the northern permanent ice limit, 2 holds the northern seasonal ice limit. 3 holds the southern seasonal ice limit, 4 holds the southern permanent ice limit.
+    vector<vector<int>> icelines(5,vector<int>(n+1,0)); // 0 holds the x coordinate of that node. 1 holds the northern permanent ice limit, 2 holds the northern seasonal ice limit. 3 holds the southern seasonal ice limit, 4 holds the southern permanent ice limit.
     
-    short int icelines[5][n+1]; // 0 holds the x coordinate of that node. 1 holds the northern permanent ice limit, 2 holds the northern seasonal ice limit. 3 holds the southern seasonal ice limit, 4 holds the southern permanent ice limit.
+    //short int icelines[5][n+1]; // 0 holds the x coordinate of that node. 1 holds the northern permanent ice limit, 2 holds the northern seasonal ice limit. 3 holds the southern seasonal ice limit, 4 holds the southern permanent ice limit.
     
     for (int i=1; i<=2; i++)
     {
@@ -11214,7 +11214,8 @@ void placedelta(planet &world, int centrex, int centrey, int upriver, vector<vec
     
     sf::Vector2i destpoint;
     
-    int branchends[maxbranches+1][2];
+    vector<vector<int>> branchends(maxbranches+1,vector<int>(2));
+    //int branchends[maxbranches+1][2];
     
     for (int i=0; i<maxbranches+1; i++)
     {

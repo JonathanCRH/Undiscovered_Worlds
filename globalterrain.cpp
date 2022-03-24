@@ -2722,7 +2722,8 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
         }
     }
     
-    bool cells[points];
+    vector<bool> cells(points); // vector<uint8_t>?
+    //bool cells[points];
     
     for (int n=0; n<points; n++)
         cells[n]=0;

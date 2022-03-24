@@ -6554,6 +6554,23 @@ int main(int /* argc */, char ** /* argv */)
                                                      
                                                      // Create some dummy arrays to hold copies of the lines we'll be drawing over.
                                                      
+#if 1
+                                                     vector<stbi_uc> northsider(areawidth);
+                                                     vector<stbi_uc> northsideg(areawidth);
+                                                     vector<stbi_uc> northsideb(areawidth);
+
+                                                     vector<stbi_uc> southsider(areawidth);
+                                                     vector<stbi_uc> southsideg(areawidth);
+                                                     vector<stbi_uc> southsideb(areawidth);
+
+                                                     vector<stbi_uc> eastsider(areawidth);
+                                                     vector<stbi_uc> eastsideg(areawidth);
+                                                     vector<stbi_uc> eastsideb(areawidth);
+
+                                                     vector<stbi_uc> westsider(areawidth);
+                                                     vector<stbi_uc> westsideg(areawidth);
+                                                     vector<stbi_uc> westsideb(areawidth);
+#else
                                                      stbi_uc northsider[areawidth];
                                                      stbi_uc northsideg[areawidth];
                                                      stbi_uc northsideb[areawidth];
@@ -6569,6 +6586,7 @@ int main(int /* argc */, char ** /* argv */)
                                                      stbi_uc westsider[areaheight];
                                                      stbi_uc westsideg[areaheight];
                                                      stbi_uc westsideb[areaheight];
+#endif
                                                      
                                                      // Now, draw our marker, copying all altered pixels onto the copy of the image.
                                                      
@@ -7827,7 +7845,23 @@ void setregionalminimap(planet &world, region &region, stbi_uc globalreliefimage
     int index;
     
     // Create some dummy arrays to hold copies of the lines we'll be drawing over.
-    
+#if 1
+    vector<stbi_uc> northsider(patchwidth);
+    vector<stbi_uc> northsideg(patchwidth);
+    vector<stbi_uc> northsideb(patchwidth);
+
+    vector<stbi_uc> southsider(patchwidth);
+    vector<stbi_uc> southsideg(patchwidth);
+    vector<stbi_uc> southsideb(patchwidth);
+
+    vector<stbi_uc> eastsider(patchwidth);
+    vector<stbi_uc> eastsideg(patchwidth);
+    vector<stbi_uc> eastsideb(patchwidth);
+
+    vector<stbi_uc> westsider(patchwidth);
+    vector<stbi_uc> westsideg(patchwidth);
+    vector<stbi_uc> westsideb(patchwidth);
+#else
     stbi_uc northsider[patchwidth];
     stbi_uc northsideg[patchwidth];
     stbi_uc northsideb[patchwidth];
@@ -7843,6 +7877,7 @@ void setregionalminimap(planet &world, region &region, stbi_uc globalreliefimage
     stbi_uc westsider[patchheight];
     stbi_uc westsideg[patchheight];
     stbi_uc westsideb[patchheight];
+#endif
     
     // Now, draw our marker, copying all altered pixels onto the copy of the image.
     

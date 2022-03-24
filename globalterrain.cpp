@@ -5750,7 +5750,7 @@ int markseasize (planet &world, vector<vector<bool>> &checked, vector<vector<int
         }
     }
     
-    return;
+    return 0;
 }
 
 // This function removes straight edges on the coastlines.

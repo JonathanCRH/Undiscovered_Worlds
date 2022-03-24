@@ -40,6 +40,8 @@ using namespace std;
 using namespace nanogui;
 using ImageHolder = std::unique_ptr<uint8_t[], void(*)(void*)>;
 
+typedef uint32_t uint;
+
 // Random number generator. From https://stackoverflow.com/questions/26237419/faster-than-rand
 // It uses a global variable. But this is the only one in the program, honest!
 

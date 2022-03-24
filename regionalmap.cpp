@@ -18895,6 +18895,7 @@ int disruptsubmarineelevationtile(planet &world, region &region, int dx, int dy,
         
         smudgesubmarineterrain(world,region,centrex,centrey,searchdist,underseamap,smudge);
     }
+    return 0;
 }
 
 // This smudges an area of underwater terrain.

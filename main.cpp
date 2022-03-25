@@ -5162,7 +5162,7 @@ int main(int /* argc */, char ** /* argv */)
                                           
                                           if (region->sea(poix,poiy)==1)
                                           {
-                                              if (region->volcano(poix,poiy)>0)
+                                              if (region->volcano(poix,poiy))
                                                   infotext2=infotext2+"Submarine volcano. ";
                                               
                                               int seaice=region->seaice(poix,poiy);
@@ -5203,7 +5203,7 @@ int main(int /* argc */, char ** /* argv */)
                                               if (region->special(poix,poiy)==140)
                                                   climate=climate+". Glacier";
                                               
-                                              if (region->volcano(poix,poiy)>0)
+                                              if (region->volcano(poix,poiy))
                                                   climate=climate+". Volcano";
                                               
                                               infotext2=infotext2+"Climate: "+climate+".\n";
@@ -9204,7 +9204,7 @@ int getdir(int x, int y, int xx, int yy)
     if (xx>x && yy>y)
         return (4);
     
-    if (xx==x & yy>y)
+    if (xx==x && yy>y)
         return (5);
     
     if (xx<x && yy>y)
@@ -10310,7 +10310,7 @@ sf::Vector2i findseatile(planet &world, int x, int y, int dir)
         
         for (int j=y-1; j<=y+1; j++)
         {
-            if (ii!=x && j!=y && ii!=oldx && j!=oldy && j>=0 & j<=height && world.sea(ii,j)==1 && world.map(ii,j)<lowest)
+            if (ii!=x && j!=y && ii!=oldx && j!=oldy && j>=0 && j<=height && world.sea(ii,j)==1 && world.map(ii,j)<lowest)
             {
                 newtile.x=ii;
                 newtile.y=j;

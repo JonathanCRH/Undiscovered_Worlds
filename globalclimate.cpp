@@ -8525,7 +8525,7 @@ void tracelakedrop(planet &world, int x, int y, int minimum, int dropno, vector<
     {
         // First check to see if there's another river nearby, if we haven't been here before.
         
-        if (world.riverjan(x,y)==0 & world.riverjul(x,y)==0)
+        if (world.riverjan(x,y)==0 && world.riverjul(x,y)==0)
         {
             int riverdir=findnearbyriver(world,x,y,dropno,thisdrop,neighbours);
             

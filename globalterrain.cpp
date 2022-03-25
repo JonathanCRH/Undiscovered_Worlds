@@ -4374,7 +4374,7 @@ void createchains(planet &world, int baseheight, int conheight, vector<vector<in
                         {
                             for (int j=0; j<=span; j++)
                             {
-                                if (i>=0 && i<=height && j>=0 && j<=height & rangeheighttemplate[i][j]!=0)
+                                if (i>=0 && i<=height && j>=0 && j<=height && rangeheighttemplate[i][j]!=0)
                                 {
                                     oldx=x+i;
                                     oldy=y+j;
@@ -4950,7 +4950,7 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
                 {
                     for (int j=0; j<=span; j++)
                     {
-                        if (i>=0 && i<=height && j>=0 && j<=height & rangeheighttemplate[i][j]!=0)
+                        if (i>=0 && i<=height && j>=0 && j<=height && rangeheighttemplate[i][j]!=0)
                         {
                             oldx=x+i;
                             oldy=y+j;
@@ -6122,7 +6122,7 @@ void widenchannels(planet &world)
                 if (world.sea(i-1,j-1)==0 && world.sea(i+1,j+1)==0)
                     world.setnom(i-1,j-1,sealevel-15);
                 
-                if (world.sea(i-1,j+1)==0 & world.sea(i+1,j-1)==0)
+                if (world.sea(i-1,j+1)==0 && world.sea(i+1,j-1)==0)
                     world.setnom(i-1,j+1,sealevel-15);
             }
         }
@@ -7837,7 +7837,7 @@ void lowercoasts(planet &world)
                     
                     for (int jj=j-1; jj<=j+1; jj++)
                     {
-                        if (jj>=0 && jj<=height && iii!=i & jj!=j && loweredland[iii][jj]==0)
+                        if (jj>=0 && jj<=height && iii!=i && jj!=j && loweredland[iii][jj]==0)
                         {
                             amount=(world.nom(iii,jj)-sealevel)/4;
                             world.setnom(iii,jj,world.nom(iii,jj)-amount);

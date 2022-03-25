@@ -4916,7 +4916,7 @@ sf::Vector3i calculateregionalriver(planet &world, region &region, int dx, int d
                 finishing=1;
             }
             
-            if (goahead==1 && x>=dx && x<=dx+16 && y>=dy & y<=dy+16)
+            if (goahead==1 && x>=dx && x<=dx+16 && y>=dy && y<=dy+16)
             {
                 bool newpoint=0;
                 
@@ -8665,7 +8665,7 @@ int findsurroundingsea(region &region, int x, int y)
     {
         for (int j=y-1; j<=y+1; j++)
         {
-            if (i>=0 && i<=rwidth && j>=0 & j<=rheight)
+            if (i>=0 && i<=rwidth && j>=0 && j<=rheight)
             {
                 if (region.sea(i,j)==1)
                     found++;
@@ -14921,7 +14921,7 @@ void makeriftlaketile(planet &world, region &region, int dx, int dy, int sx, int
     
     int dir=world.riverdir(sx,sy);
     
-    if (dir!=1 & dir!=3 && dir!=5 && dir!=7)
+    if (dir!=1 && dir!=3 && dir!=5 && dir!=7)
         return;
     
     if (random(1,islandchance)!=1)

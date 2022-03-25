@@ -16656,7 +16656,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
     {
         for (int j=dy; j<=dy+16-diagmaxline/2; j++)
         {
-            if (region.riverdir(i,j)==3 && region.riverdir(i+1,j-1)==0 && region.riverdir(i-1,j)==0 && region.riverdir(i-1,j+1==0 && region.riverdir(i,j+1==0)))
+            if (region.riverdir(i,j)==3 && region.riverdir(i+1,j-1)==0 && region.riverdir(i-1,j)==0 && region.riverdir(i-1,j+1)==0 && region.riverdir(i,j+1==0))
             {
                 int x=i;
                 int y=j;
@@ -16702,7 +16702,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y+1!=0 || region.riverdir(x,y+1!=0)))
+                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x,y+1!=0))
                             {
                                 y--;
                                 keepgoing=0;
@@ -16863,7 +16863,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y-1!=0 || region.riverdir(x,y-1!=0)))
+                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x,y-1!=0))
                             {
                                 y++;
                                 keepgoing=0;
@@ -17024,7 +17024,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y-1!=0 || region.riverdir(x,y-1!=0)))
+                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x,y-1!=0))
                             {
                                 y++;
                                 keepgoing=0;
@@ -17185,7 +17185,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y+1!=0 || region.riverdir(x,y+1!=0)))
+                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x,y+1!=0))
                             {
                                 y--;
                                 keepgoing=0;
@@ -18299,7 +18299,7 @@ void disruptland(region &region, int centrex, int centrey, int newheight, boolsh
                 
                 if (xx>0 && xx<rwidth && yy>0 && yy<rheight)
                 {
-                    if (region.truelake(xx,yy)==islake && region.riverdir(xx,yy)==0 && region.fakedir(xx,yy)==0 && region.sea(xx,yy)==0)
+                    if (region.truelake(xx,yy)==int(islake) && region.riverdir(xx,yy)==0 && region.fakedir(xx,yy)==0 && region.sea(xx,yy)==0)
                         region.setmap(xx,yy,newheight);
                 }
             }

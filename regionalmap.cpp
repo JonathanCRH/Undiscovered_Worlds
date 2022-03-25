@@ -4291,7 +4291,7 @@ void makedeltatile(planet &world, region &region, int dx, int dy, int sx, int sy
             break;
     }
     
-    int outx, outy;
+    int outx=0, outy=0;
     
     if (north<0)
     {

@@ -6440,7 +6440,7 @@ int main(int /* argc */, char ** /* argv */)
                                                      
                                                      int index;
                                                      
-                                                     int startpixelr, startpixelg, startpixelb;
+                                                     int startpixelr=0, startpixelg=0, startpixelb=0;
                                                      
                                                      if (areaswx==-1) // If we don't have any corners yet
                                                      {

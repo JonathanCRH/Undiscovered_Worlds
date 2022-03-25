@@ -7922,7 +7922,6 @@ void deepcoasts(planet &world)
     int sealevel=world.sealevel();
     
     int depth;
-    int elev;
     
     for (int i=0; i<=width; i++)
     {

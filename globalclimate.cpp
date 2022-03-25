@@ -49,9 +49,9 @@ void generateglobalclimate(planet &world, nanogui::Screen &screen, nanogui::Wind
     // Start by generating a new fractal map.
     
     int grain=8; // Level of detail on this fractal map.
-    float valuemod=0.2;
+    float valuemod=0.2f;
     int v=random(1,4);
-    float valuemod2=v;
+    float valuemod2=float(v);
     
     vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
     
@@ -323,7 +323,7 @@ void createwindmap(planet &world)
     borders[10]=152;// Top of polar easterlies
     
     int variation=random(10,30); //random(8,10); // Maximum amount a node can vary from the base amount.
-    float div=height/180.0; // This is the amount that corresponds to each degree latitude
+    float div=height/180.0f; // This is the amount that corresponds to each degree latitude
     
     int linecol=1000000; // Value for the lines between wind zones.
     int pets=20; // This is the step width between each node of the icelines.
@@ -498,7 +498,7 @@ void createwindmap(planet &world)
             if (mm4.x<mm3.x)
                 mm4.x=mm4.x+width;
             
-            for (float t=0.0; t<=1.0; t=t+0.01)
+            for (float t=0.0; t<=1.0; t=t+0.01f)
             {
                 pt=curvepos(mm1,mm2,mm3,mm4,t);
                 
@@ -727,9 +727,9 @@ void createtemperaturemap(planet &world, vector<vector<int>> &fractal)
     float polartemp=-36.0; //-33.0; //-28.0; // Average temperature at the poles.
     float polarvariation=70; //85; //52.0; // This is the seasonal variation in temperature at the poles.
     
-    float fracvar=maxelev/fracrange;
+    float fracvar=maxelev/fracrange; // FG: Note that integer division will always return an integer
     
-    float equatorlat=height/2;
+    float equatorlat=height/2; // FG: Note that integer division will always return an integer
     
     float globaldiff=equatorialtemp-polartemp; // This is the range in average temperatures from equator to pole.
     
@@ -748,22 +748,22 @@ void createtemperaturemap(planet &world, vector<vector<int>> &fractal)
         float thisdiffperlat=diffperlat;
         
         if (j<equatorlat*0.05 || j>height-equatorlat*0.05)
-            thisdiffperlat=thisdiffperlat*0.6; // 0.4
+            thisdiffperlat=thisdiffperlat*0.6f; // 0.4
         
         if ((j>equatorlat*0.05 && j<equatorlat*0.1) || (j<height-equatorlat*0.05 && j>height-equatorlat*0.1))
-            thisdiffperlat=thisdiffperlat*2.5; // 1.2
+            thisdiffperlat=thisdiffperlat*2.5f; // 1.2
         
         if ((j>equatorlat*0.1 && j<equatorlat*0.3) || (j<height-equatorlat*0.1 && j>height-equatorlat*0.3))
-            thisdiffperlat=thisdiffperlat*1.8; // 1.6
+            thisdiffperlat=thisdiffperlat*1.8f; // 1.6
         
         if ((j>equatorlat*0.3 && j<equatorlat*0.45) || (j<height-equatorlat*0.3 && j>height-equatorlat*0.45))
-            thisdiffperlat=thisdiffperlat*0.6; // 0.6
+            thisdiffperlat=thisdiffperlat*0.6f; // 0.6
         
         if ((j>equatorlat*0.45 && j<equatorlat*0.6) || (j<height-equatorlat*0.45 && j>height-equatorlat*0.6))
-            thisdiffperlat=thisdiffperlat*1.2;
+            thisdiffperlat=thisdiffperlat*1.2f;
         
         if ((j>equatorlat*0.6 && j<equatorlat) || (j<height-equatorlat*0.6 && j>height-equatorlat))
-            thisdiffperlat=thisdiffperlat*0.7; // 0.9
+            thisdiffperlat=thisdiffperlat*0.7f; // 0.9
 
         if (j<equatorlat)
             lattemp=lattemp+thisdiffperlat;
@@ -783,7 +783,7 @@ void createtemperaturemap(planet &world, vector<vector<int>> &fractal)
         
         // Now get the seasonal variation for this latitude.
         
-        float latvariation=(lat*variationperlat)*0.5;
+        float latvariation=(lat*variationperlat)*0.5f;
         
         // Now go through the different longitudes at this latitude...
         
@@ -1890,7 +1890,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                 if (tempdiff<0.0)
                     tempdiff=0.0;
                 
-                float multfactor=0.03;
+                float multfactor=0.03f;
                 int distance=inland[i][j];
                 
                 if (distance>maxseasonaldistance)
@@ -2009,7 +2009,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
     {
         for (int j=0; j<=height; j++)
         {
-            if (world.sea(i,j)==0 && world.mountainheight(i,j)<maxmountainheight);
+            if (world.sea(i,j)==0 && world.mountainheight(i,j)<maxmountainheight); // FG: what is this supposed to do?
             
             short winddir=0; // This is to avoid blurring rain over rain shadows.
             
@@ -4576,7 +4576,7 @@ void removesubpolarstreaks(planet &world)
                     
                     if (world.mintemp(iminus,j)<=-3 && world.maxtemp(iminus,j)>10 && world.mintemp(iplus,j)<=-3 && world.maxtemp(iplus,j)>10)
                         
-                        if (world.mountainheight(iminus,j)<200 && world.mountainheight(iminus,j)<200)
+                        if (world.mountainheight(iminus,j)<200 /*&& world.mountainheight(iminus,j)<200*/) // FG: redundant
                         {
                             world.setmintemp(i,j,(origmintemp[i][j]+origmintemp[iminus][j]+origmintemp[iplus][j])/3);
                             world.setmaxtemp(i,j,(origmaxtemp[i][j]+origmaxtemp[iminus][j]+origmaxtemp[iplus][j])/3);

@@ -101,8 +101,10 @@ int main(int /* argc */, char ** /* argv */)
     globaltemplate->create(2048,1026,sf::Color(0,0,0));
     regionaltemplate->create(514,514,sf::Color(0,0,0));
     
-    globaltemplate->saveToFile("Blankworld.tga");
-    regionaltemplate->saveToFile("Blankregion.tga");
+    bool const ret1(globaltemplate->saveToFile("Blankworld.tga"));
+    if (!ret1) {cerr << "Error writing Blankworld.tga" << endl;}
+    bool const ret2(regionaltemplate->saveToFile("Blankregion.tga"));
+    if (!ret2) {cerr << "Error writing Blankregion.tga" << endl;}
     
     delete globaltemplate;
     delete regionaltemplate;

@@ -16702,7 +16702,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x,y+1!=0))
+                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x,y+1)!=0)
                             {
                                 y--;
                                 keepgoing=0;
@@ -16863,7 +16863,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x,y-1!=0))
+                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x,y-1)!=0)
                             {
                                 y++;
                                 keepgoing=0;
@@ -17024,7 +17024,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x,y-1!=0))
+                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x,y-1)!=0)
                             {
                                 y++;
                                 keepgoing=0;
@@ -17185,7 +17185,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x,y+1!=0))
+                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x,y+1)!=0)
                             {
                                 y--;
                                 keepgoing=0;

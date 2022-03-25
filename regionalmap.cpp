@@ -60,40 +60,40 @@ void generateregionalmap(planet &world, region &region, nanogui::Screen &screen,
     if (partial==0)
         region.clear();
     
-    vector<vector<bool>> safesaltlakes(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> rriverscarved(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> fakesourcex(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> fakesourcey(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> rmountainmap(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> pathchecked(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> riverinlets(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> lakeislands(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> poolchecked(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> disruptpoints(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> riftlakemap(RARRAYWIDTH*2,vector<bool>(RARRAYWIDTH*2,RARRAYHEIGHT*2));
-    vector<vector<bool>> lakemap(RARRAYWIDTH*4,vector<bool>(RARRAYWIDTH*4,RARRAYHEIGHT*4));
-    vector<vector<int>> underseamap(RARRAYWIDTH*4,vector<int>(RARRAYWIDTH*4,RARRAYHEIGHT*4));
-    vector<vector<bool>> rivercurves(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> elevs(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> severities(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> ridgeids(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> nearestridgepointdist(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> nearestridgepointx(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> nearestridgepointy(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> mountainedges(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> buttresspoints(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> underseabeforechannels(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> undersearidgelines(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> undersearidges(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> underseaspikes(RARRAYWIDTH*4,vector<int>(RARRAYWIDTH*4,RARRAYHEIGHT*4));
-    vector<vector<int>> rotatearray(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
+    vector<vector<bool>> safesaltlakes(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<int>> rriverscarved(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> fakesourcex(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> fakesourcey(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> rmountainmap(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> pathchecked(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<bool>> riverinlets(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> lakeislands(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> poolchecked(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> disruptpoints(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> riftlakemap(RARRAYWIDTH*2,vector<bool>(RARRAYHEIGHT*2,0));
+    vector<vector<bool>> lakemap(RARRAYWIDTH*4,vector<bool>(RARRAYHEIGHT*4,0));
+    vector<vector<int>> underseamap(RARRAYWIDTH*4,vector<int>(RARRAYHEIGHT*4,0));
+    vector<vector<bool>> rivercurves(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<int>> elevs(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> severities(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> ridgeids(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> nearestridgepointdist(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> nearestridgepointx(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> nearestridgepointy(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<bool>> mountainedges(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> buttresspoints(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<int>> underseabeforechannels(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<bool>> undersearidgelines(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<int>> undersearidges(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> underseaspikes(RARRAYWIDTH*4,vector<int>(RARRAYHEIGHT*4,0));
+    vector<vector<int>> rotatearray(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
     
-    vector<vector<int>> source(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> destination(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> wintermountainrain(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> summermountainrain(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<stbi_uc>> wintermountainraindir(ARRAYWIDTH,vector<stbi_uc>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<stbi_uc>> summermountainraindir(ARRAYWIDTH,vector<stbi_uc>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> source(ARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> destination(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> wintermountainrain(ARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> summermountainrain(ARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<stbi_uc>> wintermountainraindir(ARRAYWIDTH,vector<stbi_uc>(RARRAYHEIGHT,0));
+    vector<vector<stbi_uc>> summermountainraindir(ARRAYWIDTH,vector<stbi_uc>(RARRAYHEIGHT,0));
     
     for (int i=0; i<RARRAYWIDTH; i++)
     {

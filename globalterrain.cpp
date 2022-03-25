@@ -1622,9 +1622,9 @@ void largecontinents(planet &world, nanogui::Screen &screen, nanogui::Window &wo
     
     makevoronoi(voronoi,width,height,points);
     
-    vector<vector<bool>> continent(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<short>> continentnos(ARRAYWIDTH,vector<short>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<short>> overlaps(ARRAYWIDTH,vector<short>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> continent(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
+    vector<vector<short>> continentnos(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
+    vector<vector<short>> overlaps(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -2136,7 +2136,7 @@ void largecontinents(planet &world, nanogui::Screen &screen, nanogui::Window &wo
                         {
                             vector <sf::Vector2i> dummy1(2);
                             
-                            vector<vector<bool>> dummy2(2,vector<bool>(2,2));
+                            vector<vector<bool>> dummy2(2,vector<bool>(2,0));
                             
                             createdirectedchain(world,baseheight,conheight,1,continentnos,fractal,landshape,chainland,i,j,furthestx,furthesty,0,dummy1,dummy2,200);
 

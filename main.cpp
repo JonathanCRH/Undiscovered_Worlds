@@ -13681,15 +13681,15 @@ void addgridlines(sf::Image &mapimage)
 {
     sf::Vector2u size=mapimage.getSize();
     
-    for (int i=0; i<size.x; i=i+16)
+    for (unsigned i=0; i<size.x; i=i+16)
     {
-        for (int j=0; j<size.y; j++)
+        for (unsigned j=0; j<size.y; j++)
             mapimage.setPixel(i,j,sf::Color(80,50,20));
     }
     
-    for (int j=0; j<size.y; j=j+16)
+    for (unsigned j=0; j<size.y; j=j+16)
     {
-        for (int i=0; i<size.x; i++)
+        for (unsigned i=0; i<size.x; i++)
             mapimage.setPixel(i,j,sf::Color(80,50,20));
     }
 }

@@ -6273,6 +6273,7 @@ int getridge(vector<vector<int>> &arr, int x, int y, int dir)
 
 int getoceanridge(planet &world, int x, int y, int dir)
 {
+    // FIXME: FG: this takes a lot of the runtime; don't convert to a string! Use bit shifts instead; the same for the getridge() functions
     string n=decimaltobinarystring(world.oceanridges(x,y));
     
     string nn=n.substr(n.length()-dir,1);

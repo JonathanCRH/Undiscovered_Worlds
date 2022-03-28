@@ -48,14 +48,14 @@ typedef uint32_t uint;
 static long g_seed;
 
 // Used to seed the generator.
-inline void fast_srand(long seed)
+void fast_srand(long seed)
 {
     g_seed = seed;
 }
 
 // Compute a pseudorandom integer.
 // Output value in range [0, 32767]
-inline int fast_rand(void)
+int fast_rand(void)
 {
     g_seed = (214013*g_seed+2531011);
     return (g_seed>>16)&0x7FFF;
@@ -8527,7 +8527,7 @@ void createriftblob(vector<vector<float>> &riftblob, int size)
 
 // This function returns a random number from a to b inclusive.
 
-inline int random(int a, int b)
+int random(int a, int b)
 {
     int range=(b-a)+1; // This is the range of possible numbers.
     
@@ -8538,7 +8538,7 @@ inline int random(int a, int b)
 
 // This function randomises the sign of an integer (positive or negative).
 
-inline int randomsign(int a)
+int randomsign(int a)
 {
     if (random(0,1)==1)
         a=0-a;
@@ -8548,7 +8548,7 @@ inline int randomsign(int a)
 
 // These do the same thing but with the inbuilt randomiser.
 
-inline int altrandom(int a, int b)
+int altrandom(int a, int b)
 {
     int range=(b-a)+1; // This is the range of possible numbers.
     
@@ -8557,7 +8557,7 @@ inline int altrandom(int a, int b)
     return r;
 }
 
-inline int altrandomsign(int a)
+int altrandomsign(int a)
 {
     if (altrandom(0,1)==1)
         a=0-a;

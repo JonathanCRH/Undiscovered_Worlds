@@ -60,40 +60,40 @@ void generateregionalmap(planet &world, region &region, nanogui::Screen &screen,
     if (partial==0)
         region.clear();
     
-    vector<vector<bool>> safesaltlakes(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> rriverscarved(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> fakesourcex(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> fakesourcey(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> rmountainmap(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> pathchecked(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> riverinlets(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> lakeislands(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> poolchecked(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> disruptpoints(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> riftlakemap(RARRAYWIDTH*2,vector<bool>(RARRAYWIDTH*2,RARRAYHEIGHT*2));
-    vector<vector<bool>> lakemap(RARRAYWIDTH*4,vector<bool>(RARRAYWIDTH*4,RARRAYHEIGHT*4));
-    vector<vector<int>> underseamap(RARRAYWIDTH*4,vector<int>(RARRAYWIDTH*4,RARRAYHEIGHT*4));
-    vector<vector<bool>> rivercurves(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> elevs(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> severities(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> ridgeids(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> nearestridgepointdist(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> nearestridgepointx(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> nearestridgepointy(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> mountainedges(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> buttresspoints(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> underseabeforechannels(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<bool>> undersearidgelines(RARRAYWIDTH,vector<bool>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> undersearidges(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> underseaspikes(RARRAYWIDTH*4,vector<int>(RARRAYWIDTH*4,RARRAYHEIGHT*4));
-    vector<vector<int>> rotatearray(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
+    vector<vector<bool>> safesaltlakes(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<int>> rriverscarved(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> fakesourcex(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> fakesourcey(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> rmountainmap(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> pathchecked(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<bool>> riverinlets(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> lakeislands(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> poolchecked(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> disruptpoints(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> riftlakemap(RARRAYWIDTH*2,vector<bool>(RARRAYHEIGHT*2,0));
+    vector<vector<bool>> lakemap(RARRAYWIDTH*4,vector<bool>(RARRAYHEIGHT*4,0));
+    vector<vector<int>> underseamap(RARRAYWIDTH*4,vector<int>(RARRAYHEIGHT*4,0));
+    vector<vector<bool>> rivercurves(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<int>> elevs(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> severities(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> ridgeids(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> nearestridgepointdist(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> nearestridgepointx(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> nearestridgepointy(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<bool>> mountainedges(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<bool>> buttresspoints(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<int>> underseabeforechannels(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<bool>> undersearidgelines(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
+    vector<vector<int>> undersearidges(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> underseaspikes(RARRAYWIDTH*4,vector<int>(RARRAYHEIGHT*4,0));
+    vector<vector<int>> rotatearray(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
     
-    vector<vector<int>> source(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> destination(RARRAYWIDTH,vector<int>(RARRAYWIDTH,RARRAYHEIGHT));
-    vector<vector<int>> wintermountainrain(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> summermountainrain(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<stbi_uc>> wintermountainraindir(ARRAYWIDTH,vector<stbi_uc>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<stbi_uc>> summermountainraindir(ARRAYWIDTH,vector<stbi_uc>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> source(ARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> destination(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> wintermountainrain(ARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<int>> summermountainrain(ARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
+    vector<vector<stbi_uc>> wintermountainraindir(ARRAYWIDTH,vector<stbi_uc>(RARRAYHEIGHT,0));
+    vector<vector<stbi_uc>> summermountainraindir(ARRAYWIDTH,vector<stbi_uc>(RARRAYHEIGHT,0));
     
     for (int i=0; i<RARRAYWIDTH; i++)
     {
@@ -4291,7 +4291,7 @@ void makedeltatile(planet &world, region &region, int dx, int dy, int sx, int sy
             break;
     }
     
-    int outx, outy;
+    int outx=0, outy=0;
     
     if (north<0)
     {
@@ -4916,7 +4916,7 @@ sf::Vector3i calculateregionalriver(planet &world, region &region, int dx, int d
                 finishing=1;
             }
             
-            if (goahead==1 && x>=dx && x<=dx+16 && y>=dy & y<=dy+16)
+            if (goahead==1 && x>=dx && x<=dx+16 && y>=dy && y<=dy+16)
             {
                 bool newpoint=0;
                 
@@ -8665,7 +8665,7 @@ int findsurroundingsea(region &region, int x, int y)
     {
         for (int j=y-1; j<=y+1; j++)
         {
-            if (i>=0 && i<=rwidth && j>=0 & j<=rheight)
+            if (i>=0 && i<=rwidth && j>=0 && j<=rheight)
             {
                 if (region.sea(i,j)==1)
                     found++;
@@ -14921,7 +14921,7 @@ void makeriftlaketile(planet &world, region &region, int dx, int dy, int sx, int
     
     int dir=world.riverdir(sx,sy);
     
-    if (dir!=1 & dir!=3 && dir!=5 && dir!=7)
+    if (dir!=1 && dir!=3 && dir!=5 && dir!=7)
         return;
     
     if (random(1,islandchance)!=1)
@@ -16656,7 +16656,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
     {
         for (int j=dy; j<=dy+16-diagmaxline/2; j++)
         {
-            if (region.riverdir(i,j)==3 && region.riverdir(i+1,j-1)==0 && region.riverdir(i-1,j)==0 && region.riverdir(i-1,j+1==0 && region.riverdir(i,j+1==0)))
+            if (region.riverdir(i,j)==3 && region.riverdir(i+1,j-1)==0 && region.riverdir(i-1,j)==0 && region.riverdir(i-1,j+1)==0 && region.riverdir(i,j+1==0))
             {
                 int x=i;
                 int y=j;
@@ -16702,7 +16702,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y+1!=0 || region.riverdir(x,y+1!=0)))
+                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x,y+1)!=0)
                             {
                                 y--;
                                 keepgoing=0;
@@ -16863,7 +16863,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y-1!=0 || region.riverdir(x,y-1!=0)))
+                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y+1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y-1)!=0 || region.riverdir(x,y-1)!=0)
                             {
                                 y++;
                                 keepgoing=0;
@@ -17024,7 +17024,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y-1!=0 || region.riverdir(x,y-1!=0)))
+                            if (region.riverdir(x,y)!=3 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x-1,y)!=0 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x,y-1)!=0)
                             {
                                 y++;
                                 keepgoing=0;
@@ -17185,7 +17185,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         }
                         else
                         {
-                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y+1!=0 || region.riverdir(x,y+1!=0)))
+                            if (region.riverdir(x,y)!=7 || region.riverdir(x-1,y-1)!=0 || region.riverdir(x+1,y)!=0 || region.riverdir(x+1,y+1)!=0 || region.riverdir(x,y+1)!=0)
                             {
                                 y--;
                                 keepgoing=0;
@@ -18299,7 +18299,7 @@ void disruptland(region &region, int centrex, int centrey, int newheight, boolsh
                 
                 if (xx>0 && xx<rwidth && yy>0 && yy<rheight)
                 {
-                    if (region.truelake(xx,yy)==islake && region.riverdir(xx,yy)==0 && region.fakedir(xx,yy)==0 && region.sea(xx,yy)==0)
+                    if (region.truelake(xx,yy)==int(islake) && region.riverdir(xx,yy)==0 && region.fakedir(xx,yy)==0 && region.sea(xx,yy)==0)
                         region.setmap(xx,yy,newheight);
                 }
             }
@@ -18895,6 +18895,7 @@ int disruptsubmarineelevationtile(planet &world, region &region, int dx, int dy,
         
         smudgesubmarineterrain(world,region,centrex,centrey,searchdist,underseamap,smudge);
     }
+    return 0;
 }
 
 // This smudges an area of underwater terrain.

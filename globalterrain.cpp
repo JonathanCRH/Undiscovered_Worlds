@@ -1622,9 +1622,9 @@ void largecontinents(planet &world, nanogui::Screen &screen, nanogui::Window &wo
     
     makevoronoi(voronoi,width,height,points);
     
-    vector<vector<bool>> continent(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<short>> continentnos(ARRAYWIDTH,vector<short>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<short>> overlaps(ARRAYWIDTH,vector<short>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> continent(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
+    vector<vector<short>> continentnos(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
+    vector<vector<short>> overlaps(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -2136,7 +2136,7 @@ void largecontinents(planet &world, nanogui::Screen &screen, nanogui::Window &wo
                         {
                             vector <sf::Vector2i> dummy1(2);
                             
-                            vector<vector<bool>> dummy2(2,vector<bool>(2,2));
+                            vector<vector<bool>> dummy2(2,vector<bool>(2,0));
                             
                             createdirectedchain(world,baseheight,conheight,1,continentnos,fractal,landshape,chainland,i,j,furthestx,furthesty,0,dummy1,dummy2,200);
 
@@ -2722,7 +2722,8 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
         }
     }
     
-    bool cells[points];
+    vector<bool> cells(points); // vector<uint8_t>?
+    //bool cells[points];
     
     for (int n=0; n<points; n++)
         cells[n]=0;
@@ -4373,7 +4374,7 @@ void createchains(planet &world, int baseheight, int conheight, vector<vector<in
                         {
                             for (int j=0; j<=span; j++)
                             {
-                                if (i>=0 && i<=height && j>=0 && j<=height & rangeheighttemplate[i][j]!=0)
+                                if (i>=0 && i<=height && j>=0 && j<=height && rangeheighttemplate[i][j]!=0)
                                 {
                                     oldx=x+i;
                                     oldy=y+j;
@@ -4949,7 +4950,7 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
                 {
                     for (int j=0; j<=span; j++)
                     {
-                        if (i>=0 && i<=height && j>=0 && j<=height & rangeheighttemplate[i][j]!=0)
+                        if (i>=0 && i<=height && j>=0 && j<=height && rangeheighttemplate[i][j]!=0)
                         {
                             oldx=x+i;
                             oldy=y+j;
@@ -5750,7 +5751,7 @@ int markseasize (planet &world, vector<vector<bool>> &checked, vector<vector<int
         }
     }
     
-    return;
+    return 0;
 }
 
 // This function removes straight edges on the coastlines.
@@ -6121,7 +6122,7 @@ void widenchannels(planet &world)
                 if (world.sea(i-1,j-1)==0 && world.sea(i+1,j+1)==0)
                     world.setnom(i-1,j-1,sealevel-15);
                 
-                if (world.sea(i-1,j+1)==0 & world.sea(i+1,j-1)==0)
+                if (world.sea(i-1,j+1)==0 && world.sea(i+1,j-1)==0)
                     world.setnom(i-1,j+1,sealevel-15);
             }
         }
@@ -6272,6 +6273,7 @@ int getridge(vector<vector<int>> &arr, int x, int y, int dir)
 
 int getoceanridge(planet &world, int x, int y, int dir)
 {
+    // FIXME: FG: this takes a lot of the runtime; don't convert to a string! Use bit shifts instead; the same for the getridge() functions
     string n=decimaltobinarystring(world.oceanridges(x,y));
     
     string nn=n.substr(n.length()-dir,1);
@@ -7836,7 +7838,7 @@ void lowercoasts(planet &world)
                     
                     for (int jj=j-1; jj<=j+1; jj++)
                     {
-                        if (jj>=0 && jj<=height && iii!=i & jj!=j && loweredland[iii][jj]==0)
+                        if (jj>=0 && jj<=height && iii!=i && jj!=j && loweredland[iii][jj]==0)
                         {
                             amount=(world.nom(iii,jj)-sealevel)/4;
                             world.setnom(iii,jj,world.nom(iii,jj)-amount);
@@ -7921,7 +7923,6 @@ void deepcoasts(planet &world)
     int sealevel=world.sealevel();
     
     int depth;
-    int elev;
     
     for (int i=0; i<=width; i++)
     {

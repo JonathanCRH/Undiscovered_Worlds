@@ -40,20 +40,22 @@ using namespace std;
 using namespace nanogui;
 using ImageHolder = std::unique_ptr<uint8_t[], void(*)(void*)>;
 
+typedef uint32_t uint;
+
 // Random number generator. From https://stackoverflow.com/questions/26237419/faster-than-rand
 // It uses a global variable. But this is the only one in the program, honest!
 
 static long g_seed;
 
 // Used to seed the generator.
-inline void fast_srand(long seed)
+void fast_srand(long seed)
 {
     g_seed = seed;
 }
 
 // Compute a pseudorandom integer.
 // Output value in range [0, 32767]
-inline int fast_rand(void)
+int fast_rand(void)
 {
     g_seed = (214013*g_seed+2531011);
     return (g_seed>>16)&0x7FFF;
@@ -99,8 +101,10 @@ int main(int /* argc */, char ** /* argv */)
     globaltemplate->create(2048,1026,sf::Color(0,0,0));
     regionaltemplate->create(514,514,sf::Color(0,0,0));
     
-    globaltemplate->saveToFile("Blankworld.tga");
-    regionaltemplate->saveToFile("Blankregion.tga");
+    bool const ret1(globaltemplate->saveToFile("Blankworld.tga"));
+    if (!ret1) {cerr << "Error writing Blankworld.tga" << endl;}
+    bool const ret2(regionaltemplate->saveToFile("Blankregion.tga"));
+    if (!ret2) {cerr << "Error writing Blankregion.tga" << endl;}
     
     delete globaltemplate;
     delete regionaltemplate;
@@ -5158,7 +5162,7 @@ int main(int /* argc */, char ** /* argv */)
                                           
                                           if (region->sea(poix,poiy)==1)
                                           {
-                                              if (region->volcano(poix,poiy)>0)
+                                              if (region->volcano(poix,poiy))
                                                   infotext2=infotext2+"Submarine volcano. ";
                                               
                                               int seaice=region->seaice(poix,poiy);
@@ -5199,7 +5203,7 @@ int main(int /* argc */, char ** /* argv */)
                                               if (region->special(poix,poiy)==140)
                                                   climate=climate+". Glacier";
                                               
-                                              if (region->volcano(poix,poiy)>0)
+                                              if (region->volcano(poix,poiy))
                                                   climate=climate+". Volcano";
                                               
                                               infotext2=infotext2+"Climate: "+climate+".\n";
@@ -6436,7 +6440,7 @@ int main(int /* argc */, char ** /* argv */)
                                                      
                                                      int index;
                                                      
-                                                     int startpixelr, startpixelg, startpixelb;
+                                                     int startpixelr=0, startpixelg=0, startpixelb=0;
                                                      
                                                      if (areaswx==-1) // If we don't have any corners yet
                                                      {
@@ -6552,6 +6556,23 @@ int main(int /* argc */, char ** /* argv */)
                                                      
                                                      // Create some dummy arrays to hold copies of the lines we'll be drawing over.
                                                      
+#if 1
+                                                     vector<stbi_uc> northsider(areawidth);
+                                                     vector<stbi_uc> northsideg(areawidth);
+                                                     vector<stbi_uc> northsideb(areawidth);
+
+                                                     vector<stbi_uc> southsider(areawidth);
+                                                     vector<stbi_uc> southsideg(areawidth);
+                                                     vector<stbi_uc> southsideb(areawidth);
+
+                                                     vector<stbi_uc> eastsider(areawidth);
+                                                     vector<stbi_uc> eastsideg(areawidth);
+                                                     vector<stbi_uc> eastsideb(areawidth);
+
+                                                     vector<stbi_uc> westsider(areawidth);
+                                                     vector<stbi_uc> westsideg(areawidth);
+                                                     vector<stbi_uc> westsideb(areawidth);
+#else
                                                      stbi_uc northsider[areawidth];
                                                      stbi_uc northsideg[areawidth];
                                                      stbi_uc northsideb[areawidth];
@@ -6567,6 +6588,7 @@ int main(int /* argc */, char ** /* argv */)
                                                      stbi_uc westsider[areaheight];
                                                      stbi_uc westsideg[areaheight];
                                                      stbi_uc westsideb[areaheight];
+#endif
                                                      
                                                      // Now, draw our marker, copying all altered pixels onto the copy of the image.
                                                      
@@ -7825,7 +7847,23 @@ void setregionalminimap(planet &world, region &region, stbi_uc globalreliefimage
     int index;
     
     // Create some dummy arrays to hold copies of the lines we'll be drawing over.
-    
+#if 1
+    vector<stbi_uc> northsider(patchwidth);
+    vector<stbi_uc> northsideg(patchwidth);
+    vector<stbi_uc> northsideb(patchwidth);
+
+    vector<stbi_uc> southsider(patchwidth);
+    vector<stbi_uc> southsideg(patchwidth);
+    vector<stbi_uc> southsideb(patchwidth);
+
+    vector<stbi_uc> eastsider(patchwidth);
+    vector<stbi_uc> eastsideg(patchwidth);
+    vector<stbi_uc> eastsideb(patchwidth);
+
+    vector<stbi_uc> westsider(patchwidth);
+    vector<stbi_uc> westsideg(patchwidth);
+    vector<stbi_uc> westsideb(patchwidth);
+#else
     stbi_uc northsider[patchwidth];
     stbi_uc northsideg[patchwidth];
     stbi_uc northsideb[patchwidth];
@@ -7841,6 +7879,7 @@ void setregionalminimap(planet &world, region &region, stbi_uc globalreliefimage
     stbi_uc westsider[patchheight];
     stbi_uc westsideg[patchheight];
     stbi_uc westsideb[patchheight];
+#endif
     
     // Now, draw our marker, copying all altered pixels onto the copy of the image.
     
@@ -8488,7 +8527,7 @@ void createriftblob(vector<vector<float>> &riftblob, int size)
 
 // This function returns a random number from a to b inclusive.
 
-inline int random(int a, int b)
+int random(int a, int b)
 {
     int range=(b-a)+1; // This is the range of possible numbers.
     
@@ -8499,7 +8538,7 @@ inline int random(int a, int b)
 
 // This function randomises the sign of an integer (positive or negative).
 
-inline int randomsign(int a)
+int randomsign(int a)
 {
     if (random(0,1)==1)
         a=0-a;
@@ -8509,7 +8548,7 @@ inline int randomsign(int a)
 
 // These do the same thing but with the inbuilt randomiser.
 
-inline int altrandom(int a, int b)
+int altrandom(int a, int b)
 {
     int range=(b-a)+1; // This is the range of possible numbers.
     
@@ -8518,7 +8557,7 @@ inline int altrandom(int a, int b)
     return r;
 }
 
-inline int altrandomsign(int a)
+int altrandomsign(int a)
 {
     if (altrandom(0,1)==1)
         a=0-a;
@@ -9165,7 +9204,7 @@ int getdir(int x, int y, int xx, int yy)
     if (xx>x && yy>y)
         return (4);
     
-    if (xx==x & yy>y)
+    if (xx==x && yy>y)
         return (5);
     
     if (xx<x && yy>y)
@@ -10271,7 +10310,7 @@ sf::Vector2i findseatile(planet &world, int x, int y, int dir)
         
         for (int j=y-1; j<=y+1; j++)
         {
-            if (ii!=x && j!=y && ii!=oldx && j!=oldy && j>=0 & j<=height && world.sea(ii,j)==1 && world.map(ii,j)<lowest)
+            if (ii!=x && j!=y && ii!=oldx && j!=oldy && j>=0 && j<=height && world.sea(ii,j)==1 && world.map(ii,j)<lowest)
             {
                 newtile.x=ii;
                 newtile.y=j;
@@ -13642,15 +13681,15 @@ void addgridlines(sf::Image &mapimage)
 {
     sf::Vector2u size=mapimage.getSize();
     
-    for (int i=0; i<size.x; i=i+16)
+    for (unsigned i=0; i<size.x; i=i+16)
     {
-        for (int j=0; j<size.y; j++)
+        for (unsigned j=0; j<size.y; j++)
             mapimage.setPixel(i,j,sf::Color(80,50,20));
     }
     
-    for (int j=0; j<size.y; j=j+16)
+    for (unsigned j=0; j<size.y; j=j+16)
     {
-        for (int i=0; i<size.x; i++)
+        for (unsigned i=0; i<size.x; i++)
             mapimage.setPixel(i,j,sf::Color(80,50,20));
     }
 }

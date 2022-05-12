@@ -12,8 +12,8 @@
 #include <stdio.h>
 //#include <unistd.h>
 #include <queue>
-#include <SFML/Graphics.hpp>
-#include <nanogui/nanogui.h>
+//#include <SFML/Graphics.hpp>
+//#include <nanogui/nanogui.h>
 
 #include "classes.hpp"
 #include "planet.hpp"
@@ -4857,6 +4857,7 @@ int createsmalllaketemplates(boolshapetemplate smalllake[])
             }
         }
     }
+    return 0;
 }
 
 int createislandtemplates(boolshapetemplate island[])
@@ -5141,6 +5142,7 @@ int createislandtemplates(boolshapetemplate island[])
             }
         }
     }
+    return 0;
 }
 
 int createsmudgetemplates(byteshapetemplate smudge[])
@@ -5264,6 +5266,7 @@ int createsmudgetemplates(byteshapetemplate smudge[])
             }
         }
     }
+    return 0;
 }
 
 int createsmallsmudgetemplates(byteshapetemplate smallsmudge[])
@@ -5387,6 +5390,7 @@ int createsmallsmudgetemplates(byteshapetemplate smallsmudge[])
             }
         }
     }
+    return 0;
 }
 
 // These are the same kinds of templates, but because they're fairly large and have long lines of identical data, we'll store them in a compressed form. The size of the grid is followed by pairs of numbers: the first is the number of entries that will all take the same value, and the second is that value.
@@ -5917,6 +5921,7 @@ int createlargelaketemplates(boolshapetemplate largelake[])
             } while (alldone==0);
         }
     }
+    return 0;
 }
 
 int createlandshapetemplates(boolshapetemplate landshape[])
@@ -6549,6 +6554,7 @@ int createlandshapetemplates(boolshapetemplate landshape[])
             } while (alldone==0);
         }
     }
+    return 0;
 }
 
 int createchainlandtemplates(boolshapetemplate chainland[])
@@ -6661,4 +6667,5 @@ int createchainlandtemplates(boolshapetemplate chainland[])
             } while (alldone==0);
         }
     }
+    return 0;
 }

@@ -1,0 +1,10 @@
+MSVS2022/.vs
+MSVS2022/x64
+MSVS2022/Blankregion.tga
+MSVS2022/Blankworld.tga
+SFML
+nanogui
+stb
+linux/obj
+*~
+

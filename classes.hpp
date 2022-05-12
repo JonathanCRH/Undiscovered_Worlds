@@ -3,7 +3,7 @@
 //  Undiscovered Worlds
 //
 //  Created by Jonathan Hill on 17/04/2020.
-//  
+//
 //  Please see functions.hpp for notes.
 
 #ifndef classes_hpp
@@ -24,6 +24,42 @@
 
 using namespace std;
 
+// These are some very simple classes for holding multiple values.
+
+class twointegers
+{
+public:
+    
+    twointegers(); // constructor
+    ~twointegers(); // destructor
+    
+    int x;
+    int y;
+};
+
+class threeintegers
+{
+public:
+    
+    threeintegers(); // constructor
+    ~threeintegers(); // destructor
+    
+    int x;
+    int y;
+    int z;
+};
+
+class twofloats
+{
+public:
+    
+    twofloats(); // constructor
+    ~twofloats(); // destructor
+    
+    float x;
+    float y;
+};
+
 // This class holds the templates for the mountain peaks. All the templates are held in a single object and accessed by index.
 
 class peaktemplate
@@ -40,13 +76,13 @@ public:
     
     int centrex(int index) const; // Centre x coordinate
     void setcentrex(int index, int amount);
-
+    
     int centrey(int index) const; // Centre y coordinate
     void setcentrey(int index, int amount);
     
     int peakmap(int index, int x, int y) const; // Peak height map
     void setpeakmap(int index, int x, int y, int amount);
-
+    
 private:
     
     int itsspan[PEAKTOTAL]; // Width/height of the peak
@@ -66,7 +102,7 @@ public:
     ~boolshapetemplate();  // destructor
     
     // Accessor functions
-
+    
     int xsize() const {return itsvector.size()-1;};
     void setxsize(int amount){itsvector.resize(amount+1);};
     

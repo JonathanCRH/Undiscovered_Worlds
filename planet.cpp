@@ -3,7 +3,7 @@
 //  Undiscovered Worlds
 //
 //  Created by Jonathan Hill on 22/07/2019.
-//  
+//
 //  Please see functions.hpp for notes.
 
 #include <iostream>
@@ -870,7 +870,7 @@ void planet::smooth(int arr[][ARRAYHEIGHT], int amount, bool vary, bool avoidmou
                 if (ave>0 && ave<itsmaxheight)
                     mapnom[i][j]=ave;
             }
-
+            
         }
     }
 }

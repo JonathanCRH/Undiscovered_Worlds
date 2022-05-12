@@ -3,7 +3,7 @@
 //  Undiscovered Worlds
 //
 //  Created by Jonathan Hill on 27/10/2019.
-//  
+//
 //  Please see functions.hpp for notes.
 
 #include "region.hpp"

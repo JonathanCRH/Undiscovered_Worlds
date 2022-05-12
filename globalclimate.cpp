@@ -3,7 +3,7 @@
 //  Undiscovered Worlds
 //
 //  Created by Jonathan Hill on 04/09/2019.
-//  
+//
 //  Please see functions.hpp for notes.
 
 #include <iostream>
@@ -11,8 +11,8 @@
 #include <fstream>
 #include <stdio.h>
 //#include <unistd.h>
-#include <SFML/Graphics.hpp>
-#include <nanogui/nanogui.h>
+//#include <SFML/Graphics.hpp>
+//#include <nanogui/nanogui.h>
 
 #include "classes.hpp"
 #include "planet.hpp"
@@ -20,287 +20,6 @@
 #include "functions.hpp"
 
 using namespace std;
-
-void generateglobalclimate(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate smalllake[], boolshapetemplate largelake[], boolshapetemplate landshape[], vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves)
-{
-    long seed=world.seed();
-    fast_srand(seed);
-    
-    int width=world.width();
-    int height=world.height();
-    int maxelev=world.maxelevation();
-
-    // First, do the wind map.
-    
-    worldgenerationlabel.set_caption("Generating wind map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createwindmap(world);
-    
-    // Now create the temperature map.
-    
-    worldgenerationlabel.set_caption("Generating global temperature map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    // Start by generating a new fractal map.
-    
-    int grain=8; // Level of detail on this fractal map.
-    float valuemod=0.2f;
-    int v=random(1,4);
-    float valuemod2=float(v);
-    
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    createtemperaturemap(world,fractal);
-    
-    // Now do the sea ice.
-    
-    worldgenerationlabel.set_caption("Generating sea ice map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    flip(fractal,width,height,1,1);
-    int offset=random(1,width);
-    shift(fractal,width,height,offset);
-    
-    createseaicemap(world,fractal);
-    
-    // Work out the tidal ranges.
-    
-    worldgenerationlabel.set_caption("Calculating tides");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createtidalmap(world);
-    
-    // Now do rainfall.
-    
-    worldgenerationlabel.set_caption("Calculating rainfall");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    flip(fractal,width,height,1,1);
-    offset=random(1,width);
-    shift(fractal,width,height,offset);
-    
-    createrainmap(world,screen,worldgenerationwindow,worldgenerationlabel,worldprogress,progressstep,fractal,smalllake,landshape);
-
-    // Now add fjord mountains.
-    
-    worldgenerationlabel.set_caption("Carving fjords");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    addfjordmountains(world);
-
-    // Now work out the rivers initially. We do this the first time so that after the first time we can place the salt lakes in appropriate places, and then we work out the rivers again.
-    
-    worldgenerationlabel.set_caption("Planning river courses");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createrivermap(world,mountaindrainage);
-    
-    // Now create salt lakes.
-    
-    worldgenerationlabel.set_caption("Placing hydrological basins");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    vector<vector<vector<int>>> saltlakemap(ARRAYWIDTH,vector<vector<int>>(ARRAYHEIGHT, vector<int>(2)));
-    vector<vector<int>> nolake(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            saltlakemap[i][j][0]=0;
-            saltlakemap[i][j][1]=0;
-            nolake[i][j]=0;
-        }
-    }
-    
-    // First we need to prepare a no-lake template, marking out areas too close to the coasts, where lakes can't go.
-    
-    int minseadistance=15; // Points closer to the shore than this can't be the centre of lakes, normally.
-    int minseadistance2=8; // This is for any lake tile, not just the centre.
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (world.outline(i,j)==1)
-            {
-                for (int k=i-minseadistance2; k<=i+minseadistance2; k++)
-                {
-                    int kk=k;
-                    
-                    if (kk<0 || kk>width)
-                        kk=wrap(kk,width);
-                    
-                    for (int l=j-minseadistance2; l<=j+minseadistance2; l++)
-                    {
-                        if (l>=0 && l<=height)
-                            nolake[kk][l]=1;
-                    }
-                }
-                
-                for (int k=i-minseadistance; k<=i+minseadistance; k++)
-                {
-                    int kk=k;
-                    
-                    if (kk<0 || kk>width)
-                        kk=wrap(kk,width);
-                    
-                    for (int l=j-minseadistance; l<=j+minseadistance; l++)
-                    {
-                        if (l>=0 && l<=height && nolake[kk][l]==0)
-                            nolake[kk][l]=2;
-                    }
-                }
-            }
-        }
-    }
-    
-    createsaltlakes(world,saltlakemap,nolake,smalllake);
-    
-    addlandnoise(world);
-    depressionfill(world);
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            world.setriverdir(i,j,0);
-            world.setriverjan(i,j,0);
-            world.setriverjul(i,j,0);
-        }
-    }
-    
-    // Now work out the rivers again.
-    
-    worldgenerationlabel.set_caption("Generating rivers");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createrivermap(world,mountaindrainage);
-
-    // Now check river valleys in mountains.
-    
-    worldgenerationlabel.set_caption("Checking mountain river valleys");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removerivermountains(world);
-    
-    // Now create the lakes.
-    
-    worldgenerationlabel.set_caption("Generating lakes");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    convertsaltlakes(world,saltlakemap);
-    
-    createlakemap(world,nolake,smalllake,largelake);
-    
-    createriftlakemap(world,nolake);
-    
-    world.setmaxriverflow();
-
-    // Now create the climate map.
-    
-    worldgenerationlabel.set_caption("Calculating climates");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createclimatemap(world);
-    
-    // Now specials.
-    
-    worldgenerationlabel.set_caption("Generating sand dunes");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createergs(world,smalllake,largelake);
-    
-    worldgenerationlabel.set_caption("Generating salt pans");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createsaltpans(world,smalllake,largelake);
-    
-    // Add river deltas.
-    
-    worldgenerationlabel.set_caption("Generating river deltas");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createriverdeltas(world);
-    checkrivers(world);
-    
-    // Now wetlands.
-    
-    worldgenerationlabel.set_caption("Generating wetlands");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createwetlands(world,smalllake);
-    
-    removeexcesswetlands(world);
-    
-    // Now it's time to finesse the roughness map.
-    
-    worldgenerationlabel.set_caption("Refining roughness map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    refineroughnessmap(world);
-    
-    // Check the rift lake map too.
-    
-    for (int i=0; i<ARRAYWIDTH; i++)
-    {
-        for (int j=0; j<ARRAYHEIGHT; j++)
-        {
-            if (world.lakestart(i,j)==1 && world.riftlakesurface(i,j)==0 && world.lakesurface(i,j)==0)
-                world.setlakestart(i,j,0);
-        }
-    }
-    
-    // Finally, check that the climates at the edges of the map are correct.
-    
-    worldgenerationlabel.set_caption("Checking poles");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    checkpoleclimates(world);
-    
-    removesealakes(world); // Also, make sure there are no weird bits of sea next to lakes.
-    
-    connectlakes(world); // Make sure lakes aren't fragmented.
-}
 
 // Wind map creator.
 
@@ -331,8 +50,6 @@ void createwindmap(planet &world)
     int n=width/pets; // This is how many nodes there will be.
     
     vector<vector<int>> windlines(12,vector<int>(n+1,0)); // 0 holds the x coordinate of that node. 1 to 10 hold the y coordinates of the different lines.
-    
-    //int windlines[12][n+1];
     
     for (int i=0; i<=n; i++)
         windlines[0][i]=i*pets;
@@ -400,11 +117,11 @@ void createwindmap(planet &world)
         for (int line=1; line<=10; line++)
         {
             int jj=windlines[line][i]+yoffset+yextraoffset;
-
+            
             if (yoffset!=0)
             {
                 int amount2=yoffset/2;
-  
+                
                 if (line<10) // Move all the lower ones accordingly.
                 {
                     for (int line2=line+1; line2<=10; line2++)
@@ -453,7 +170,7 @@ void createwindmap(planet &world)
             }
         }
     }
-
+    
     // Now make sure none of them overlaps.
     
     for (int i=0; i<=n; i++)
@@ -467,7 +184,7 @@ void createwindmap(planet &world)
     
     // Now we draw lines between the nodes.
     
-    sf::Vector2f pt, mm1, mm2, mm3, mm4;
+    twofloats pt, mm1, mm2, mm3, mm4;
     
     for (int m1=0; m1<n; m1++) // (int m1=0; m1<=n; m1++)
     {
@@ -764,12 +481,12 @@ void createtemperaturemap(planet &world, vector<vector<int>> &fractal)
         
         if ((j>equatorlat*0.6 && j<equatorlat) || (j<height-equatorlat*0.6 && j>height-equatorlat))
             thisdiffperlat=thisdiffperlat*0.7f; // 0.9
-
+        
         if (j<equatorlat)
             lattemp=lattemp+thisdiffperlat;
         else
             lattemp=lattemp-thisdiffperlat;
-
+        
         float lat;
         
         if (j<equatorlat)
@@ -790,7 +507,7 @@ void createtemperaturemap(planet &world, vector<vector<int>> &fractal)
         for (int i=0; i<=width; i++)
         {
             float temperature=lattemp;
-        
+            
             
             // Now we adjust for sea temperatures.
             
@@ -1038,7 +755,7 @@ void createseaicemap(planet &world, vector<vector<int>> &fractal)
     
     // Now we draw lines between the nodes.
     
-    sf::Vector2f pt, mm1, mm2, mm3, mm4;
+    twofloats pt, mm1, mm2, mm3, mm4;
     int col;
     
     for (int m1=0; m1<n; m1++)
@@ -1179,9 +896,9 @@ int carefuladd(planet &world, int x, int y, int amount)
     return (y);
 }
 
-// Rain map creator.
+// This creates rain over the oceans.
 
-void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, vector<vector<int>> &fractal, boolshapetemplate smalllake[], boolshapetemplate shape[])
+void createoceanrain(planet &world, vector<vector<int>> &fractal)
 {
     int width=world.width();
     int height=world.height();
@@ -1189,86 +906,9 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
     int maxelev=world.maxelevation();
     
     int landmult=5; // This is the amount we multiply the wind factor by to calculate land shadows.
-    int seamult=60; // This is the amount we multiply the wind factor by to get the number of sea tiles that will provide rain. The higher this is, the more rain will extend onto the land.
-    float tempfactor=80.0; // The amount temperature affects moisture pickup over ocean. The higher it is, the more difference it makes.
-    float mintemp=0.15; // The minimum fraction that low temperatures can reduce the pickup rate to.
-    int landshadowfactor=4; // The amount that the land shadows affect ocean rainfall.
-    int dumprate=80; // The higher this number, the less rain gets deposited, but the further across the land it is distributed.
-    int pickuprate=200; // The higher this number, the more rain gets picked up over ocean tiles.
-    int landpickuprate=40; // This is the amount of rain that gets acquired while passing over land.
-    int swervechance=3; // The lower this number, the more variation in where the rain lands.
-    int spreadchance=2; // The lower this number, the more precipitation will spread to north and south.
-    float newseedproportion=0.95; // When precipitation spreads, it's reduced to this proportion.
-    float horseseedproportion=0.4; // If spreading into horse latitudes, it's reduced to this proportion.
-    int splashsize=1; // The higher this number, the larger area gets splashed around each target tile.
-    int slopefactor=30; //50; // This determines how much gradient affects rainfall. The lower it is, the more it affects it.
-    float elevationfactor=0.002; // This determines how much elevation affects the degree to which gradient affects rainfall.
-    int slopemin=300; //200; // This is how high land has to be before the gradient affects rainfall.
     int fracrange=60; // This is the range of variation given by the fractal.
     int maxoceanrain=1500; // Maximum amount of rain per month over the ocean.
-    float seasonalvar=0.006; //0.02; // Variation in rainfall between seasons.
-    float tropicalseasonalvar=0.01; // Variation in tropical rainfall between seasons.
-    int maxseasonaldistance=50; // After this point, being far from the sea won't make more difference to seasonal rainfall variation.
-    float winterrainwarmth=0.08; //0.01; // Factor to increase temperature in winter because of rain.
-    int maxwinterrainwarmth=10; //6; // Most that can be added.
-    float summerraincold=0.0025;
-    float norainheat=1.3; // Amount that the summer temperature increases where there's no rain at all.
-    float noraincold=1.2; //0.8; // Amount that the winter temperature decreases where there's no rain at all.
-    int maxwintervar=15; // Maximum amount that rainfall can increase temperature in winter.
-    int maxsummervar=10; // Maximum amount that rainfall can decrease temperature in summer.
-    int maxrain=1000; // Any rainfall over this will be greatly reduced.
-    float capfactor=0.1; // Amount to multiply excessive rain by.
-    float heatpickuprate=0.008; // The higher this is, the more heat will come from prevailing winds over ocean.
-    float heatdepositrate=0.15; // The higher this is, the less far the heating effect will extend onto the land.
-    float summerfactor=0.3; // The amount that the sea warms land in summer, as a proportion of how much it warms it in winter.
-    float maxwinterheatfactor=3.5; // The maximum amount of extra warming that the land can get from the sea.
-    int maxtemperatewintertemp=15; // Maximum temperature it can be in winter poleward of the horse latitudes.
-    float wintericefactor=0.05; // If there's seasonal sea ice, multiply the winter rain by this.
-    float landfactor=0.1; // The higher this is, the more seasonal variation in temperature there will be away from the sea.
-    int maxlandadjust=5; // The maximum extra seasonal variation in temperature there can be.
-    float tropicalrainreduce=0.4; // Amount to lower rain in tropical areas.
-    float extrarainrate=0.00; // The proportion of the waterlog that gets added to the rainfall each tick. The higher this is, the more extra rainfall there is.
-    int slopewaterreduce=20; //8; // The higher this is, the less extra rain falls on slopes.
-    
-    vector<vector<int>> highpressure(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> monsoonmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> inland(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> rainseed(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<float>> rainheatseed(ARRAYWIDTH,vector<float>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<short>> raindir(ARRAYWIDTH,vector<short>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> raintick(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<float>> monsoonstrength(ARRAYWIDTH,vector<float>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<bool>> subpolar(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<float>> mediterranean(ARRAYWIDTH,vector<float>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> wintertemp(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> summertemp(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> smoothedsummerrain(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> smoothedwinterrain(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<short>> coastalmonsoon(ARRAYWIDTH,vector<short>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            highpressure[i][j]=0;
-            monsoonmap[i][j]=0;
-            inland[i][j]=0;
-            rainseed[i][j]=0;
-            rainheatseed[i][j]=0;
-            raindir[i][j]=0;
-            raintick[i][j]=0;
-            monsoonstrength[i][j]=0;
-            subpolar[i][j]=0;
-            mediterranean[i][j]=0;
-            wintertemp[i][j]=0;
-            summertemp[i][j]=0;
-            smoothedsummerrain[i][j]=0;
-            smoothedwinterrain[i][j]=0;
-            coastalmonsoon[i][j]=0;
-        }
-    }
-
-    // First, do rainfall over the oceans.
+    int landshadowfactor=4; // The amount that the land shadows affect ocean rainfall.
     
     for (int j=0; j<=height; j++)
     {
@@ -1453,8 +1093,46 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                 world.setsummerrain(i,j,0);
         }
     }
+}
+
+// This creates prevailing rain over the land.
+
+void createprevailinglandrain(planet &world, vector<vector<int>> &inland, int maxmountainheight, int slopewaterreduce)
+{
+    int width=world.width();
+    int height=world.height();
+    int sealevel=world.sealevel();
     
-    // Now we do the rainfall over land.
+    int seamult=60; // This is the amount we multiply the wind factor by to get the number of sea tiles that will provide rain. The higher this is, the more rain will extend onto the land.
+    float tempfactor=80.0; // The amount temperature affects moisture pickup over ocean. The higher it is, the more difference it makes.
+    float mintemp=0.15; // The minimum fraction that low temperatures can reduce the pickup rate to.
+    int dumprate=80; // The higher this number, the less rain gets deposited, but the further across the land it is distributed.
+    int pickuprate=200; // The higher this number, the more rain gets picked up over ocean tiles.
+    int landpickuprate=40; // This is the amount of rain that gets acquired while passing over land.
+    int swervechance=3; // The lower this number, the more variation in where the rain lands.
+    int spreadchance=2; // The lower this number, the more precipitation will spread to north and south.
+    float newseedproportion=0.95; // When precipitation spreads, it's reduced to this proportion.
+    float horseseedproportion=0.4; // If spreading into horse latitudes, it's reduced to this proportion.
+    int splashsize=1; // The higher this number, the larger area gets splashed around each target tile.
+    int slopefactor=30; //50; // This determines how much gradient affects rainfall. The lower it is, the more it affects it.
+    float elevationfactor=0.002; // This determines how much elevation affects the degree to which gradient affects rainfall.
+    int slopemin=300; //200; // This is how high land has to be before the gradient affects rainfall.
+    //int fracrange=60; // This is the range of variation given by the fractal.
+    float seasonalvar=0.006; //0.02; // Variation in rainfall between seasons.
+    float tropicalseasonalvar=0.01; // Variation in tropical rainfall between seasons.
+    int maxseasonaldistance=50; // After this point, being far from the sea won't make more difference to seasonal rainfall variation.
+    float heatpickuprate=0.008; // The higher this is, the more heat will come from prevailing winds over ocean.
+    float heatdepositrate=0.15; // The higher this is, the less far the heating effect will extend onto the land.
+    float summerfactor=0.3; // The amount that the sea warms land in summer, as a proportion of how much it warms it in winter.
+    float maxwinterheatfactor=3.5; // The maximum amount of extra warming that the land can get from the sea.
+    float wintericefactor=0.05; // If there's seasonal sea ice, multiply the winter rain by this.
+    float tropicalrainreduce=0.4; // Amount to lower rain in tropical areas.
+    float extrarainrate=0.00; // The proportion of the waterlog that gets added to the rainfall each tick. The higher this is, the more extra rainfall there is.
+    
+    vector<vector<int>> rainseed(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> raintick(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<float>> rainheatseed(ARRAYWIDTH,vector<float>(ARRAYHEIGHT,0));
+    vector<vector<short>> raindir(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
     
     // First, set the seeds for each bit of rain.
     
@@ -1710,7 +1388,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                     
                     waterdumped=waterdumped+waterlog*extrarainrate;
                     noslopewaterdumped=noslopewaterdumped+waterlog*extrarainrate;
-
+                    
                     // Now dump the water.
                     
                     for (int i=x-splashsize; i<=x+splashsize; i++)
@@ -1807,7 +1485,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                                 horse=1;
                                 thisspreadchance=thisspreadchance*3;
                             }
-
+                            
                             if (random(1,thisspreadchance)==1)
                             {
                                 float fwaterlog=waterlog;
@@ -1860,7 +1538,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                                         world.setmintemp(xx,yy,world.mintemp(xx,yy)+waterheat);
                                         world.setmaxtemp(xx,yy,world.maxtemp(xx,yy)+waterheat*summerfactor);
                                     }
-
+                                    
                                     raindir[xx][yy]=dir;
                                     raintick[xx][yy]=thistick+1;
                                     rainseed[xx][yy]=newwaterlog;
@@ -1900,7 +1578,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                 
                 if (landdistvar<1)
                     landdistvar=1;
-
+                
                 float winterrain=world.winterrain(i,j);
                 
                 if (j<world.horse(i,2) || j>world.horse(i,3))
@@ -1912,7 +1590,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                 
                 world.setwinterrain(i,j,world.winterrain(i,j)+tempdiff);
                 world.setsummerrain(i,j,world.summerrain(i,j)-tempdiff);
-
+                
                 if (world.summerrain(i,j)<0)
                     world.setsummerrain(i,j,0);
             }
@@ -1921,7 +1599,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
     
     // Now increase the amounts.
     
-    vector<vector<int>> rainadd(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This is an amount of rain to add to areas with a roughly temperate/subtropical heat range.
+    vector<vector<int>> rainadd(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This is an amount of rain to add to areas with a roughly temperate/subtropical heat range.
     
     for (int i=0; i<=width; i++)
     {
@@ -1933,7 +1611,6 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             
             if (tempdiff<0)
                 tempdiff=0;
-
             
             int thisrainadd=tempdiff*4;
             
@@ -1999,11 +1676,10 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             world.setwinterrain(i,j,winterrain);
         }
     }
-
+    
     // Possible blurring here
     
     short blurdist=1;
-    int maxmountainheight=100;
     
     for (int i=0; i<=width; i++)
     {
@@ -2075,15 +1751,16 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             }
         }
     }
+}
 
-    worldgenerationlabel.set_caption("Calculating monsoons");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    sf::Vector2i nearestseapoint;
-    
-    // Now for monsoons!
+// This creates monsoons.
+
+void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
+{
+    int width=world.width();
+    int height=world.height();
+    int sealevel=world.sealevel();
+    int maxelev=world.maxelevation();
     
     int minmonsoondiff=2; // Winter/summer temperatures must be this far apart for monsoons to happen.
     int minmonsoontemp=15; // Average annual temperature must be at least this for monsoons to happen.
@@ -2107,15 +1784,11 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
     
     float wintermonsoonfactor=1.0; // Multiply monsoon strength by this to see how much rain is suppressed in winter.
     float summermonsoonfactor=1.0; // Multiply monsoon strength by this to see how much rain is added in summer.
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            raindir[i][j]=0;
-            raintick[i][j]=0;
-        }
-    }
+
+    vector<vector<int>> raintick(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<short>> raindir(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
+    vector<vector<float>> monsoonstrength(ARRAYWIDTH,vector<float>(ARRAYHEIGHT,0));
+    vector<vector<int>> monsoonmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     // First, set the initial seeds along the coasts.
     
@@ -2179,8 +1852,8 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
     
     // Now we spread those seeds across the land.
     
-    thistick=1; // Tracks the time. Only do cells that are set to be done on this turn.
-    found=0;
+    int thistick=1; // Tracks the time. Only do cells that are set to be done on this turn.
+    bool found=0;
     
     do
     {
@@ -2357,7 +2030,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                             crount++;
                             total=total+monsoonstrength[leftx][upy];
                         }
-
+                        
                         waterlog=total/crount;
                         waterlog=waterlog*monsoonincrease;
                         
@@ -2380,7 +2053,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                             }
                             
                             tempadjust=world.avetemp(x,y);
-
+                            
                             tempadjust=tempadjust*0.05;
                             
                             if (tempadjust<0)
@@ -2437,7 +2110,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                                 dirtotal=northwest;
                                 dir=4;
                             }
-
+                            
                             // We have the monsoon strength and the direction. Now we just need to deposit some monsoon here and reduce the strength accordingly.
                             
                             int waterdumped=waterlog/monsoondumprate;
@@ -2478,7 +2151,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                                 
                                 slope=getslope(world,upwindx,upwindy,x,y);
                                 slope=slope/monsoonslopefactor;
-
+                                
                                 if (slope>1) // If it's going uphill
                                 {
                                     float waterdumped2=waterdumped*slope;
@@ -2494,8 +2167,8 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                             waterlog=waterlog-waterdumped;
                             
                             //if (waterlog>maxmonsoonstrength)
-                                //waterlog=maxmonsoonstrength;
-
+                            //waterlog=maxmonsoonstrength;
+                            
                             if (random(1,monsoonswervechance)==1)
                             {
                                 raintick[x][y]=0;
@@ -2567,7 +2240,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                             
                             if (waterdumped>monsoonmap[x][y])
                                 monsoonmap[x][y]=waterdumped;
-     
+                            
                             //raindir[x][y]=dir;
                             monsoonstrength[x][y]=waterlog;
                             
@@ -2580,7 +2253,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                 }
             }
         }
-            
+        
         thistick++;
         
         if (thistick>maxtick)
@@ -2590,10 +2263,10 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
         
         if (monsoonincrease<minmonsoonincrease)
             monsoonincrease=minmonsoonincrease;
-
+        
         
     } while (found==1);
-
+    
     for (int n=0; n<15; n++) // Blur it.
     {
         for (int i=0; i<=width; i++) // Normal blur.
@@ -2746,21 +2419,18 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             }
         }
     }
-
+    
     // Now we need to use the monsoon map to tinker with the rainfall map.
     
     float monsoonelevfactor=8; // The higher this is, the more elevation will reduce the extra monsoon rain in summer.
     
-    vector<vector<int>> summermonsoon(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> wintermonsoon(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> summermonsoon(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> wintermonsoon(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
         {
-            summermonsoon[i][j]=0;
-            wintermonsoon[i][j]=0;
-            
             if (monsoonmap[i][j]>0)
             {
                 float landelev=world.nom(i,j)-sealevel;
@@ -2952,10 +2622,10 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
     int v=random(3,6);
     float valuemod2=v;
     
-    vector<vector<int>> monsoonvary(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> monsoonvary(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     createfractal(monsoonvary,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-
+    
     float monsoondiv=1.6/maxelev;
     
     for (int i=0; i<=width; i++) // Now apply that fractal.
@@ -2970,7 +2640,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                 float amount=monsoonvary[i][j]*monsoondiv;
                 
                 amount=amount-0.8;
-
+                
                 summerrain=summerrain+summerrain*amount;
                 winterrain=winterrain+winterrain*amount;
                 
@@ -2998,14 +2668,19 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             world.setsummerrain(i,j,summerrain);
         }
     }
-    
-    worldgenerationlabel.set_caption("Adjusting seasonal rainfall");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    // Now increase the seasonal variation in rainfall in certain areas, to encourage Mediterranean climates.
+}
 
+// This adjusts the seasonal rainfall (to ensure Mediterranean climates)
+
+void adjustseasonalrainfall(planet &world, vector<vector<int>> &inland)
+{
+    int width=world.width();
+    int height=world.height();
+    int sealevel=world.sealevel();
+    int maxelev=world.maxelevation();
+    
+    vector<vector<float>> mediterranean(ARRAYWIDTH,vector<float>(ARRAYHEIGHT,0));
+    
     float medstrength=0.9;
     
     int avemedmaxtemp=19;
@@ -3044,7 +2719,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                 
                 if (diff>0)
                     med=med-diff*medmaxinlanddifffactor;
-
+                
                 if (j<height/2)
                 {
                     diff=abs(world.horse(i,1)-j);
@@ -3061,15 +2736,15 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                 }
                 
                 med=med-diff*medhorsedifffactor;
-
+                
                 if (med>0)
                     mediterranean[i][j]=med;
-
+                
             }
         }
     }
     
-    dist=3;
+    int dist=3;
     
     for (int i=0; i<=width; i++) // Smooth it
     {
@@ -3119,9 +2794,19 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             }
         }
     }
-    
-    // Now smooth the rainfall.
+}
 
+// This smooths the rainfall.
+
+void smoothrainfall(planet &world, int maxmountainheight)
+{
+    int width=world.width();
+    int height=world.height();
+    int sealevel=world.sealevel();
+    
+    vector<vector<int>> smoothedsummerrain(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> smoothedwinterrain(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    
     for (int n=0; n<5; n++) // Quick basic smooth, which will include smoothing from one mountain tile to the next.
     {
         for (int i=0; i<=width; i++)
@@ -3336,186 +3021,19 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             }
         }
     }
-
-    /*
-    for (int n=0; n<1; n++) // The same, but on mountains only.
-    {
-        for (int i=0; i<=width; i++)
-        {
-            int im=i-1;
-            int imm=i-2;
-            int ip=i+1;
-            int ipp=i+2;
-            
-            if (im<0)
-                im=width;
-            
-            if (imm<0)
-                imm=wrap(imm,width);
-            
-            if (ip>width)
-                ip=0;
-            
-            if (ipp>width)
-                ipp=wrap(ipp,width);
-            
-            for (int j=0; j<=height; j++)
-            {
-                if (world.sea(i,j)==0)
-                {
-                    if (world.mountainheight(i,j)>=maxmountainheight)
-                    {
-                        float crount=0;
-                        float summertotal=0;
-                        float wintertotal=0;
-                        
-                        for (int k=i-1; k<=i+1; k++) // First, check the cells bordering the central one.
-                        {
-                            int kk=k;
-                            
-                            if (kk<0 || kk>width)
-                                kk=wrap(kk,width);
-                            
-                            for (int l=j-1; l<=j+1; l++)
-                            {
-                                if (l>=0 && l<=height)
-                                {
-                                    if (world.sea(kk,l)==0 && world.mountainheight(kk,l)>=maxmountainheight)
-                                    {
-                                        summertotal=summertotal+world.summerrain(kk,l);
-                                        wintertotal=wintertotal+world.winterrain(kk,l);
-                                        crount++;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        int jm=j-1;
-                        int jmm=j-2;
-                        int jp=j+1;
-                        int jpp=j+2;
-
-                        if (jmm>=0 && jpp<=height) // Now, check the cells bordering those ones.
-                        {
-                            // Cells to the north
-                            
-                            if (world.sea(im,jmm)==0 && world.mountainheight(im,jmm)>=maxmountainheight && (world.mountainheight(im,jm)>=maxmountainheight || world.mountainheight(i,jm)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(im,jmm);
-                                wintertotal=wintertotal+world.winterrain(im,jmm);
-                                crount++;
-                            }
-                            
-                            if (world.sea(i,jmm)==0 && world.mountainheight(i,jmm)>=maxmountainheight && (world.mountainheight(im,jm)>=maxmountainheight || world.mountainheight(i,jm)>=maxmountainheight || world.mountainheight(ip,jm)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(i,jmm);
-                                wintertotal=wintertotal+world.winterrain(i,jmm);
-                                crount++;
-                            }
-                            
-                            if (world.sea(ip,jmm)==0 && world.mountainheight(ip,jmm)>=maxmountainheight && (world.mountainheight(i,jm)>=maxmountainheight || world.mountainheight(ip,jm)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(ip,jmm);
-                                wintertotal=wintertotal+world.winterrain(ip,jmm);
-                                crount++;
-                            }
-                            
-                            // Cells to the south
-                            
-                            if (world.sea(im,jpp)==0 && world.mountainheight(im,jpp)>=maxmountainheight && (world.mountainheight(im,jp)>=maxmountainheight || world.mountainheight(i,jp)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(im,jpp);
-                                wintertotal=wintertotal+world.winterrain(im,jpp);
-                                crount++;
-                            }
-                            
-                            if (world.sea(i,jpp)==0 && world.mountainheight(i,jpp)>=maxmountainheight && (world.mountainheight(im,jp)>=maxmountainheight || world.mountainheight(i,jp)>=maxmountainheight || world.mountainheight(ip,jp)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(i,jpp);
-                                wintertotal=wintertotal+world.winterrain(i,jpp);
-                                crount++;
-                            }
-                            
-                            if (world.sea(ip,jpp)==0 && world.mountainheight(ip,jpp)>=maxmountainheight && (world.mountainheight(i,jp)>=maxmountainheight || world.mountainheight(ip,jp)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(ip,jpp);
-                                wintertotal=wintertotal+world.winterrain(ip,jpp);
-                                crount++;
-                            }
-                            
-                            // Cells to the west
-                            
-                            if (world.sea(imm,jm)==0 && world.mountainheight(imm,jm)>=maxmountainheight && (world.mountainheight(im,jm)>=maxmountainheight || world.mountainheight(im,j)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(imm,jm);
-                                wintertotal=wintertotal+world.winterrain(imm,jm);
-                                crount++;
-                            }
-                            
-                            if (world.sea(imm,j)==0 && world.mountainheight(imm,j)>=maxmountainheight && (world.mountainheight(im,jm)>=maxmountainheight || world.mountainheight(im,j)>=maxmountainheight || world.mountainheight(im,jp)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(imm,j);
-                                wintertotal=wintertotal+world.winterrain(imm,j);
-                                crount++;
-                            }
-                            
-                            if (world.sea(imm,jp)==0 && world.mountainheight(imm,jp)>=maxmountainheight && (world.mountainheight(im,j)>=maxmountainheight || world.mountainheight(im,jp)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(imm,jp);
-                                wintertotal=wintertotal+world.winterrain(imm,jp);
-                                crount++;
-                            }
-                            
-                            // Cells to the east
-                            
-                            if (world.sea(ipp,jm)==0 && world.mountainheight(ipp,jm)>=maxmountainheight && (world.mountainheight(ip,jm)>=maxmountainheight || world.mountainheight(ip,j)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(ipp,jm);
-                                wintertotal=wintertotal+world.winterrain(ipp,jm);
-                                crount++;
-                            }
-                            
-                            if (world.sea(ipp,j)==0 && world.mountainheight(ipp,j)>=maxmountainheight && (world.mountainheight(ip,jm)>=maxmountainheight || world.mountainheight(ip,j)>=maxmountainheight || world.mountainheight(ip,jp)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(ipp,j);
-                                wintertotal=wintertotal+world.winterrain(ipp,j);
-                                crount++;
-                            }
-                            
-                            if (world.sea(ipp,jp)==0 && world.mountainheight(ipp,jp)>=maxmountainheight && (world.mountainheight(ip,j)>=maxmountainheight || world.mountainheight(ip,jp)>=maxmountainheight))
-                            {
-                                summertotal=summertotal+world.summerrain(ipp,jp);
-                                wintertotal=wintertotal+world.winterrain(ipp,jp);
-                                crount++;
-                            }
-                        }
-                        
-                        if (crount>0)
-                        {
-                            summertotal=summertotal/crount;
-                            wintertotal=wintertotal/crount;
-                            
-                            summertotal=(summertotal+(world.summerrain(i,j)*3))/4;
-                            wintertotal=(wintertotal+(world.winterrain(i,j)*3))/4;
-                            
-                            world.setsummerrain(i,j,summertotal);
-                            world.setwinterrain(i,j,wintertotal);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    */
-
     
-    worldgenerationlabel.set_caption("Adjusting temperatures");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
+}
 
-    // Now cap excessive rainfall.
+// This caps excessive rainfall
 
+void caprainfall(planet &world)
+{
+    int width=world.width();
+    int height=world.height();
+    
+    int maxrain=1000; // Any rainfall over this will be greatly reduced.
+    float capfactor=0.1; // Amount to multiply excessive rain by.
+    
     float rain[2];
     
     for (int i=0; i<=width; i++)
@@ -3542,8 +3060,24 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             world.setsummerrain(i,j,rain[1]);
         }
     }
+}
 
-    // Now we adjust temperatures in light of rainfall.
+// This adjusts temperatures in the light of rainfall.
+
+void adjusttemperatures(planet &world, vector<vector<int>> &inland)
+{
+    int width=world.width();
+    int height=world.height();
+    int sealevel=world.sealevel();
+    
+    float winterrainwarmth=0.08; //0.01; // Factor to increase temperature in winter because of rain.
+    int maxwinterrainwarmth=10; //6; // Most that can be added.
+    float summerraincold=0.0025;
+    float norainheat=1.3; // Amount that the summer temperature increases where there's no rain at all.
+    float noraincold=1.2; //0.8; // Amount that the winter temperature decreases where there's no rain at all.
+    int maxwintervar=15; // Maximum amount that rainfall can increase temperature in winter.
+    int maxsummervar=10; // Maximum amount that rainfall can decrease temperature in summer.
+    int maxtemperatewintertemp=15; // Maximum temperature it can be in winter poleward of the horse latitudes.
     
     for (int i=0; i<=width; i++)
     {
@@ -3601,8 +3135,17 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             }
         }
     }
+}
 
-    // Now make temperatures a little more extreme when further from the sea.
+// This makes temperatures a bit more extreme further from thesea.
+
+void adjustcontinentaltemperatures(planet &world, vector<vector<int>> &inland)
+{
+    int width=world.width();
+    int height=world.height();
+    
+    float landfactor=0.1; // The higher this is, the more seasonal variation in temperature there will be away from the sea.
+    int maxlandadjust=5; // The maximum extra seasonal variation in temperature there can be.
     
     for (int i=0; i<=width; i++)
     {
@@ -3630,9 +3173,18 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             }
         }
     }
+}
+
+// This smooths the temperatures in light of rainfall.
+
+void smoothtemperatures(planet &world)
+{
+    int width=world.width();
+    int height=world.height();
     
-    // Now just smooth the temperatures a bit. Any temperatures that are lower than their neighbours to north and south get bumped up, to avoid the appearance of streaks.
-    
+    vector<vector<int>> wintertemp(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> summertemp(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -3678,12 +3230,111 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             }
         }
     }
+}
 
-    // Now just prevent subpolar climates from turning into other continental types when further from the sea.
+// This function removes weird lines of subpolar climate.
 
-    removesubpolarstreaks(world);
+void removesubpolarstreaks(planet &world)
+{
+    int width=world.width();
+    int height=world.height();
     
-    for (int i=0; i<=width; i++) // This extends subpolar out to the east and west.
+    vector<vector<int>> origmaxtemp(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> origmintemp(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    
+    for (int times=1; times<=2; times++)
+    {
+        for (int n=1; n<=4; n++)
+        {
+            for (int i=0; i<=width; i++)
+            {
+                for (int j=0; j<=height; j++)
+                {
+                    origmaxtemp[i][j]=world.maxtemp(i,j);
+                    origmintemp[i][j]=world.mintemp(i,j);
+                }
+            }
+            
+            for (int i=0; i<=width; i++)
+            {
+                for (int j=n; j<height; j=j+2)
+                {
+                    if (world.sea(i,j)==0)
+                    {
+                        string climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j),1);
+                        
+                        if (world.mountainheight(i,j)<200 && (climate=="D" || climate=="BW" || climate=="BS"))
+                        {
+                            int jminus=j-1;
+                            int jplus=j+1;
+                            
+                            if (world.mintemp(i,jminus)<=-3 && world.maxtemp(i,jminus)>10 && world.mintemp(i,jplus)<=-3 && world.maxtemp(i,jplus)>10)
+                                
+                                if (world.mountainheight(i,jminus)<200 && world.mountainheight(i,jplus)<200)
+                                {
+                                    world.setmintemp(i,j,(origmintemp[i][j]+origmintemp[i][jminus]+origmintemp[i][jplus])/3);
+                                    world.setmaxtemp(i,j,(origmaxtemp[i][j]+origmaxtemp[i][jminus]+origmaxtemp[i][jplus])/3);
+                                }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    for (int i=0; i<=width; i++)
+    {
+        for (int j=0; j<=height; j++)
+        {
+            origmaxtemp[i][j]=world.maxtemp(i,j);
+            origmintemp[i][j]=world.mintemp(i,j);
+        }
+    }
+    
+    for (int i=0; i<=width; i++)
+    {
+        for (int j=0; j<=height; j++)
+        {
+            if (world.sea(i,j)==0)
+            {
+                string climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j),1);
+                
+                if (world.mountainheight(i,j)<200 && (climate=="D" || climate=="BW" || climate=="BS"))
+                {
+                    int iminus=i-1;
+                    int iplus=i+1;
+                    
+                    if (iplus>width)
+                        iplus=0;
+                    
+                    if (iminus<0)
+                        iminus=width;
+                    
+                    if (world.mintemp(iminus,j)<=-3 && world.maxtemp(iminus,j)>10 && world.mintemp(iplus,j)<=-3 && world.maxtemp(iplus,j)>10)
+                        
+                        if (world.mountainheight(iminus,j)<200 /*&& world.mountainheight(iminus,j)<200*/) // FG: redundant
+                        {
+                            world.setmintemp(i,j,(origmintemp[i][j]+origmintemp[iminus][j]+origmintemp[iplus][j])/3);
+                            world.setmaxtemp(i,j,(origmaxtemp[i][j]+origmaxtemp[iminus][j]+origmaxtemp[iplus][j])/3);
+                        }
+                }
+            }
+            
+        }
+    }
+    
+}
+
+// This function extends subpolar regions to the east and west.
+
+void extendsubpolar(planet &world)
+{
+    int width=world.width();
+    int height=world.height();
+    
+    vector<vector<bool>> subpolar(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
+    
+    for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
         {
@@ -3762,10 +3413,14 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
             }
         }
     }
+}
 
-    removesubpolarstreaks(world);
-    
-    // Now we just sort out the mountain precipitation arrays, which will be used at the regional level for ensuring that higher mountain precipitation isn't splashed too far.
+// This creates mountain precipitation arrays (which are used at the regional level).
+
+void createmountainprecipitation(planet &world)
+{
+    int width=world.width();
+    int height=world.height();
     
     float totalmountaineffect=1000; // Mountains higher than this will get the full effect.
     
@@ -3852,7 +3507,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                     
                     short crount=0;
                     int total=0;
-
+                    
                     for (int k=i-1; k<=i+1; k++)
                     {
                         int kk=k;
@@ -3872,7 +3527,7 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                             }
                         }
                     }
-
+                    
                     if (crount==0) // We didn't find one!
                     {
                         for (int k=i-1; k<=i+1; k++)
@@ -4050,296 +3705,8 @@ void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Window &worl
                 }
             }
         }
-        
-        // Using the lowest neighbouring rainfall
-        
-        /*
-        for (int i=0; i<=width; i++) // Winter precipitation
-        {
-            for (int j=0; j<=height; j++)
-            {
-                if (world.mountainheight(i,j)!=0 && world.wintermountainraindir(i,j)==0)
-                {
-                    // First, find the cell that the wind's coming from. It's the non-mountain cell with the highest precipitation.
-                    
-                    int windfromcellx=-1;
-                    int windfromcelly=-1;
-                    int highestamount=-1;
-                    
-                    for (int k=i-1; k<=i+1; k++)
-                    {
-                        int kk=k;
-                        
-                        if (kk<0 || kk>width)
-                            kk=wrap(kk,width);
-                        
-                        for (int l=j-1; l<=j+1; l++)
-                        {
-                            if (l>=0 && l<=height)
-                            {
-                                if (world.sea(kk,l)==0 && world.mountainheight(kk,l)==0)
-                                {
-                                    if (world.winterrain(kk,l)>highestamount)
-                                    {
-                                        highestamount=world.winterrain(kk,l);
-                                        windfromcellx=kk;
-                                        windfromcelly=l;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (windfromcellx==-1) // We didn't find one!
-                    {
-                        for (int k=i-1; k<=i+1; k++)
-                        {
-                            int kk=k;
-                            
-                            if (kk<0 || kk>width)
-                                kk=wrap(kk,width);
-                            
-                            for (int l=j-1; l<=j+1; l++)
-                            {
-                                if (l>=0 && l<=height)
-                                {
-                                    if (world.wintermountainraindir(kk,l)!=0)
-                                    {
-                                        if (world.winterrain(kk,l)>highestamount)
-                                        {
-                                            highestamount=world.winterrain(kk,l);
-                                            windfromcellx=kk;
-                                            windfromcelly=l;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Now, find the cell whose precipitation we want to borrow. It's the non-mountain cell with the lowest precipitation.
-                    
-                    int rainfromcellx=-1;
-                    int rainfromcelly=-1;
-                    int lowestamount=1000000;
-                    
-                    for (int k=i-1; k<=i+1; k++)
-                    {
-                        int kk=k;
-                        
-                        if (kk<0 || kk>width)
-                            kk=wrap(kk,width);
-                        
-                        for (int l=j-1; l<=j+1; l++)
-                        {
-                            if (l>=0 && l<=height)
-                            {
-                                if (world.sea(kk,l)==0 && world.mountainheight(kk,l)==0)
-                                {
-                                    if (world.winterrain(kk,l)<lowestamount)
-                                    {
-                                        lowestamount=world.winterrain(kk,l);
-                                        rainfromcellx=kk;
-                                        rainfromcelly=l;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (rainfromcellx==-1) // We didn't find one!
-                    {
-                        for (int k=i-1; k<=i+1; k++)
-                        {
-                            int kk=k;
-                            
-                            if (kk<0 || kk>width)
-                                kk=wrap(kk,width);
-                            
-                            for (int l=j-1; l<=j+1; l++)
-                            {
-                                if (l>=0 && l<=height)
-                                {
-                                    if (world.wintermountainraindir(kk,l)!=0)
-                                    {
-                                        if (world.winterrain(kk,l)<lowestamount)
-                                        {
-                                            lowestamount=world.winterrain(kk,l);
-                                            rainfromcellx=kk;
-                                            rainfromcelly=l;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (windfromcellx!=-1 && rainfromcellx!=-1) // If we found one!
-                    {
-                        float thisheight=world.mountainheight(i,j);
-                        float effect=1.0;
-                        
-                        if (thisheight<totalmountaineffect) // Reduce the strength of this.
-                            effect=thisheight/totalmountaineffect;
-                        
-                        float rainamount=world.winterrain(rainfromcellx,rainfromcelly);
-                        float rainamount2=world.winterrain(i,j);
-                        
-                        float newrainamount=(rainamount*effect)+(rainamount2*(1.0-effect));
-                        
-                        world.setwintermountainrain(i,j,newrainamount);
-                        
-                        int dir=getdir(windfromcellx,windfromcelly,i,j);
-                        world.setwintermountainraindir(i,j,dir);
-                    }
-                }
-            }
-        }
-        
-        for (int i=0; i<=width; i++) // Summer precipitation
-        {
-            for (int j=0; j<=height; j++)
-            {
-                if (world.mountainheight(i,j)!=0 && world.summermountainraindir(i,j)==0)
-                {
-                    // First, find the cell that the wind's coming from. It's the non-mountain cell with the highest precipitation.
-                    
-                    int windfromcellx=-1;
-                    int windfromcelly=-1;
-                    int highestamount=-1;
-                    
-                    for (int k=i-1; k<=i+1; k++)
-                    {
-                        int kk=k;
-                        
-                        if (kk<0 || kk>width)
-                            kk=wrap(kk,width);
-                        
-                        for (int l=j-1; l<=j+1; l++)
-                        {
-                            if (l>=0 && l<=height)
-                            {
-                                if (world.sea(kk,l)==0 && world.mountainheight(kk,l)==0)
-                                {
-                                    if (world.summerrain(kk,l)>highestamount)
-                                    {
-                                        highestamount=world.summerrain(kk,l);
-                                        windfromcellx=kk;
-                                        windfromcelly=l;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (windfromcellx==-1) // We didn't find one!
-                    {
-                        for (int k=i-1; k<=i+1; k++)
-                        {
-                            int kk=k;
-                            
-                            if (kk<0 || kk>width)
-                                kk=wrap(kk,width);
-                            
-                            for (int l=j-1; l<=j+1; l++)
-                            {
-                                if (l>=0 && l<=height)
-                                {
-                                    if (world.summermountainraindir(kk,l)!=0)
-                                    {
-                                        if (world.summerrain(kk,l)>highestamount)
-                                        {
-                                            highestamount=world.summerrain(kk,l);
-                                            windfromcellx=kk;
-                                            windfromcelly=l;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Now, find the cell whose precipitation we want to borrow. It's the non-mountain cell with the lowest precipitation.
-                    
-                    int rainfromcellx=-1;
-                    int rainfromcelly=-1;
-                    int lowestamount=1000000;
-                    
-                    for (int k=i-1; k<=i+1; k++)
-                    {
-                        int kk=k;
-                        
-                        if (kk<0 || kk>width)
-                            kk=wrap(kk,width);
-                        
-                        for (int l=j-1; l<=j+1; l++)
-                        {
-                            if (l>=0 && l<=height)
-                            {
-                                if (world.sea(kk,l)==0 && world.mountainheight(kk,l)==0)
-                                {
-                                    if (world.summerrain(kk,l)<lowestamount)
-                                    {
-                                        lowestamount=world.summerrain(kk,l);
-                                        rainfromcellx=kk;
-                                        rainfromcelly=l;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (rainfromcellx==-1) // We didn't find one!
-                    {
-                        for (int k=i-1; k<=i+1; k++)
-                        {
-                            int kk=k;
-                            
-                            if (kk<0 || kk>width)
-                                kk=wrap(kk,width);
-                            
-                            for (int l=j-1; l<=j+1; l++)
-                            {
-                                if (l>=0 && l<=height)
-                                {
-                                    if (world.summermountainraindir(kk,l)!=0)
-                                    {
-                                        if (world.summerrain(kk,l)<lowestamount)
-                                        {
-                                            lowestamount=world.summerrain(kk,l);
-                                            rainfromcellx=kk;
-                                            rainfromcelly=l;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (windfromcellx!=-1 && rainfromcellx!=-1) // If we found one!
-                    {
-                        float thisheight=world.mountainheight(i,j);
-                        float effect=1.0;
-                        
-                        if (thisheight<totalmountaineffect) // Reduce the strength of this.
-                            effect=thisheight/totalmountaineffect;
-                        
-                        float rainamount=world.summerrain(rainfromcellx,rainfromcelly);
-                        float rainamount2=world.summerrain(i,j);
-                        
-                        float newrainamount=(rainamount*effect)+(rainamount2*(1.0-effect));
-                        
-                        world.setsummermountainrain(i,j,newrainamount);
-                        
-                        int dir=getdir(windfromcellx,windfromcelly,i,j);
-                        world.setwintermountainraindir(i,j,dir);
-                    }
-                }
-            }
-        }
-        */
-        
     }
+    
 }
 
 // This function draws a splash of monsoon on the monsoon map.
@@ -4496,99 +3863,6 @@ void drawmonsoonblob(planet &world, vector<vector<int>> &monsoonmap, int centrex
     }
 }
 
-// This function removes weird lines of subpolar climate.
-
-void removesubpolarstreaks(planet &world)
-{
-    int width=world.width();
-    int height=world.height();
-    
-    vector<vector<int>> origmaxtemp(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> origmintemp(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-
-    for (int times=1; times<=2; times++)
-    {
-        for (int n=1; n<=4; n++)
-        {
-            for (int i=0; i<=width; i++)
-            {
-                for (int j=0; j<=height; j++)
-                {
-                    origmaxtemp[i][j]=world.maxtemp(i,j);
-                    origmintemp[i][j]=world.mintemp(i,j);
-                }
-            }
-            
-            for (int i=0; i<=width; i++)
-            {
-                for (int j=n; j<height; j=j+2)
-                {
-                    if (world.sea(i,j)==0)
-                    {
-                        string climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j),1);
-                        
-                        if (world.mountainheight(i,j)<200 && (climate=="D" || climate=="BW" || climate=="BS"))
-                        {
-                            int jminus=j-1;
-                            int jplus=j+1;
-
-                            if (world.mintemp(i,jminus)<=-3 && world.maxtemp(i,jminus)>10 && world.mintemp(i,jplus)<=-3 && world.maxtemp(i,jplus)>10)
-                            
-                            if (world.mountainheight(i,jminus)<200 && world.mountainheight(i,jplus)<200)
-                            {
-                                world.setmintemp(i,j,(origmintemp[i][j]+origmintemp[i][jminus]+origmintemp[i][jplus])/3);
-                                world.setmaxtemp(i,j,(origmaxtemp[i][j]+origmaxtemp[i][jminus]+origmaxtemp[i][jplus])/3);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            origmaxtemp[i][j]=world.maxtemp(i,j);
-            origmintemp[i][j]=world.mintemp(i,j);
-        }
-    }
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (world.sea(i,j)==0)
-            {
-                string climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j),1);
-                
-                if (world.mountainheight(i,j)<200 && (climate=="D" || climate=="BW" || climate=="BS"))
-                {
-                    int iminus=i-1;
-                    int iplus=i+1;
-                    
-                    if (iplus>width)
-                        iplus=0;
-                    
-                    if (iminus<0)
-                        iminus=width;
-                    
-                    if (world.mintemp(iminus,j)<=-3 && world.maxtemp(iminus,j)>10 && world.mintemp(iplus,j)<=-3 && world.maxtemp(iplus,j)>10)
-                        
-                        if (world.mountainheight(iminus,j)<200 /*&& world.mountainheight(iminus,j)<200*/) // FG: redundant
-                        {
-                            world.setmintemp(i,j,(origmintemp[i][j]+origmintemp[iminus][j]+origmintemp[iplus][j])/3);
-                            world.setmaxtemp(i,j,(origmaxtemp[i][j]+origmaxtemp[iminus][j]+origmaxtemp[iplus][j])/3);
-                        }
-                }
-            }
-            
-        }
-    }
-
-}
-
 // This function creates areas of sea that will later become salt lakes.
 
 void createsaltlakes(planet &world, vector<vector<vector<int>>> &saltlakemap, vector<vector<int>> &nolake, boolshapetemplate smalllake[])
@@ -4604,19 +3878,10 @@ void createsaltlakes(planet &world, vector<vector<vector<int>>> &saltlakemap, ve
     
     int lakesplaced=0;
     
-    vector<vector<int>> basins(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will store where endorheic basins have already been carved.
+    vector<vector<int>> basins(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will store where endorheic basins have already been carved.
     
-    vector<vector<int>> avoid(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This is for cells *not* to alter. This will remain empty (it's just here so we can use the depression-creating routine for normal lakes as well, where we don't want to mess with the path of the outflowing river.)
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            basins[i][j]=0;
-            avoid[i][j]=0;
-        }
-    }
-    
+    vector<vector<int>> avoid(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This is for cells *not* to alter. This will remain empty (it's just here so we can use the depression-creating routine for normal lakes as well, where we don't want to mess with the path of the outflowing river.)
+
     for (int i=20; i<=width-20; i++) // Don't want them too close to the edges of the map, because it won't be possible to make lake start points if they wrap over the edges.
     {
         for (int j=0; j<=height; j++)
@@ -4641,7 +3906,7 @@ void createsaltlakes(planet &world, vector<vector<vector<int>>> &saltlakemap, ve
 
 // This function puts a patch of sea on the map that will later be turned into a salt lake.
 
-void placesaltlake(planet & world, int centrex, int centrey, vector<vector<vector<int>>> &saltlakemap, vector<vector<int>> &basins, vector<vector<int>> &avoid, vector<vector<int>> &nolake, boolshapetemplate smalllake[])
+void placesaltlake(planet &world, int centrex, int centrey, vector<vector<vector<int>>> &saltlakemap, vector<vector<int>> &basins, vector<vector<int>> &avoid, vector<vector<int>> &nolake, boolshapetemplate smalllake[])
 {
     int width=world.width();
     int height=world.height();
@@ -4831,7 +4096,7 @@ void placesaltlake(planet & world, int centrex, int centrey, vector<vector<vecto
     
     // Now we need to create a "start point" on the sea/lake.
     
-    sf::Vector2i startpoint;
+    twointegers startpoint;
     startpoint.x=-1;
     startpoint.y=-1;
     
@@ -5006,7 +4271,7 @@ void createrivermap(planet &world, vector<vector<int>> &mountaindrainage)
     
     // Now, we go through the map tile by tile. Take the rainfall in each tile and add it to every downstream tile.
     
-    vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     int dropno=1;
     bool goahead=1;
@@ -5458,7 +4723,7 @@ void avoidvolcanoes(planet &world)
         {
             int dir=world.riverdir(i,j);
             
-            sf::Vector2i dest=getdestination(i,j,dir);
+            twointegers dest=getdestination(i,j,dir);
             
             if (world.volcano(dest.x,dest.y)!=0)
             {
@@ -5514,13 +4779,15 @@ void removeparallelrivers(planet &world)
     
     int removechance=1;
     
-    vector<vector<int>> altered(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will show any points that have been involved in a change
+    vector<vector<int>> altered(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will show any points that have been involved in a change
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             altered[i][j]=0;
     }
+    */
     
     // First, N/S and E/W
     
@@ -5939,13 +5206,15 @@ void removerivermountains(planet &world)
     
     int minremoveheight=100; // Only mountains higher than this will be removed.
     
-    vector<vector<bool>> toremove(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> toremove(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<ARRAYWIDTH; i++)
     {
         for (int j=0; j<ARRAYHEIGHT; j++)
             toremove[i][j]=0;
     }
+    */
     
     for (int i=0; i<=width; i++)
     {
@@ -5953,7 +5222,7 @@ void removerivermountains(planet &world)
         {
             if (world.sea(i,j)==0 && world.mountainheight(i,j)==0)
             {
-                sf::Vector2i dest=getflowdestination(world,i,j,0);
+                twointegers dest=getflowdestination(world,i,j,0);
                 
                 if (world.mountainheight(dest.x,dest.y)>minremoveheight && world.sea(dest.x,dest.y)==0) // We've got flow from a non-mountain cell into a mountain cell!
                 {
@@ -6046,7 +5315,7 @@ void removerivermountains(planet &world)
                     world.setwinterrain(i,j,winterraintotal/crount);
                     world.setsummerrain(i,j,summerraintotal/crount);
                 }
-
+                
                 world.setmountainridge(i,j,0);
                 world.setmountainheight(i,j,0);
             }
@@ -6060,8 +5329,8 @@ void removerivermountains(planet &world)
 
 void tracedrop(planet &world, int x, int y, int minimum, int dropno, vector<vector<int>> &thisdrop, int maxrepeat, int neighbours[8][2])
 {
-    sf::Vector2i newseatile;
-    sf::Vector2i dest;
+    twointegers newseatile;
+    twointegers dest;
     
     int width=world.width();
     int height=world.height();
@@ -6238,8 +5507,8 @@ void createlakemap(planet &world, vector<vector<int>> &nolake, boolshapetemplate
     int minrain=200;
     int maxtemp=25; // Lakes won't appear where there is less rain *and* higher temperature than this.
     
-    vector<vector<int>> thislake(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> checked(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> thislake(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> checked(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -6251,7 +5520,7 @@ void createlakemap(planet &world, vector<vector<int>> &nolake, boolshapetemplate
     
     // This array is used to make the lakes cluster in particular parts of the world.
     
-    vector<vector<bool>> lakeprobability(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> lakeprobability(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -6292,7 +5561,7 @@ void createlakemap(planet &world, vector<vector<int>> &nolake, boolshapetemplate
     
     // Now make the lakes
     
-    sf::Vector2i nearestsea;
+    twointegers nearestsea;
     int lakeno=0;
     
     for (int i=0; i<=width; i++)
@@ -6337,18 +5606,9 @@ void createlakemap(planet &world, vector<vector<int>> &nolake, boolshapetemplate
     
     // Now we need to add precipitation from the lakes.
     
-    vector<vector<int>> lakewinterrainmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> lakesummerrainmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            lakewinterrainmap[i][j]=0;
-            lakesummerrainmap[i][j]=0;
-        }
-    }
-    
+    vector<vector<int>> lakewinterrainmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> lakesummerrainmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+
     lakerain(world,lakewinterrainmap,lakesummerrainmap);
     
     // Now we add new rivers from that extra precipitation.
@@ -6374,7 +5634,7 @@ void drawlake(planet &world, int shapenumber, int centrex, int centrey, vector<v
         return;
     }
     
-    sf::Vector2i nearestsea, flow;
+    twointegers nearestsea, flow;
     
     int minlakedistance=10; // Minimum distance between lakes.
     int minmountaindistance=2; // Minimum distance from mountains.
@@ -6694,7 +5954,7 @@ void drawlake(planet &world, int shapenumber, int centrex, int centrey, vector<v
 
 void makelakestartpoint(planet &world, vector<vector<int>> &thislake, int lakeno, int leftx, int lefty, int rightx, int righty)
 {
-    sf::Vector2i startpoint;
+    twointegers startpoint;
     startpoint.x=-1;
     startpoint.y=-1;
     
@@ -6739,7 +5999,7 @@ int toolowinflow(planet &world, int x, int y, int elev, int surfacelevel)
     int riverlandreduce=world.riverlandreduce();
     
     int toolow=0;
-    sf::Vector2i destpoint;
+    twointegers destpoint;
     
     for (int i=x-1; i<=x+1; i++)
     {
@@ -6993,21 +6253,24 @@ void sortlakerivers(planet &world, int leftx, int lefty, int rightx, int righty,
     
     // Mark the route of the outflowing river (if any) on this array. We will avoid messing with any of it.
     
-    vector<vector<int>> outflow(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> outflow(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             outflow[i][j]=0;
     }
+    */
     
     markriver(world,outflowx,outflowy,outflow,0);
     
     // Now go over the lake area. Every river tile that is under or next to the lake should be pointing to the centre of the lake.
     
-    vector<vector<int>> checkedriverlaketiles(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> checkedriverlaketiles(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -7016,6 +6279,7 @@ void sortlakerivers(planet &world, int leftx, int lefty, int rightx, int righty,
             removedrivers[i][j]=0;
         }
     }
+    */
     
     int riverno=0;
     
@@ -7158,13 +6422,15 @@ void sortlakerivers(planet &world, int leftx, int lefty, int rightx, int righty,
     
     // Now we apply the new load to the outflowing river.
     
-    vector<vector<bool>> loadadded(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> loadadded(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<ARRAYWIDTH; i++)
     {
         for (int j=0; j<ARRAYHEIGHT; j++)
             loadadded[i][j]=0;
     }
+    */
     
     int x=outflowx;
     int y=outflowy;
@@ -7295,9 +6561,9 @@ void markriver(planet &world, int x, int y, vector<vector<int>> &markedarray, in
 
 // This diverts a river from the given point to the destination point.
 
-int divertriver(planet & world, int x, int y, int destx, int desty, vector<vector<int>> &removedrivers, int riverno)
+int divertriver(planet &world, int x, int y, int destx, int desty, vector<vector<int>> &removedrivers, int riverno)
 {
-    sf::Vector2i destpoint;
+    twointegers destpoint;
     
     while (1==1)
     {
@@ -7349,7 +6615,7 @@ int divertriver(planet & world, int x, int y, int destx, int desty, vector<vecto
 
 int divertlakeriver(planet &world, int x, int y, int destx, int desty, vector<vector<int>> &removedrivers, int riverno, int outflowx, int outflowy, vector<vector<int>> &avoidarray)
 {
-    sf::Vector2i destpoint;
+    twointegers destpoint;
     
     for (int n=1; n<1000; n++) // It very occasionally gets stuck in an endless loop, so limit the number of times it can go around.
     {
@@ -7594,7 +6860,7 @@ void addtoriver(planet &world, int x, int y, int janload, int julload)
     if (y<0 || y>height || x<0 || x>width)
         return;
     
-    vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     bool keepgoing=1;
     
@@ -8443,7 +7709,7 @@ void lakerivers(planet &world, vector<vector<int>> &lakewinterrainmap, vector<ve
     
     // Now, we go through the map tile by tile. Take the lake rainfall in each tile and add it to every downstream tile.
     
-    vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     int dropno=1;
     
@@ -8464,8 +7730,8 @@ void lakerivers(planet &world, vector<vector<int>> &lakewinterrainmap, vector<ve
 
 void tracelakedrop(planet &world, int x, int y, int minimum, int dropno, vector<vector<int>> &thisdrop, int maxrepeat, int neighbours[8][2], vector<vector<int>> &lakesummerrainmap, vector<vector<int>> &lakewinterrainmap)
 {
-    sf::Vector2i newseatile;
-    sf::Vector2i dest;
+    twointegers newseatile;
+    twointegers dest;
     
     int width=world.width();
     int height=world.height();
@@ -8836,7 +8102,7 @@ void checkglobalflows(planet &world)
 
 int checkthisflow(planet &world, int x, int y, int found)
 {
-    sf::Vector2i destpoint;
+    twointegers destpoint;
     
     destpoint=getflowdestination(world,x,y,0);
     
@@ -8884,7 +8150,7 @@ void createriftlakemap(planet &world, vector<vector<int>> &nolake)
     int minlakelength=4;
     int maxlakelength=10;
     
-    sf::Vector2i nextpoint;
+    twointegers nextpoint;
     
     for (int i=0; i<=width; i++)
     {
@@ -9030,9 +8296,10 @@ void createriftlakemap(planet &world, vector<vector<int>> &nolake)
     
     // Now we need to add precipitation from the lakes.
     
-    vector<vector<int>> lakewinterrainmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> lakesummerrainmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> lakewinterrainmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> lakesummerrainmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -9041,6 +8308,7 @@ void createriftlakemap(planet &world, vector<vector<int>> &nolake)
             lakesummerrainmap[i][j]=0;
         }
     }
+    */
     
     riftlakerain(world,lakewinterrainmap,lakesummerrainmap);
     
@@ -9051,7 +8319,7 @@ void createriftlakemap(planet &world, vector<vector<int>> &nolake)
 
 // This function puts a particular rift lake onto the rift lake map.
 
-sf::Vector2i createriftlake(planet &world, int startx, int starty, int lakelength, vector<vector<int>> &nolake)
+twointegers createriftlake(planet &world, int startx, int starty, int lakelength, vector<vector<int>> &nolake)
 {
     int width=world.width();
     int height=world.height();
@@ -9061,9 +8329,10 @@ sf::Vector2i createriftlake(planet &world, int startx, int starty, int lakelengt
     int maxdepth=1800; // Maximum depth
     int mindepth=100; // Minimum depth
     
-    vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> currentriver(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> currentriver(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -9072,6 +8341,7 @@ sf::Vector2i createriftlake(planet &world, int startx, int starty, int lakelengt
             currentriver[i][j]=0;
         }
     }
+    */
     
     // First we need to work out the surface level of this lake. It will be at the level of the river flowing out of it.
     
@@ -9107,7 +8377,7 @@ sf::Vector2i createriftlake(planet &world, int startx, int starty, int lakelengt
     
     markriver(world,startx,starty,currentriver,0);
     
-    sf::Vector2i nextpoint;
+    twointegers nextpoint;
     
     int depth=random(mindepth,maxdepth);
     
@@ -9274,7 +8544,7 @@ sf::Vector2i createriftlake(planet &world, int startx, int starty, int lakelengt
     //dest.x=-1;
     //dest.y=-1;
     
-    sf::Vector2i dest;
+    twointegers dest;
     
     for (int n=1; n<=lakelength; n++)
     {
@@ -9473,7 +8743,7 @@ string calculateclimate(int elev, int sealevel, float wrain, float srain, float 
     
     if (group=="" && mintemp>=18)
         group="A";
-
+    
     if (group=="" && mintemp>-3 && mintemp<18)
         group="C";
     
@@ -9523,7 +8793,7 @@ string calculateclimate(int elev, int sealevel, float wrain, float srain, float 
         if (meanannualtemp<18)
             heattype="k";
     }
-
+    
     if (group!="A" && group!="BW" && group !="BS" && group!="ET" && group!="EF")
     {
         if (heattype=="" && maxtemp>=22)
@@ -9602,7 +8872,7 @@ string getclimatename(string climate)
     
     if (climate=="Dsa")
         return "Mediterranean-influenced hot-summer humid continental";
-        
+    
     if (climate=="Dsb")
         return "Mediterranean-influenced warm-summer humid continental";
     
@@ -9641,7 +8911,7 @@ string getclimatename(string climate)
     
     if (climate=="EF")
         return "Frost";
-
+    
     return "";
 }
 
@@ -9654,13 +8924,15 @@ void createergs(planet &world, boolshapetemplate smalllake[], boolshapetemplate 
     
     // This array is used to make the ergs cluster in particular parts of the world.
     
-    vector<vector<short>> ergprobability(ARRAYWIDTH,vector<short>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<short>> ergprobability(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             ergprobability[i][j]=0;
     }
+    */
     
     int clusternumber=50; //30; // Number of possible clusters of erg on the map.
     int minrad=10;
@@ -9719,13 +8991,15 @@ void createergs(planet &world, boolshapetemplate smalllake[], boolshapetemplate 
     
     int lakeno=0;
     
-    vector<vector<int>> thislake(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> thislake(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             thislake[i][j]=0;
     }
+    */
     
     for (int i=0; i<=width; i++)
     {
@@ -9767,7 +9041,7 @@ void createergs(planet &world, boolshapetemplate smalllake[], boolshapetemplate 
                         {
                             shapenumber=random(0,11);
                             drawspeciallake(world,shapenumber,i,j,lakeno,thislake,smalllake,120); // 120 is the code for ergs.
-
+                            
                         }
                         else
                         {
@@ -9798,13 +9072,15 @@ void createsaltpans(planet &world, boolshapetemplate smalllake[], boolshapetempl
     
     int lakeno=0;
     
-    vector<vector<int>> thislake(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> thislake(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             thislake[i][j]=0;
     }
+    */
     
     for (int i=0; i<=width; i++)
     {
@@ -9869,7 +9145,7 @@ void drawspeciallake(planet &world, int shapenumber, int centrex, int centrey, i
         return;
     }
     
-    sf::Vector2i nearestsea, flow;
+    twointegers nearestsea, flow;
     
     int minlakedistance=4; // Minimum distance between lakes.
     int maxmountainlakeheight=1000; // Ignore mountains smaller than this.
@@ -10498,15 +9774,17 @@ void createriverdeltas(planet &world)
     int sealevel=world.sealevel();
     int glaciertemp=world.glaciertemp();
     
-    vector<vector<int>> deltarivers(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // Marks all the rivers that have been turned into deltas.
+    vector<vector<int>> deltarivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // Marks all the rivers that have been turned into deltas.
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             deltarivers[i][j]=0;
     }
+    */
     
-    sf::Vector2i frompoint, destpoint;
+    twointegers frompoint, destpoint;
     
     int margin=10; // Don't do any closer to the east/west edges of the map than this.
     int deltachance=200000; //65000; // The lower this is, the more deltas there will be.
@@ -10623,13 +9901,15 @@ void createriverdeltas(planet &world)
     
     // Now we lower any land that borders flat land.
     
-    vector<vector<int>> donethese(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> donethese(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             donethese[i][j]=0;
     }
+    */
     
     for (int i=0; i<=width; i++)
     {
@@ -10669,531 +9949,6 @@ void createriverdeltas(planet &world)
     divertdeltarivers(world,deltarivers);
 }
 
-// This function places a delta on the river at the given point on the global map.
-
-/*
-void placedelta(planet &world, int centrex, int centrey, int upriver, vector<vector<int>> &deltarivers)
-{
-    int width=world.width();
-    int height=world.height();
-    int sealevel=world.sealevel();
-    
-    int dir=world.riverdir(centrex,centrey);
-    int maxbranches=40;
-    int branchestotal=0;
-    //int branches=random(upriver,upriver*2); // Number of branches this delta will (hopefully) have.
-    //int branches=0; //random(upriver*2,upriver*4); // Number of branches this delta will (hopefully) have.
-    int size=upriver; // Possible distance from the centre that the branches can end.
-    int addition=7; //2; // Amount to push branch ends out to sea.
-    
-    sf::Vector2i destpoint;
-    
-    int branchends[maxbranches+1][2];
-    
-    for (int i=0; i<maxbranches+1; i++)
-    {
-        for (int j=0; j<2; j++)
-            branchends[i][j]=-1;
-    }
-    
-    vector<vector<bool>> branchstarts(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            branchstarts[i][j]=0;
-    }
-    
-    int x=centrex;
-    int y=centrey;
-    int xx=x;
-    int yy=y;
-    
-    for (int n=1; n<=2; n++)
-    {
-        x=centrex;
-        y=centrey;
-        
-        for (int nn=0; nn<size; nn++)
-        {
-            bool found=0;
-            
-            for (int i=x-1; i<=x+1; i++) // First, find the next point on the coast.
-            {
-                for (int j=y-1; j<=y+1; j++)
-                {
-                    if (branchstarts[i][j]==0 && world.outline(i,j)==1)
-                    {
-                        branchstarts[i][j]=1;
-                        xx=i;
-                        yy=j;
-                        i=x+1;
-                        j=y+1;
-                        found=1;
-                    }
-                }
-            }
-            
-            if (found==1)
-            {
-                x=xx;
-                y=yy;
-                
-                bool found2=0;
-                
-                for (int i=xx-1; i<=xx+1; i++) // Now, find a sea cell next to this point.
-                {
-                    for (int j=yy-1; j<=yy+1; j++)
-                    {
-                        if (branchstarts[i][j]==0 && world.sea(i,j)==1)
-                        {
-                            branchstarts[i][j]=1;
-                            branchestotal++;
-                            
-                            branchends[branchestotal][0]=i;
-                            branchends[branchestotal][1]=j;
-                            
-                            i=xx+1;
-                            j=yy+1;
-                            
-                            world.settest(i,j,1);
-                        }
-                    }
-                }
-            }
-            else
-                nn=size;
-        }
-    }
-    
-    x=centrex;
-    y=centrey;
-    
-    // Now move upstream the required amount.
-    
-    for (int n=1; n<=upriver; n++)
-    {
-        deltarivers[x][y]=1; // Mark this bit of river to show that it's part of a river that's being turned into a delta.
-        
-        destpoint=getupstreamcell(world,x,y);
-        
-        x=destpoint.x;
-        y=destpoint.y;
-        
-        if (x==-1 || y==-1)
-            return;
-    }
-    
-    deltarivers[x][y]=1;
-    
-    int targetx=x;
-    int targety=y; // These are the coordinates of the point where the delta branches are aiming for.
-    
-    // Now push those branch ends futher out to sea.
-    
-    for (int branch=1; branch<=branchestotal; branch++)
-    {
-        x=branchends[branch][0];
-        y=branchends[branch][1];
-        
-        if (x>targetx)
-            x=x+addition;
-        
-        if (x<targetx)
-            x=x-addition;
-        
-        if (y>targety)
-            y=y+addition;
-        
-        if (y<targety)
-            y=y+addition;
-        
-        if (x<0 || x>width)
-            x=wrap(x,width);
-        
-        if (y<0)
-            y=0;
-        
-        if (y>height)
-            y=height;
-        
-        if (world.sea(x,y)==0)
-        {
-            destpoint=nearestsea(world,x,y,0,10,1);
-            
-            x=destpoint.x;
-            y=destpoint.y;
-        }
-        
-        branchends[branch][0]=x;
-        branchends[branch][1]=y;
-    }
-    
-    int leftx=targetx;
-    int rightx=targetx;
-    int lefty=targety;
-    int righty=targety; // These will mark the corners of the whole area containing the delta.
-    
-    // Now work out the flow for each branch.
-    
-    float janflow=world.riverjan(targetx,targety);
-    float julflow=world.riverjul(targetx,targety);
-    
-    float branchjanflow=janflow/(branchestotal+1);
-    float branchjulflow=julflow/(branchestotal+1);
-    
-    // Now do each branch in turn.
-    
-    for (int branch=1; branch<=branchestotal; branch++)
-    {
-        x=branchends[branch][0];
-        y=branchends[branch][1];
-        
-        world.setdeltajan(x,y,branchjanflow);
-        world.setdeltajul(x,y,branchjulflow);
-        
-        for (int n=1; n<=100; n++)
-        {
-            if (world.deltadir(x,y)==0) // If we're drawing a new branch route
-            {
-                int rshift=targetx-x;
-                int dshift=targety-y;
-                
-                if (abs(rshift)<2 && abs(dshift)<2) // If we're next to the target go straight towards it
-                {
-                    if (targetx==x && targety==y-1)
-                        dir=1;
-                    
-                    if (targetx==x+1 && targety==y-1)
-                        dir=2;
-                    
-                    if (targetx==x+1 && targety==y)
-                        dir=3;
-                    
-                    if (targetx==x+1 && targety==y+1)
-                        dir=5;
-                    
-                    if (targetx==x-1 && targety==y+1)
-                        dir=6;
-                    
-                    if (targetx==x-1 && targety==y)
-                        dir=7;
-                    
-                    if (targetx==x-1 && targety==y-1)
-                        dir=8;
-                }
-                else // Find a direction going roughly in the right direction
-                {
-                    if (rshift>=0 && dshift>=0) // Going roughly southeast
-                    {
-                        if (rshift>dshift)
-                        {
-                            if (random(1,2)==1)
-                                dir=3;
-                            else
-                                dir=4;
-                        }
-                        else
-                        {
-                            if (random(1,2)==1)
-                                dir=4;
-                            else
-                                dir=5;
-                        }
-                    }
-                    
-                    if (rshift>=0 && dshift<0) // Going roughly northeast
-                    {
-                        if (rshift>0-dshift)
-                        {
-                            if (random(1,2)==1)
-                                dir=3;
-                            else
-                                dir=2;
-                        }
-                        else
-                        {
-                            if (random(1,2)==1)
-                                dir=2;
-                            else
-                                dir=1;
-                        }
-                    }
-                    
-                    if (rshift<0 && dshift>=0) // Going roughly southwest
-                    {
-                        if (0-rshift>dshift)
-                        {
-                            if (random(1,2)==1)
-                                dir=7;
-                            else
-                                dir=6;
-                        }
-                        else
-                        {
-                            if (random(1,2)==1)
-                                dir=6;
-                            else
-                                dir=5;
-                        }
-                    }
-                    
-                    if (rshift<0 && dshift<0) // Going roughly northwest
-                    {
-                        if (rshift<dshift)
-                        {
-                            if (random(1,2)==1)
-                                dir=7;
-                            else
-                                dir=8;
-                        }
-                        else
-                        {
-                            if (random(1,2)==1)
-                                dir=8;
-                            else
-                                dir=1;
-                        }
-                    }
-                    world.setdeltadir(x,y,dir);
-                }
-                
-                if (world.sea(x,y)==1) // || random(1,2)==1) // Try to avoid going onto an existing one.
-                {
-                    sf::Vector2i dest=getflowdestination(world,x,y,dir);
-                    
-                    if (world.deltadir(dest.x,dest.y)!=0)
-                    {
-                        dir=dir+randomsign(1);
-                        
-                        if (dir==0)
-                            dir=8;
-                        
-                        if (dir==9)
-                            dir=1;
-                        
-                        dest=getflowdestination(world,x,y,dir);
-                        
-                        if (world.deltadir(dest.x,dest.y)==0)
-                        {
-                            x=dest.x;
-                            y=dest.y;
-                        }
-                        else
-                        {
-                            dir=dir+randomsign(1);
-                            
-                            if (dir==0)
-                                dir=8;
-                            
-                            if (dir==9)
-                                dir=1;
-                            
-                            dest=getflowdestination(world,x,y,dir);
-                            
-                            if (world.deltadir(dest.x,dest.y)==0)
-                            {
-                                x=dest.x;
-                                y=dest.y;
-                            }
-                        }
-                    }
-                }
-            }
-            else
-                dir=world.deltadir(x,y);
-
-            if (dir==8 || dir==1 || dir==2)
-                y--;
-            
-            if (dir==4 || dir==5 || dir==6)
-                y++;
-            
-            if (dir==2 || dir==3 || dir==4)
-                x++;
-            
-            if (dir==6 || dir==7 || dir==8)
-                x--;
-            
-            if (x<0)
-                x=width;
-            
-            if (x>width)
-                x=0;
-            
-            if (y>=0 && y<=height)
-            {
-                world.setdeltajan(x,y,world.deltajan(x,y)+branchjanflow);
-                world.setdeltajul(x,y,world.deltajul(x,y)+branchjulflow);
-                
-                if (world.nom(x,y)>sealevel)
-                    world.setnom(x,y,sealevel+1);
-                
-                if (x<leftx)
-                    leftx=x;
-                
-                if (x>rightx)
-                    rightx=x;
-                
-                if (y<lefty)
-                    lefty=y;
-                
-                if (y>righty)
-                    righty=y;
-                
-            }
-            else
-            {
-                x=targetx;
-                y=targety;
-            }
-            
-            if (x==targetx && y==targety)
-            {
-                n=100;
-            }
-        }
-    }
-    
-    leftx--;
-    rightx++;
-    lefty--;
-    righty++;
-    
-    if (leftx>rightx)
-    {
-        leftx=0;
-        rightx=width;
-    }
-    
-    // Now fill in missing tiles.
-    
-    for (int i=targetx-1; i<=targetx+1; i++)
-    {
-        int ii=i;
-        
-        if (ii<0 || ii>width)
-            ii=wrap(ii,width);
-        
-        for (int j=targety-1; j<=targety+1; j++)
-        {
-            if (j>=0 && j<=height)
-            {
-                // We're looking at each tile around the destination one.
-                // For each of these, see whether any delta branch is pointing into it and add those amounts to its flow
-                
-                int janflow=0;
-                int julflow=0;
-                
-                for (int k=ii-1; k<=ii+1; k++)
-                {
-                    int kk=k;
-                    
-                    if (kk<0 || kk>width)
-                        kk=wrap(kk,width);
-                    
-                    for (int l=j-1; l<=j+1; l++)
-                    {
-                        if (l>=0 && l<=height)
-                        {
-                            if (kk!=targetx || l!=targety) // Don't do the actual destination tile
-                            {
-                                int dir=world.deltadir(kk,l);
-                                
-                                if (dir>0) // If there's a delta branch here
-                                {
-                                    sf::Vector2i destpoint;
-                                    
-                                    destpoint=getflowdestination(world,kk,l,dir);
-                                    
-                                    if (destpoint.x==i && destpoint.y==j)
-                                    {
-                                        janflow=janflow+world.deltajan(kk,l);
-                                        julflow=julflow+world.deltajul(kk,l);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                if (janflow>0 || julflow>0) // If there are delta branches flowing into this tile
-                {
-                    // First find the direction to the destination tile
-                    
-                    int dir=getdir(ii,j,x,y);
-                    
-                    // Now put a branch on our tile.
-                    
-                    world.setdeltadir(ii,j,dir);
-                    world.setdeltajan(ii,j,janflow);
-                    world.setdeltajul(ii,j,julflow);
-                }
-            }
-        }
-    }
-    
-    // Now reduce the river below that point.
-    
-    vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<height; j++)
-            removedrivers[i][j]=0;
-    }
-    
-    int janreduce=world.riverjan(targetx,targety)-branchjanflow*4; // Shouldn't really be multiplied, but this is to make it more visible on the map.
-    int julreduce=world.riverjul(targetx,targety)-branchjulflow*4;
-    
-    reduceriver(world,janreduce,julreduce,removedrivers,1,targetx,targety);
-    
-    //Now we simply make one final delta cell in the target cell, bringing the branches back together to meet the main river.
-    
-    int ux=-1;
-    int uy=-1;
-    
-    x=targetx;
-    y=targety;
-    
-    destpoint=getupstreamcell(world,x,y);
-    
-    ux=destpoint.x;
-    uy=destpoint.y;
-    
-    if (ux==x && uy==y-1)
-        dir=1;
-    
-    if (ux==x+1 && uy==y-1)
-        dir=2;
-    
-    if (ux==x+1 && uy==y)
-        dir=3;
-    
-    if (ux==x+1 && uy==y+1)
-        dir=4;
-    
-    if (ux==x && uy==y+1)
-        dir=5;
-    
-    if (ux==x-1 && uy==y+1)
-        dir=6;
-    
-    if (ux==x-1 && uy==y)
-        dir=7;
-    
-    if (ux==x-1 && uy==y-1)
-        dir=8;
-    
-    world.setdeltadir(x,y,dir);
-    
-    world.setdeltajan(x,y,0-branchjanflow*branchestotal);
-    world.setdeltajul(x,y,0-branchjulflow*branchestotal);
-    
-    deltarivers[x][y]=1;
-}
-*/
-
 void placedelta(planet &world, int centrex, int centrey, int upriver, vector<vector<int>> &deltarivers)
 {
     int width=world.width();
@@ -11212,7 +9967,7 @@ void placedelta(planet &world, int centrex, int centrey, int upriver, vector<vec
     if (branches>maxbranches)
         branches=maxbranches;
     
-    sf::Vector2i destpoint;
+    twointegers destpoint;
     
     vector<vector<int>> branchends(maxbranches+1,vector<int>(2));
     //int branchends[maxbranches+1][2];
@@ -11577,7 +10332,7 @@ void placedelta(planet &world, int centrex, int centrey, int upriver, vector<vec
                                 
                                 if (dir>0) // If there's a delta branch here
                                 {
-                                    sf::Vector2i destpoint;
+                                    twointegers destpoint;
                                     
                                     destpoint=getflowdestination(world,kk,l,dir);
                                     
@@ -11610,13 +10365,15 @@ void placedelta(planet &world, int centrex, int centrey, int upriver, vector<vec
     
     // Now reduce the river below that point.
     
-    vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<height; j++)
             removedrivers[i][j]=0;
     }
+    */
     
     int janreduce=world.riverjan(targetx,targety)-branchjanflow*4; // Shouldn't really be multiplied, but this is to make it more visible on the map.
     int julreduce=world.riverjul(targetx,targety)-branchjulflow*4;
@@ -11666,7 +10423,7 @@ void placedelta(planet &world, int centrex, int centrey, int upriver, vector<vec
     world.setdeltajul(x,y,0-branchjulflow*branchestotal);
     
     deltarivers[x][y]=1;
- 
+    
 }
 
 // This function diverts rivers that run through deltas, so that they follow the pattern of the delta branches more closely.
@@ -11676,9 +10433,10 @@ void divertdeltarivers(planet &world, vector<vector<int>> &deltarivers)
     int width=world.width();
     int height=world.height();
     
-    vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> checked(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> checked(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -11687,6 +10445,7 @@ void divertdeltarivers(planet &world, vector<vector<int>> &deltarivers)
             checked[i][j]=0;
         }
     }
+    */
     
     int riverno=0;
     
@@ -11891,7 +10650,7 @@ void divertdeltarivers(planet &world, vector<vector<int>> &deltarivers)
                             
                             if (mfound==1 && nfound==1) // If both possibilities contain a delta branch, we need the downstream one. (Remember it will show as the upstream one because delta branches are calculated in reverse.)
                             {
-                                sf::Vector2i dest=getflowdestination(world,mx,my,world.deltadir(mx,my));
+                                twointegers dest=getflowdestination(world,mx,my,world.deltadir(mx,my));
                                 
                                 if (dest.x==nx && dest.y==ny) // m is flowing into n. That means we want to divert into m, as it's really downstream.
                                 {
@@ -11946,7 +10705,7 @@ void divertdeltarivers(planet &world, vector<vector<int>> &deltarivers)
                     // Now, recreate the river, following the line of the delta branch.
                     
                     keepgoing=1;
-                    sf::Vector2i dest, check;
+                    twointegers dest, check;
                     
                     do
                     {
@@ -12082,7 +10841,7 @@ void checkrivers(planet &world)
                 
                 if (neardelta==1) // Only look at cells near river deltas.
                 {
-                    sf::Vector2i inflow=gettotalinflow(world,i,j);
+                    twointegers inflow=gettotalinflow(world,i,j);
                     
                     if (world.riverjan(i,j)>inflow.x)
                     {
@@ -12122,7 +10881,7 @@ void createwetlands(planet &world, boolshapetemplate smalllake[])
     float valuemod2=v;
     int shapenumber;
     
-    vector<vector<int>> drainage(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> drainage(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     createfractal(drainage,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
     
@@ -12532,7 +11291,7 @@ void refineroughnessmap(planet &world)
     
     // This array will hold the valuemod for every tile on the map. The valuemod is used in the regional map to determine how rough the diamond-square routine makes the terrain.
     
-    vector<vector<float>> valuemod(ARRAYWIDTH,vector<float>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<float>> valuemod(ARRAYWIDTH,vector<float>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -12650,7 +11409,7 @@ void refineroughnessmap(planet &world)
     
     int amount=2; // Amount to blur by.
     
-    vector<vector<float>> valuemod2(ARRAYWIDTH,vector<float>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<float>> valuemod2(ARRAYWIDTH,vector<float>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -12745,7 +11504,7 @@ void createunderseachannels(planet &world, vector<vector<bool>> &shelves)
     
     int oceanfloor=sealevel-3000; // Anything lower than this will be considered oceanic sea bed.
     int maxrepeat=2; // If a channel goes in the same direction for longer than this, it will try to change course.
-
+    
     int neighbours[8][2];
     
     neighbours[0][0]=0;
@@ -12810,15 +11569,16 @@ void createunderseachannels(planet &world, vector<vector<bool>> &shelves)
     
     // Now, we go through the map tile by tile. Take the amount of sediment flow in each tile and add it to every downstream tile.
     
-    vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> sediment(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
-    vector<vector<int>> sediment(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             sediment[i][j]=0;
     }
+    */
     
     int dropno=1;
     bool goahead=1;
@@ -12839,7 +11599,7 @@ void createunderseachannels(planet &world, vector<vector<bool>> &shelves)
     
     int mindiff=500; // If the difference in height down the slope is less than this, reduce the sediment.
     
-    sf::Vector2i dest;
+    twointegers dest;
     
     for (int i=0; i<=width; i++)
     {
@@ -12849,7 +11609,7 @@ void createunderseachannels(planet &world, vector<vector<bool>> &shelves)
             {
                 int thiselevation=world.nom(i,j);
                 int thissediment=sediment[i][j];
-
+                
                 dest=getflowdestination(world,i,j,world.subchanneldir(i,j));
                 
                 int destelevation=world.nom(dest.x,dest.y);
@@ -12867,7 +11627,7 @@ void createunderseachannels(planet &world, vector<vector<bool>> &shelves)
                         thissediment=thissediment*heightdiff;
                     }
                 }
-
+                
                 world.setsubchanneldepth(i,j,thissediment);
             }
         }
@@ -13266,13 +12026,15 @@ void removeparallelchannels(planet &world)
     
     int removechance=1;
     
-    vector<vector<int>> altered(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will show any points that have been involved in a change
+    vector<vector<int>> altered(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will show any points that have been involved in a change
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             altered[i][j]=0;
     }
+    */
     
     // First, N/S and E/W
     
@@ -13553,8 +12315,8 @@ void removeparallelchannels(planet &world)
 
 void traceseadrop(planet &world, int x, int y, int dropno, vector<vector<int>> &thisdrop, int maxrepeat, int oceanfloor, int neighbours[8][2], vector<vector<int>> &sediment)
 {
-    sf::Vector2i newseatile;
-    sf::Vector2i dest;
+    twointegers newseatile;
+    twointegers dest;
     
     int width=world.width();
     int height=world.height();
@@ -13589,7 +12351,7 @@ void traceseadrop(planet &world, int x, int y, int dropno, vector<vector<int>> &
     
     if (coast==1)
         thissediment=coastalsediment;
-
+    
     // Now we just trace the drop through the map, increasing the water flow wherever it goes.
     
     int dir=-1;

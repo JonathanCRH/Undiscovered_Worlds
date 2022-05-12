@@ -3,7 +3,7 @@
 //  Undiscovered Worlds
 //
 //  Created by Jonathan Hill on 27/10/2019.
-//  
+//
 //  Please see functions.hpp for notes.
 
 #ifndef region_hpp
@@ -44,7 +44,7 @@ public:
     
     int lefty() const; // lefty
     void setlefty(int amount);
- 
+    
     int rwidth() const; // rwidth
     int rheight() const; // rheight
     
@@ -62,7 +62,7 @@ public:
     
     int pixelmetres() const; // pixelmetres
     void setpixelmetres(int amount);
-
+    
     int gridlines() const; // grid lines
     void setgridlines(int amount);
     
@@ -175,18 +175,18 @@ public:
     
     float testfloat(int x, int y) const; // Float test array.
     void settestfloat(int x, int y, float amount);
-
+    
     // Other public functions
     
     void clear();   // Clears all of the maps.
     
     /*
-    void shiftright(); // Shifts everything in the maps a tile to the right.
+     void shiftright(); // Shifts everything in the maps a tile to the right.
+     
+     void copylefttostrip(); // Copies a line of tiles from the left-hand side of the map onto the strip.
+     void copyleftfromstrip(); // Copies that line back again onto the map.
+     */
     
-    void copylefttostrip(); // Copies a line of tiles from the left-hand side of the map onto the strip.
-    void copyleftfromstrip(); // Copies that line back again onto the map.
-    */
-
 private:
     
     // Private variables.
@@ -203,7 +203,7 @@ private:
     int itsrheight; // Dimensions of the regional map.
     
     int itsrstart; // Amount to ignore on the edge of the regional map for most purposes.
-        
+    
     int itsregwidthbegin; // Amount to ignore on the left of the regional map for creating the images.
     int itsregwidthend; // Amount to ignore on the right of the regional map for creating the images.
     int itsregheightbegin; // Amount to ignore on the top of the regional map for creating the images.

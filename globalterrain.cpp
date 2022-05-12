@@ -3,7 +3,7 @@
 //  Undiscovered Worlds
 //
 //  Created by Jonathan Hill on 24/07/2019.
-//  
+//
 //  Please see functions.hpp for notes.
 
 #include <iostream>
@@ -12,8 +12,8 @@
 #include <stdio.h>
 //#include <unistd.h>
 #include <queue>
-#include <SFML/Graphics.hpp>
-#include <nanogui/nanogui.h>
+//#include <SFML/Graphics.hpp>
+//#include <nanogui/nanogui.h>
 
 #include "classes.hpp"
 #include "planet.hpp"
@@ -21,1028 +21,6 @@
 #include "functions.hpp"
 
 using namespace std;
-
-void generateglobalterrain(planet &world, short terraintype, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves)
-{
-    switch (terraintype)
-    {
-        case 1:
-            generateglobalterraintype1(world,screen,worldgenerationwindow,worldgenerationlabel,worldprogress,progressstep,landshape,mountaindrainage,shelves,chainland);
-            break;
-            
-        case 2:
-            generateglobalterraintype2(world,screen,worldgenerationwindow,worldgenerationlabel,worldprogress,progressstep,landshape,mountaindrainage,shelves,chainland);
-            break;
-    }
-}
-
-// This creates type 1 terrain. This type gives a fairly chaotic looking map with small continents and lots of islands.
-
-void generateglobalterraintype1(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate landshape[],vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves, boolshapetemplate chainland[])
-{
-    // First get our key variables and clear the world.
-    
-    long seed=world.seed();
-    fast_srand(seed);
-    
-    int width=world.width();
-    int height=world.height();
-    int maxelev=world.maxelevation();
-    int sealevel=world.sealevel();
-    int baseheight=sealevel-4500; //1250;
-    if (baseheight<1)
-        baseheight=1;
-    int conheight=sealevel+50;
-    
-    vector<vector<int>> plateaumap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> seafractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<bool>> removedland(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT)); // This will show where land has been removed.
-    vector<vector<int>> volcanodensity(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // How many submarine volcanos.
-    vector<vector<int>> volcanodirection(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // Direction of extinct volcanos leading away from active ones.
-    
-    world.clear(); // Clears all of the maps in this world.
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            world.setnom(i,j,0);
-            plateaumap[i][j]=0;
-            mountaindrainage[i][j]=0;
-            shelves[i][j]=0;
-            seafractal[i][j]=0;
-            removedland[i][j]=0;
-            volcanodensity[i][j]=0;
-            volcanodirection[i][j]=0;
-        }
-    }
-    
-    // Now start the generating.
-    
-    worldgenerationlabel.set_caption("Creating fractal map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    // First make a fractal for noise (used only at regional map level).
-    
-    int grain=8; // Level of detail on this fractal map.
-    float valuemod=0.2;
-    int v=random(3,6);
-    float valuemod2=v;
-    
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            world.setnoisemap(i,j,fractal[i][j]);
-    }
-    
-    // Now make a new one that we'll actually use for global terrain creation.
-    
-    createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    worldgenerationlabel.set_caption("Creating continental map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    smallcontinents(world,baseheight,conheight,fractal,plateaumap,landshape,chainland);
-
-    flip(fractal,width,height,1,1);
-    
-    // Merge the maps.
-    
-    worldgenerationlabel.set_caption("Merging maps");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    fractalmerge(world,fractal);
-    
-    // Make continental shelves.
-    
-    worldgenerationlabel.set_caption("Making continental shelves");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    makecontinentalshelves(world,shelves,20); // Wider shelves than with the other terrain generator, because this one will produce lots of little bits of land
-
-    // Now we add some island chains.
-    
-    sf::Vector2i focuspoints[4]; // These will be points where island chains will start close to.
-    
-    int focustotal=random(2,4); // The number of actual focus points.
-    
-    for (int n=0; n<focustotal; n++)
-    {
-        focuspoints[n].x=random(0,width);
-        focuspoints[n].y=random(0,height);
-    }
-    
-    int focaldistance=height/2; // Maximum distance a chain can start from the focuspoint.
-    createchains(world,baseheight,conheight,fractal,plateaumap,landshape,chainland,focuspoints,focustotal,focaldistance,3);
-
-    worldgenerationlabel.set_caption("Shifting fractal");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    shift(fractal,width,height,width/2); // Shift the fractal to make it different for the mountains - we will use the fractal to adjust peak height.
-    
-    worldgenerationlabel.set_caption("Smoothing map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    world.smoothnom(1);
-    
-    // We also need to remove the trench down the left-hand side.
-    
-    removeseam(world,0);
-    
-    // Now remove inland seas.
-    
-    worldgenerationlabel.set_caption("Removing inland seas");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removeseas(world,conheight);
-    
-    // Now widen any channels and lower the coasts.
-    
-    worldgenerationlabel.set_caption("Tidying up oceans");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    widenchannels(world);
-    loweroceans(world);
-    
-    // Now try to remove straight coastlines.
-    
-    worldgenerationlabel.set_caption("Improving coastlines");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removestraights(world);
-    
-    // Now make sure the southern edge is correct.
-    
-    worldgenerationlabel.set_caption("Checking poles");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    checkpoles(world);
-    
-    // Now sort out the sea depths.
-    
-    worldgenerationlabel.set_caption("Adjusting ocean depths");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    grain=8; // Level of detail on this fractal map.
-    valuemod=0.2;
-    v=random(3,6);
-    valuemod2=v;
-    
-    createfractal(seafractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    float coastalvarreduce=maxelev/500; //3000;
-    float oceanvarreduce=maxelev/1000;
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (world.sea(i,j)==1)
-            {
-                if (shelves[i][j]==1)
-                {
-                    float var=seafractal[i][j]-maxelev/2;
-                    var=var/coastalvarreduce;
-                    
-                    int newval=sealevel-200+var;
-                    
-                    if (newval>sealevel-10)
-                        newval=sealevel-10;
-                    
-                    if (newval<1)
-                        newval=1;
-                    
-                    world.setnom(i,j,newval);
-                }
-                else
-                {
-                    int ii=i+width/2;
-                    
-                    if (ii>width)
-                        ii=ii-width;
-                    
-                    float var=seafractal[ii][j]-maxelev/2;
-                    var=var/oceanvarreduce;
-                    
-                    int newval=sealevel-5000+var;
-                    
-                    if (newval>sealevel-3000)
-                        newval=sealevel-3000;
-                    
-                    if (newval<1)
-                        newval=1;
-                    
-                    world.setnom(i,j,newval);
-                }
-            }
-        }
-    }
-
-    // Now we create mid-ocean ridges.
-    
-    worldgenerationlabel.set_caption("Generating mid-ocean ridges");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createoceanridges(world,shelves);
-    
-    // Now we create deep-sea trenches.
-    
-    worldgenerationlabel.set_caption("Generating deep-sea trenches");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createoceantrenches(world,shelves);
-    
-    // Now random volcanos.
-    
-    worldgenerationlabel.set_caption("Generating volcanos");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    grain=8; // Level of detail on this fractal map.
-    valuemod=0.2;
-    v=random(3,6);
-    valuemod2=v;
-    
-    createfractal(volcanodensity,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    grain=4; // Level of detail on this fractal map.
-    valuemod=0.02;
-    v=1; //random(3,6);
-    valuemod2=0.2;
-    
-    createfractal(volcanodirection,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            bool goahead=0;
-            
-            if (world.sea(i,j)==1)
-            {
-                int frac=volcanodensity[i][j];
-                
-                int ii=i+width/2;
-                if (ii>width)
-                    ii=ii-width;
-                
-                int frac2=volcanodensity[ii][j];
-                
-                if (frac2<frac)
-                    frac=frac2;
-                
-                int jj=j+height/2;
-                if (jj>height)
-                    jj=jj-height;
-                
-                int frac3=volcanodensity[i][jj];
-                
-                if (frac3<frac)
-                    frac=frac3;
-                
-                int rand=5000;
-                
-                if (frac>maxelev/2)
-                    rand=80;
-                
-                if (frac>(maxelev/4)*3)
-                    rand=40;
-                
-                if (random(1,rand)==1)
-                    goahead=1;
-            }
-            else
-            {
-                if (random(1,15000)==1)
-                    goahead=1;
-            }
-            
-            if (goahead==1)
-            {
-                bool strato=1;
-                
-                if (random(1,10)==1) // Shield volcanoes - much rarer.
-                    strato=0;
-                
-                if (world.sea(i,j)==1)
-                    strato=1;
-                
-                int peakheight;
-                
-                if (world.sea(i,j)==1)
-                {
-                    if (random(1,10)==1) // It could make a chain of volcanic islands.
-                        peakheight=sealevel-world.nom(i,j)+random(500,3000);
-                    else
-                        peakheight=sealevel-world.nom(i,j)-random(100,200);
-                    
-                    if (peakheight<10)
-                        peakheight=10;
-                    
-                    peakheight=random(peakheight/2,peakheight);
-                }
-                else
-                {
-                    if (strato==1)
-                        peakheight=random(2000,6000);
-                    else
-                        peakheight=random(1000,2000);
-                }
-                
-                //world.settest(i,j,1);
-                
-                createisolatedvolcano(world,i,j,shelves,volcanodirection,peakheight,strato);
-            }
-        }
-    }
-    
-    // Now we shift the map so there is sea at the edges, if possible.
-    
-    worldgenerationlabel.set_caption("Shifting for best position");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removeseam(world,0);
-    
-    adjustforsea(world);
-    
-    // Now we add smaller mountain chains that cannot form peninsulas.
-    
-    worldgenerationlabel.set_caption("Adding smaller mountain ranges");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    sf::Vector2i dummy[1];
-    
-    createchains(world,baseheight,conheight,fractal,plateaumap,landshape,chainland,dummy,0,0,2);
-    
-    // Now we alter the fractal again, and use it to add more height variation.
-    
-    worldgenerationlabel.set_caption("Merging fractal into land");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    flip(fractal,width,height,1,1);
-    int offset=random(1,width);
-    shift(fractal,width,height,offset);
-    
-    fractalmergeland(world,fractal,conheight);
-    
-    // Now remove any mountains that are over sea.
-    
-    worldgenerationlabel.set_caption("Removing floating mountains");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removefloatingmountains(world);
-    cleanmountainridges(world);
-    
-    // Now we raise the mountain bases.
-    
-    worldgenerationlabel.set_caption("Raising mountain bases");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    raisemountainbases(world,mountaindrainage);
-    
-    // Now we add plateaux.
-    
-    worldgenerationlabel.set_caption("Adding plateaux");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    erodeplateaux(world,plateaumap);
-    smooth(plateaumap,width,height,maxelev,1,1);
-    addplateaux(world,plateaumap,conheight);
-    
-    // Now we smooth again, without changing the coastlines.
-    
-    worldgenerationlabel.set_caption("Smoothing map, preserving coastlines");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    smoothland(world,2);
-    
-    // Now we create extra elevation over the land to create canyons.
-    
-    worldgenerationlabel.set_caption("Elevating land near canyons");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createextraelev(world);
-    
-    // Now we remove depressions.
-    
-    worldgenerationlabel.set_caption("Filling depressions");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    depressionfill(world);
-    
-    addlandnoise(world); // Add a bit of noise, then do remove depressions again. This is to add variety to the river courses.
-    
-    depressionfill(world);
-    
-    // Now we adjust the land around coastlines.
-    
-    worldgenerationlabel.set_caption("Adjusting coastlines");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int n=1; n<=2; n++)    
-        normalisecoasts(world,13,11,4);
-    
-    clamp(world);
-    
-    // Now we note down one-tile islands.
-    
-    worldgenerationlabel.set_caption("Checking islands");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    checkislands(world);
-    
-    // Now we create a roughness map.
-    
-    worldgenerationlabel.set_caption("Creating roughness map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    vector<vector<int>> roughness(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    grain=8; // Level of detail on this fractal map.
-    valuemod=0.2;
-    valuemod2=0.6;
-    
-    createfractal(roughness,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    vector<vector<int>> roughness2(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    createfractal(roughness2,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    for (int i=0; i<=width; i++) // Do two, so that it's rare to get areas that are very smooth.
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (roughness[i][j]<roughness2[i][j])
-                roughness[i][j]=roughness2[i][j];
-        }
-    }
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            world.setroughness(i,j,roughness[i][j]);
-    }
-}
-
-// This creates type 2 terrain. This type gives a more earthlike map with large continents.
-
-void generateglobalterraintype2(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate landshape[],vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves, boolshapetemplate chainland[])
-{
-    // First get our key variables and clear the world.
-    
-    long seed=world.seed();
-    fast_srand(seed);
-    
-    int width=world.width();
-    int height=world.height();
-    int maxelev=world.maxelevation();
-    int sealevel=world.sealevel();
-    int baseheight=sealevel-4500; //1250;
-    if (baseheight<1)
-        baseheight=1;
-    int conheight=sealevel+50;
-    
-    int maxmountainheight=maxelev-sealevel;
-
-    vector<vector<int>> plateaumap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> seafractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<bool>> removedland(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT)); // This will show where land has been removed.
-    vector<vector<int>> volcanodensity(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // How many submarine volcanos.
-    vector<vector<int>> volcanodirection(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // Direction of extinct volcanos leading away from active ones.
-    
-    world.clear(); // Clears all of the maps in this world.
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            world.setnom(i,j,0);
-            plateaumap[i][j]=0;
-            mountaindrainage[i][j]=0;
-            shelves[i][j]=0;
-            seafractal[i][j]=0;
-            removedland[i][j]=0;
-            volcanodensity[i][j]=0;
-            volcanodirection[i][j]=0;
-        }
-    }
-    
-    // Now start the generating.
-    
-    worldgenerationlabel.set_caption("Creating fractal map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-
-    // First make a fractal for noise (used only at regional map level).
-    
-    int grain=8; // Level of detail on this fractal map.
-    float valuemod=0.2;
-    int v=random(3,6);
-    float valuemod2=v;
-    
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            world.setnoisemap(i,j,fractal[i][j]);
-    }
-    
-    // Now make a new one that we'll actually use for global terrain creation.
-    
-    createfractal(fractal,width,height,grain,valuemod,valuemod2,1,12750,0,0);
-
-    int fractaladd=sealevel-2500;
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            fractal[i][j]=fractal[i][j]+fractaladd;
-    }
-
-    worldgenerationlabel.set_caption("Creating continental map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    largecontinents(world,screen,worldgenerationwindow,worldgenerationlabel,worldprogress,progressstep,baseheight,conheight,fractal,plateaumap,shelves,landshape,chainland);
-
-    flip(fractal,width,height,1,1);
-    
-    // Now merge the maps.
- 
-    worldgenerationlabel.set_caption("Merging maps");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
- 
-    fractalmergemodified(world,fractal,plateaumap,removedland);
- 
-    worldgenerationlabel.set_caption("Shifting fractal");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
- 
-    shift(fractal,width,height,width/2); // Shift the fractal to make it different for the mountains - we will use the fractal to adjust peak height.
- 
-    worldgenerationlabel.set_caption("Smoothing map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
- 
-    world.smoothnom(1);
-
-    // We also need to remove the trench down the left-hand side.
-    
-    removeseam(world,0);
-    
-    // Now remove inland seas.
-    
-    worldgenerationlabel.set_caption("Removing inland seas");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removeseas(world,conheight);
-    
-    // Now make sure the southern edge is correct.
-    
-    worldgenerationlabel.set_caption("Checking poles");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    checkpoles(world);
-
-    // Now add Aegean-style islands
-    
-    worldgenerationlabel.set_caption("Adding archipelagos");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    makearchipelagos(world,removedland,landshape);
-    
-    // Now widen any channels and lower the coasts.
-    
-    worldgenerationlabel.set_caption("Tidying up oceans");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    widenchannels(world);
-    loweroceans(world);
-    
-    // Now try to remove straight coastlines.
-    
-    worldgenerationlabel.set_caption("Improving coastlines");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removestraights(world);
-    
-    // Now sort out the sea depths.
-    
-    worldgenerationlabel.set_caption("Adjusting ocean depths");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    grain=8; // Level of detail on this fractal map.
-    valuemod=0.2;
-    v=random(3,6);
-    valuemod2=v;
-    
-    createfractal(seafractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    float coastalvarreduce=maxelev/500; //3000;
-    float oceanvarreduce=maxelev/1000;
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (world.sea(i,j)==1)
-            {
-                if (shelves[i][j]==1)
-                {
-                    float var=seafractal[i][j]-maxelev/2;
-                    var=var/coastalvarreduce;
-                    
-                    int newval=sealevel-200+var;
-                    
-                    if (newval>sealevel-10)
-                        newval=sealevel-10;
-                    
-                    if (newval<1)
-                        newval=1;
-                    
-                    world.setnom(i,j,newval);
-                }
-                else
-                {
-                    int ii=i+width/2;
-                    
-                    if (ii>width)
-                        ii=ii-width;
-                    
-                    float var=seafractal[ii][j]-maxelev/2;
-                    var=var/oceanvarreduce;
-                    
-                    int newval=sealevel-5000+var;
-                    
-                    if (newval>sealevel-3000)
-                        newval=sealevel-3000;
-                    
-                    if (newval<1)
-                        newval=1;
-                    
-                    world.setnom(i,j,newval);
-                }
-            }
-        }
-    }
-
-    // Now we create mid-ocean ridges.
-    
-    worldgenerationlabel.set_caption("Generating mid-ocean ridges");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createoceanridges(world,shelves);
-    
-    // Now we create deep-sea trenches.
-    
-    worldgenerationlabel.set_caption("Generating deep-sea trenches");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createoceantrenches(world,shelves);
-    
-    // Now random volcanos.
-    
-    worldgenerationlabel.set_caption("Generating volcanos");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    grain=8; // Level of detail on this fractal map.
-    valuemod=0.2;
-    v=random(3,6);
-    valuemod2=v;
-    
-    createfractal(volcanodensity,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    grain=4; // Level of detail on this fractal map.
-    valuemod=0.02;
-    v=1; //random(3,6);
-    valuemod2=0.2;
-    
-    createfractal(volcanodirection,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            bool goahead=0;
-            
-            if (world.sea(i,j)==1)
-            {
-                int frac=volcanodensity[i][j];
-                
-                int ii=i+width/2;
-                if (ii>width)
-                    ii=ii-width;
-                
-                int frac2=volcanodensity[ii][j];
-                
-                if (frac2<frac)
-                    frac=frac2;
-                
-                int jj=j+height/2;
-                if (jj>height)
-                    jj=jj-height;
-                
-                int frac3=volcanodensity[i][jj];
-
-                if (frac3<frac)
-                    frac=frac3;
-
-                int rand=5000;
-                
-                if (frac>maxelev/2)
-                    rand=80;
-                
-                if (frac>(maxelev/4)*3)
-                    rand=40;
-                
-                if (random(1,rand)==1)
-                    goahead=1;
-            }
-            else
-            {
-                if (random(1,15000)==1)
-                    goahead=1;
-            }
-            
-            if (goahead==1)
-            {
-                bool strato=1;
-                
-                if (random(1,10)==1) // Shield volcanoes - much rarer.
-                    strato=0;
-                
-                if (world.sea(i,j)==1)
-                    strato=1;
-                
-                int peakheight;
-                
-                if (world.sea(i,j)==1)
-                {
-                    if (random(1,10)==1) // It could make a chain of volcanic islands.
-                        peakheight=sealevel-world.nom(i,j)+random(500,3000);
-                    else
-                        peakheight=sealevel-world.nom(i,j)-random(100,200);
-                    
-                    if (peakheight<10)
-                        peakheight=10;
-                    
-                    peakheight=random(peakheight/2,peakheight);
-                }
-                else
-                {
-                    if (strato==1)
-                        peakheight=random(2000,6000);
-                    else
-                        peakheight=random(1000,2000);
-                }
-                
-                //world.settest(i,j,1);
-                
-                createisolatedvolcano(world,i,j,shelves,volcanodirection,peakheight,strato);
-            }
-        }
-    }
-
-    // Now we shift the map so there is sea at the edges, if possible.
-    
-    worldgenerationlabel.set_caption("Shifting for best position");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removeseam(world,0);
-    
-    adjustforsea(world);
-    
-    // Now we add smaller mountain chains that cannot form peninsulas.
-    
-    worldgenerationlabel.set_caption("Adding smaller mountain ranges");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    sf::Vector2i dummy[1];
-    
-    createchains(world,baseheight,conheight,fractal,plateaumap,landshape,chainland,dummy,0,0,2);
-    
-    // Now we alter the fractal again, and use it to add more height variation.
-    
-    worldgenerationlabel.set_caption("Merging fractal into land");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    flip(fractal,width,height,1,1);
-    int offset=random(1,width);
-    shift(fractal,width,height,offset);
-    
-    fractalmergeland(world,fractal,conheight);
-    
-    // Now remove any mountains that are over sea.
-    
-    worldgenerationlabel.set_caption("Removing floating mountains");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removefloatingmountains(world);
-    cleanmountainridges(world);
-    
-    // Now we raise the mountain bases.
-    
-    worldgenerationlabel.set_caption("Raising mountain bases");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    raisemountainbases(world,mountaindrainage);
-    
-    // Now we smooth again, without changing the coastlines.
-    
-    worldgenerationlabel.set_caption("Smoothing map, preserving coastlines");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    smoothland(world,2);
-    
-    vector<vector<int>> slopes(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            slopes[i][j]=0;
-    }
-    
-    getseaslopes(world,slopes); // Note down all the biggest slopes we currently have. This is so that we don't mark any non-shading areas over these slopes later.
-    
-    // Now we create extra elevation over the land to create canyons.
-    
-    worldgenerationlabel.set_caption("Elevating land near canyons");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    createextraelev(world);
-    
-    // Now we remove depressions.
-    
-    worldgenerationlabel.set_caption("Filling depressions");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    depressionfill(world);
-    
-    addlandnoise(world); // Add a bit of noise, then do remove depressions again. This is to add variety to the river courses.
-    
-    depressionfill(world);
-    
-    // Now we adjust the land around coastlines.
-    
-    worldgenerationlabel.set_caption("Adjusting coastlines");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    normalisecoasts(world,13,11,4);
-    
-    normalisecoasts(world,13,11,4);
-    
-    clamp(world);
-    
-    // Now we note down one-tile islands.
-    
-    worldgenerationlabel.set_caption("Checking islands");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    checkislands(world);
-    
-    extendnoshade(world);
-
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (slopes[i][j]>30)
-                world.setnoshade(i,j,0);
-        }
-    }
-    
-    // Now we remove odd undersea bumps.
-    
-    worldgenerationlabel.set_caption("Flattening seabeds");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    //removeunderseabumps(world);
-    
-    // Now we create a roughness map.
-    
-    worldgenerationlabel.set_caption("Creating roughness map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    vector<vector<int>> roughness(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    grain=8; // Level of detail on this fractal map.
-    valuemod=0.2;
-    valuemod2=0.6;
-    
-    createfractal(roughness,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            world.setroughness(i,j,roughness[i][j]);
-    }
-}
 
 // This function creates a new fractal map.
 
@@ -1505,7 +483,7 @@ void smallcontinents(planet &world, int baseheight, int conheight, vector<vector
     int width=world.width();
     int height=world.height();
     
-    sf::Vector2i focuspoints[4]; // These will be points where continents etc will start close to.
+    twointegers focuspoints[4]; // These will be points where continents etc will start close to.
     
     int focustotal=random(2,4); // The number of actual focus points.
     
@@ -1541,55 +519,55 @@ void smallcontinents(planet &world, int baseheight, int conheight, vector<vector
     createchains(world,baseheight,conheight,fractal,plateaumap,landshape,chainland,focuspoints,focustotal,focaldistance,0);
     
     // Now we draw the basic shapes of the continents.
-
-     for (int cont=1; cont<=contno; cont++)
-     {
-         int thisfocus=random(0,focustotal);
-         
-         int bx=focuspoints[thisfocus].x;
-         int by=focuspoints[thisfocus].y; // Coordinates of the current blob.
-         
-         float xdiff=random(1,100);
-         float ydiff=random(1,100);
-         
-         xdiff=xdiff/100;
-         ydiff=ydiff/100;
-         
-         xdiff=pow(xdiff,2);
-         ydiff=pow(ydiff,2);
-         
-         xdiff=xdiff*focaldistance;
-         ydiff=ydiff*focaldistance;
-         
-         bx=bx+randomsign(xdiff);
-         by=by+randomsign(ydiff);
-         
-         if (by<0)
-         by=0;
-         
-         if (by>height)
-         by=height;
-         
-         if (bx<0 || bx>width)
-         bx=wrap(bx,width);
-         
-         for (int i=1; i<=random(minblobno,maxblobno); i++) // Create a number of blobs to form this continent.
-         {
-             for (int j=1; j<=10; j++) // Move the location of the current blob.
-             {
-                 if (random(1,4)==1)
-                 {
-                     bx=bx+randomsign(random(1,bloboffset));
-                     by=by+randomsign(random(1,bloboffset));
-                 }
-             }
-         
-             int shapenumber=random(1,11);
-             
-             drawshape(world,shapenumber,bx,by,1,baseheight,conheight,landshape);
-         }
-     }
-
+    
+    for (int cont=1; cont<=contno; cont++)
+    {
+        int thisfocus=random(0,focustotal);
+        
+        int bx=focuspoints[thisfocus].x;
+        int by=focuspoints[thisfocus].y; // Coordinates of the current blob.
+        
+        float xdiff=random(1,100);
+        float ydiff=random(1,100);
+        
+        xdiff=xdiff/100;
+        ydiff=ydiff/100;
+        
+        xdiff=pow(xdiff,2);
+        ydiff=pow(ydiff,2);
+        
+        xdiff=xdiff*focaldistance;
+        ydiff=ydiff*focaldistance;
+        
+        bx=bx+randomsign(xdiff);
+        by=by+randomsign(ydiff);
+        
+        if (by<0)
+            by=0;
+        
+        if (by>height)
+            by=height;
+        
+        if (bx<0 || bx>width)
+            bx=wrap(bx,width);
+        
+        for (int i=1; i<=random(minblobno,maxblobno); i++) // Create a number of blobs to form this continent.
+        {
+            for (int j=1; j<=10; j++) // Move the location of the current blob.
+            {
+                if (random(1,4)==1)
+                {
+                    bx=bx+randomsign(random(1,bloboffset));
+                    by=by+randomsign(random(1,bloboffset));
+                }
+            }
+            
+            int shapenumber=random(1,11);
+            
+            drawshape(world,shapenumber,bx,by,1,baseheight,conheight,landshape);
+        }
+    }
+    
     // Now for cuts!
     
     cuts(world,cutno,baseheight,conheight,landshape);
@@ -1599,597 +577,7 @@ void smallcontinents(planet &world, int baseheight, int conheight, vector<vector
     createchains(world,baseheight,conheight,fractal,plateaumap,landshape,chainland,focuspoints,focustotal,focaldistance,1);
 }
 
-// This function makes the continents in a larger style.
-
-void largecontinents(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, int baseheight, int conheight, vector<vector<int>> &fractal, vector<vector<int>> &plateaumap, vector<vector<bool>> &shelves, boolshapetemplate landshape[], boolshapetemplate chainland[])
-{
-    int width=world.width();
-    int height=world.height();
-    int sealevel=world.sealevel();
-    int maxelev=world.maxelevation();
-    
-    int movein=300; // Maximum amount to move neighbouring continents towards the central one.
-    int origmountainschance=1; //2; // The higher this is, the less often central continents will have mountains down one side.
-    int mountainschance=4; // The higher this is, the less often other continents will have mountains down one side.
-    
-    worldgenerationlabel.set_caption("Preparing Voronoi map");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    vector<vector<short>> voronoi(width+1,vector<short>(width+1,height+1));
-    int points=200; // Number of points in the voronoi map
-    
-    makevoronoi(voronoi,width,height,points);
-    
-    vector<vector<bool>> continent(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
-    vector<vector<short>> continentnos(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
-    vector<vector<short>> overlaps(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            continent[i][j]=0;
-            continentnos[i][j]=0;
-            overlaps[i][j]=0;
-        }
-    }
-    
-    worldgenerationlabel.set_caption("Making continents");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    sf::Vector2i focuspoints[4]; // These will be points where continents etc will start close to.
-    
-    int focustotal;
-    
-    if (random(1,10)==1)
-        focustotal=1;
-    else
-        focustotal=2;
-    
-    if (random(1,3)!=1)
-        focustotal=3;
-
-    focuspoints[0].x=width/4;
-    focuspoints[0].y=random(height/6,height-height/6);
-    
-    focuspoints[1].x=width-width/4+randomsign(random(0,width/4));
-    focuspoints[1].y=random(height/6,height-height/6);
-    
-    focuspoints[2].x=random(1,width);
-    focuspoints[2].y=random(height/6,height-height/6);
-    
-    // First, make the whole map our seabed baseheight.
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            world.setnom(i,j,baseheight);
-    }
-
-    // Now we draw the basic shapes of the continents, and paste them onto the map.
-    
-    int leftx=0;
-    int rightx=0;
-    int lefty=0;
-    int righty=0; // Define the size and shape of the current continent.
-    
-    short thiscontinent=0;
-    
-    for (int thispoint=0; thispoint<focustotal; thispoint++) // Go through the focus points one by one.
-    {
-        // First, put the central continent for this grouping onto the map.
-        
-        thiscontinent++;
-        
-        makecontinent(world,continent,voronoi,points,width,height,leftx,rightx,lefty,righty);
-        
-        int origcontwidth=rightx-leftx;
-        int origcontheight=righty-lefty;
-        
-        int origstartpointx=focuspoints[thispoint].x-origcontwidth/2-(width-origcontwidth)/2;
-        int origstartpointy=focuspoints[thispoint].y-origcontheight/2-(height-origcontheight)/2; // Coordinates of the top left-hand corner of this continent.
-        
-        int thisleft=-1;
-        int thisright=-1;
-        int thisup=-1;
-        int thisdown=-1;
-        
-        bool wrapped=0;
-        
-        bool leftr=random(0,1); // If it's 1 then we reverse it left-right
-        bool downr=random(0,1); // If it's 1 then we reverse it top-bottom
-        
-        int istart=leftx, desti=rightx, istep=1;
-        int jstart=lefty, destj=righty, jstep=1;
-        
-        if (leftr==1)
-        {
-            istart=rightx;
-            desti=leftx;
-            istep=-1;
-        }
-        
-        if (downr==1)
-        {
-            jstart=righty;
-            destj=lefty;
-            jstep=-1;
-        }
-        
-        int imap=-1;
-        int jmap=-1;
-        
-        for (int i=istart; i!=desti; i=i+istep)
-        {
-            imap++;
-            jmap=-1;
-            
-            int ii=origstartpointx+i;
-            
-            if (ii<0 || ii>width)
-            {
-                ii=wrap(ii,width);
-                wrapped=1;
-            }
-            
-            for (int j=jstart; j!=destj; j=j+jstep)
-            {
-                jmap++;
-                
-                int jj=origstartpointy+j;
-                
-                if (jj>=0 && jj<=height)
-                {
-                    if (continent[imap+leftx][jmap+lefty]==1)
-                    {
-                        world.setnom(ii,jj,conheight);
-                        //world.settest(ii,jj,1);
-                        
-                        if (continentnos[ii][jj]!=0)
-                        {
-                            short overlap=continentnos[ii][jj]*100+thiscontinent;
-                            overlaps[ii][jj]=overlap;
-                        }
-
-                        continentnos[ii][jj]=thiscontinent;
-                        
-                        if (ii<thisleft || thisleft==-1)
-                            thisleft=ii;
-                        
-                        if (ii>thisright || thisright==-1)
-                            thisright=ii;
-                        
-                        if (jj<thisup || thisup==-1)
-                            thisup=jj;
-                        
-                        if (jj>thisdown || thisdown==-1)
-                            thisdown=jj;
-                        
-                    }
-                }
-            }
-        }
-        
-        origstartpointx=thisleft;
-        origstartpointy=thisup;
-        
-        origcontwidth=thisright-thisleft;
-        origcontheight=thisdown-thisup;
-        
-        if (origcontwidth<2 || origcontheight<2)
-            wrapped=1;
-        
-        bool origcontmountains=0;
-        
-        if (random(1,origmountainschance)==1) // Whether or not this continent has mountains along one edge.
-            origcontmountains=1;
-        
-        short origcontdir=0;
-        
-        int startnearx=-1;
-        int startneary=-1;
-        
-        int origmountainstartpointx=-1;
-        int origmountainstartpointy=-1;
-        
-        short origstartpoint=0;
-
-        if (wrapped==0)
-        {
-            origstartpoint=random(1,8);
-            
-            switch (origstartpoint)
-            {
-                case 1:
-                    startnearx=thisleft+random(1,origcontwidth);
-                    startneary=thisup;
-                    origcontdir=random(4,6);
-                    break;
-                    
-                case 2:
-                    startnearx=thisright;
-                    startneary=thisup;
-                    origcontdir=random(5,7);
-                    break;
-                    
-                case 3:
-                    startnearx=thisright;
-                    startneary=thisup+random(1,origcontheight);
-                    origcontdir=random(6,8);
-                    break;
-                    
-                case 4:
-                    startnearx=thisright;
-                    startneary=thisdown;
-                    origcontdir=random(7,9);
-                    if (origcontdir==9)
-                        origcontdir=1;
-                    break;
-                    
-                case 5:
-                    startnearx=thisleft+random(1,origcontwidth);
-                    startneary=thisdown;
-                    origcontdir=random(1,3)-1;
-                    if (origcontdir==0)
-                        origcontdir=8;
-                    break;
-                    
-                case 6:
-                    startnearx=thisleft;
-                    startneary=thisdown;
-                    origcontdir=random(1,3);
-                    break;
-                    
-                case 7:
-                    startnearx=thisleft;
-                    startneary=thisup+random(1,origcontheight);
-                    origcontdir=random(2,4);
-                    break;
-                    
-                case 8:
-                    startnearx=thisleft;
-                    startneary=thisup;
-                    origcontdir=random(3,5);
-                    break;
-            }
-
-            if (startnearx<0 || startnearx>width)
-                startnearx=wrap(startnearx,width);
-            
-            if (startneary<0)
-                startneary=0;
-            
-            if (startneary>height)
-                startneary=height;
-            
-            if (origcontmountains==1)                makecontinentedgemountains(world,thiscontinent,continentnos,overlaps,baseheight,conheight,fractal,landshape,chainland,origstartpointx,origstartpointy,origcontwidth,origcontheight,startnearx,startneary,origcontdir,origmountainstartpointx,origmountainstartpointy);
-            
-        }
-        
-        // Now put other continents around it.
-
-        bool fringeconts[3][3];
-        
-        for (int i=0; i<3; i++)
-        {
-            for (int j=0; j<3; j++)
-                fringeconts[i][j]=0;
-        }
-        
-        short extracont=random(1,9)-1; // Number of extra continents.
-        
-        for (int n=1; n<=extracont; n++)
-        {
-            thiscontinent++;
-            
-            makecontinent(world,continent,voronoi,points,width,height,leftx,rightx,lefty,righty);
-            
-            int thiscontwidth=rightx-leftx;
-            int thiscontheight=righty-lefty;
-            
-            int dir=random(1,8); // Direction from the central continent.
-            
-            bool keepgoing=1;
-            
-            switch (dir)
-            {
-                case 1:
-                    if (fringeconts[1][0]==1)
-                        keepgoing=0;
-                    break;
-                    
-                case 2:
-                    if (fringeconts[2][0]==1)
-                        keepgoing=0;
-                    break;
-                    
-                case 3:
-                    if (fringeconts[2][1]==1)
-                        keepgoing=0;
-                    break;
-                    
-                case 4:
-                    if (fringeconts[2][2]==1)
-                        keepgoing=0;
-                    break;
-                    
-                case 5:
-                    if (fringeconts[1][2]==1)
-                        keepgoing=0;
-                    break;
-                    
-                case 6:
-                    if (fringeconts[0][2]==1)
-                        keepgoing=0;
-                    break;
-                    
-                case 7:
-                    if (fringeconts[0][1]==1)
-                        keepgoing=0;
-                    break;
-                    
-                case 8:
-                    if (fringeconts[0][0]==1)
-                        keepgoing=0;
-                    break;
-            }
-            
-            if (keepgoing)
-            {
-                int thisstartpointx=-1;
-                int thisstartpointy=-1; // Coordinates of the top left-hand corner of this continent.
-                
-                switch (dir)
-                {
-                    case 1: // north
-                        thisstartpointx=origstartpointx+randomsign(random(0,origcontwidth/2));
-                        thisstartpointy=focuspoints[thispoint].y-thiscontheight/2-(height-thiscontheight)/2-thiscontheight+random(0,movein);
-                        fringeconts[1][0]=1;
-                        break;
-                        
-                    case 2: // northeast
-                        thisstartpointx=focuspoints[thispoint].x-thiscontwidth/2-(width-thiscontwidth)/2+origcontwidth-random(0,movein);
-                        thisstartpointy=focuspoints[thispoint].y-thiscontheight/2-(height-thiscontheight)/2-thiscontheight+random(0,movein);
-                        fringeconts[2][0]=1;
-                        break;
-                        
-                    case 3: // east
-                        thisstartpointx=focuspoints[thispoint].x-thiscontwidth/2-(width-thiscontwidth)/2+origcontwidth-random(0,movein);
-                        thisstartpointy=origstartpointy+randomsign(random(0,origcontheight/2));
-                        fringeconts[2][1]=1;
-                        break;
-                        
-                    case 4: // southeast
-                        thisstartpointx=focuspoints[thispoint].x-thiscontwidth/2-(width-thiscontwidth)/2+origcontwidth-random(0,movein);
-                        thisstartpointy=focuspoints[thispoint].y-thiscontheight/2-(height-thiscontheight)/2+thiscontheight-random(0,movein);
-                        fringeconts[2][2]=1;
-                        break;
-                        
-                    case 5: // south
-                        thisstartpointx=origstartpointx+randomsign(random(0,origcontwidth/2));
-                        thisstartpointy=focuspoints[thispoint].y-thiscontheight/2-(height-thiscontheight)/2+thiscontheight-random(0,movein);
-                        fringeconts[1][2]=1;
-                        break;
-                        
-                    case 6: // southwest
-                        thisstartpointx=focuspoints[thispoint].x-thiscontwidth/2-(width-thiscontwidth)/2-thiscontwidth+random(0,movein);
-                        thisstartpointy=focuspoints[thispoint].y-thiscontheight/2-(height-thiscontheight)/2+thiscontheight-random(0,movein);
-                        fringeconts[0][2]=1;
-                        break;
-                        
-                    case 7: // west
-                        thisstartpointx=focuspoints[thispoint].x-thiscontwidth/2-(width-thiscontwidth)/2-thiscontwidth+random(0,movein);
-                        thisstartpointy=origstartpointy+randomsign(random(0,origcontheight/2));
-                        fringeconts[0][1]=1;
-                        break;
-                        
-                    case 8: // northwest
-                        thisstartpointx=focuspoints[thispoint].x-thiscontwidth/2-(width-thiscontwidth)/2-thiscontwidth+random(0,movein);
-                        thisstartpointy=focuspoints[thispoint].y-thiscontheight/2-(height-thiscontheight)/2-thiscontheight+random(0,movein);
-                        fringeconts[0][0]=1;
-                        break;
-                }
-                
-                bool leftr=random(0,1); // If it's 1 then we reverse it left-right
-                bool downr=random(0,1); // If it's 1 then we reverse it top-bottom
-                
-                int istart=leftx, desti=rightx, istep=1;
-                int jstart=lefty, destj=righty, jstep=1;
-                
-                if (leftr==1)
-                {
-                    istart=rightx;
-                    desti=leftx;
-                    istep=-1;
-                }
-                
-                if (downr==1)
-                {
-                    jstart=righty;
-                    destj=lefty;
-                    jstep=-1;
-                }
-                
-                int imap=-1;
-                int jmap=-1;
-                
-                for (int i=istart; i!=desti; i=i+istep)
-                {
-                    imap++;
-                    jmap=-1;
-                    
-                    int ii=thisstartpointx+i;
-                    
-                    if (ii<0 || ii>width)
-                        ii=wrap(ii,width);
-                    
-                    for (int j=jstart; j!=destj; j=j+jstep)
-                    {
-                        jmap++;
-                        
-                        int jj=thisstartpointy+j;
-                        
-                        if (jj>=0 && jj<=height)
-                        {
-                            if (continent[imap+leftx][jmap+lefty]==1)
-                            {
-                                world.setnom(ii,jj,conheight);
-                                
-                                if (continentnos[ii][jj]!=0)
-                                {
-                                    short overlap=continentnos[ii][jj]*100+thiscontinent;
-                                    overlaps[ii][jj]=overlap;
-                                }
-                                
-                                continentnos[ii][jj]=thiscontinent;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    // Now remove inland seas.
-    
-    worldgenerationlabel.set_caption("Removing inland seas");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removeseas(world,conheight);
-
-    worldgenerationlabel.set_caption("Adding continental mountain ranges");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    // Now we add mountain ranges where continents overlap.
-    
-    int doneoverlaps[50]; // This will note down all the ones we've done.
-    
-    for (int n=0; n<50; n++)
-        doneoverlaps[n]=0;
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (overlaps[i][j]!=0)
-            {
-                int thisoverlap=overlaps[i][j];
-                
-                bool donethisone=0;
-                
-                for (int n=0; n<50; n++)
-                {
-                    if (doneoverlaps[n]==thisoverlap)
-                    {
-                        donethisone=1;
-                        n=50;
-                    }
-                }
-                
-                if (donethisone==0)
-                {
-                    if (world.outline(i,j)==1)
-                    {
-                        for (int n=0; n<50; n++)
-                        {
-                            if (doneoverlaps[n]==0)
-                            {
-                                doneoverlaps[n]=thisoverlap;
-                                n=50;
-                            }
-                        }
-                        
-                        int furthestx=-1;
-                        int furthesty=-1;
-                        int dist=0;
-                        
-                        for (int k=0; k<=width; k++) // Find the furthest point that's in the same overlap.
-                        {
-                            for (int l=0; l<=height; l++)
-                            {
-                                if (overlaps[k][l]==thisoverlap)
-                                {
-                                    int xdist=i-k;
-                                    int ydist=j-l;
-                                    
-                                    int thisdist=xdist*xdist+ydist+ydist;
-                                    
-                                    if (thisdist>dist)
-                                    {
-                                        dist=thisdist;
-                                        furthestx=k;
-                                        furthesty=l;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        if (dist!=0)
-                        {
-                            vector <sf::Vector2i> dummy1(2);
-                            
-                            vector<vector<bool>> dummy2(2,vector<bool>(2,0));
-                            
-                            createdirectedchain(world,baseheight,conheight,1,continentnos,fractal,landshape,chainland,i,j,furthestx,furthesty,0,dummy1,dummy2,200);
-
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    sf::Vector2i mountainfocuspoints[4]; // These will be points where mountains and islands will start close to.
-    
-    int mountainfocustotal=random(2,4); // The number of actual focus points.
-    
-    for (int n=0; n<mountainfocustotal; n++)
-    {
-        mountainfocuspoints[n].x=random(0,width);
-        mountainfocuspoints[n].y=random(0,height);
-    }
-    
-    int mountainfocaldistance=height/2;
-
-    // Now we add smaller mountain chains that might form peninsulas.
-    
-    createchains(world,baseheight,conheight,fractal,plateaumap,landshape,chainland,mountainfocuspoints,mountainfocustotal,mountainfocaldistance,1);
-    
-    // Now we do the continental shelves.
-    
-    worldgenerationlabel.set_caption("Making continental shelves");
-    worldprogress.set_value(worldprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    makecontinentalshelves(world,shelves,4);
-    
-    // Now we add some island chains.
-    
-    int islandgroups=random(0,6); // Number of general groups of islands.
-    
-    for (int n=1; n<=islandgroups; n++)
-    {
-        mountainfocustotal=1; // The number of actual focus points.
-        
-        for (int n=0; n<mountainfocustotal; n++)
-        {
-            mountainfocuspoints[n].x=random(0,width);
-            mountainfocuspoints[n].y=random(0,height);
-        }
-        
-        mountainfocaldistance=random(height/8,height/4);
-        createchains(world,baseheight,conheight,fractal,plateaumap,landshape,chainland,mountainfocuspoints,mountainfocustotal,mountainfocaldistance,3);
-    }
-}
+// (The function to make them in a larger style is in main.cpp because it uses NanoGUI elements.)
 
 // This function creates a chain of mountains along the edge of a continent.
 
@@ -2282,10 +670,10 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
     
     if (endpointx==-1)
         return;
-
+    
     // Now create the ranges.
-
-    vector <sf::Vector2i> rangepoints(1000); // This will hold the start points of each of the ranges in this chain.
+    
+    vector <twointegers> rangepoints(1000); // This will hold the start points of each of the ranges in this chain.
     
     for (int n=0 ; n<1000; n++)
     {
@@ -2293,16 +681,18 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
         rangepoints[n].y=-1;
     }
     
-    vector<vector<bool>> currentland(width+1,vector<bool>(width+1,height+1)); // This will show where new land has been placed around the mountains.
+    vector<vector<bool>> currentland(width+1,vector<bool>(height+1,0)); // This will show where new land has been placed around the mountains.
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             currentland[i][j]=0;
     }
+    */
     
     int volcanochance=random(40,120);
-
+    
     createdirectedchain(world,baseheight,conheight,thiscontinent,continentnos,fractal,landshape,chainland,startpointx,startpointy,endpointx,endpointy,1,rangepoints,currentland,volcanochance);
     
     // Now we draw a line between all the points where ranges started.
@@ -2324,7 +714,7 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
     rangepoints[lastpoint].x=endnearx;
     rangepoints[lastpoint].y=endneary;
     
-
+    
     for (int n=0; n<1000; n++)
     {
         if (rangepoints[n].x==-1)
@@ -2334,16 +724,18 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
     if (lastpoint<3)
         return;
     
-    vector<vector<bool>> landmask(width+1,vector<bool>(width+1,height+1)); // This will show where the mountains divide the continent into two.
+    vector<vector<bool>> landmask(width+1,vector<bool>(height+1,0)); // This will show where the mountains divide the continent into two.
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             landmask[i][j]=0;
     }
+    */
     
-    sf::Vector2f pt, mm1, mm2, mm3, mm4;
-
+    twofloats pt, mm1, mm2, mm3, mm4;
+    
     mm1.x=rangepoints[0].x;
     mm1.y=rangepoints[0].y;
     
@@ -2395,7 +787,7 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
         if (y>=0 && y<=height)
             landmask[x][y]=1;
     }
-
+    
     for (int n=0; n<=lastpoint-3; n++)
     {
         mm1.x=rangepoints[n].x;
@@ -2409,20 +801,20 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
         
         mm4.x=rangepoints[n+3].x;
         mm4.y=rangepoints[n+3].y;
-
+        
         /*
-        
-        if (mm2.x<mm1.x) // This dewraps them all, so some may extend beyond the eastern edge of the map.
-            
-            mm2.x=mm2.x+width;
-        
-        if (mm3.x<mm2.x)
-            mm3.x=mm3.x+width;
-        
-        if (mm4.x<mm3.x)
-            mm4.x=mm4.x+width;
-        
-        */
+         
+         if (mm2.x<mm1.x) // This dewraps them all, so some may extend beyond the eastern edge of the map.
+         
+         mm2.x=mm2.x+width;
+         
+         if (mm3.x<mm2.x)
+         mm3.x=mm3.x+width;
+         
+         if (mm4.x<mm3.x)
+         mm4.x=mm4.x+width;
+         
+         */
         
         for (float t=0.0; t<=1.0; t=t+0.01)
         {
@@ -2433,7 +825,7 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
             
             if (x<0 || x>width)
                 x=wrap(x,width);
-
+            
             if (y>=0 && y<=height)
                 landmask[x][y]=1;
         }
@@ -2507,7 +899,7 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
 
 void makevoronoi(vector<vector<short>> &voronoi, int width, int height, int points)
 {
-    vector<vector<int>> pointslist(points,vector<int>(points,2));
+    vector<vector<int>> pointslist(points,vector<int>(2,0));
     
     int margin=points/6;
     
@@ -2582,20 +974,22 @@ void makeshelvesvoronoi(planet &world, vector<vector<short>> &voronoi, vector<ve
     int v=random(3,6);
     float valuemod2=v;
     
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
     
     int warpdist=1;
     int warpdiv=midelev/warpdist;
-
-    vector<vector<int>> pointsmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
     
+    vector<vector<int>> pointsmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             pointsmap[i][j]=0;
     }
+    */
     
     //int pointdist=4;
     int pointnumber=1;
@@ -2639,7 +1033,7 @@ void makeshelvesvoronoi(planet &world, vector<vector<short>> &voronoi, vector<ve
                 warpdistx=(fractal[warpx][warpy]-midelev)/warpdiv;
             else
                 warpdistx=0-(midelev-fractal[warpx][warpy])/warpdiv;
-
+            
             int checkx=i+warpdistx;
             
             if (checkx<0 || checkx>width)
@@ -2710,9 +1104,10 @@ void makeshelvesvoronoi(planet &world, vector<vector<short>> &voronoi, vector<ve
 
 void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector<short>> &voronoi, int points, int width, int height, int &leftx, int &rightx, int &lefty, int &righty)
 {
-    vector<vector<bool>> circlemap(width+1,vector<bool>(width+1,height+1));
-    vector<vector<bool>> outline(width+1,vector<bool>(width+1,height+1));
+    vector<vector<bool>> circlemap(width+1,vector<bool>(height+1,0));
+    vector<vector<bool>> outline(width+1,vector<bool>(height+1,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -2721,6 +1116,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
             outline[i][j]=0;
         }
     }
+    */
     
     vector<bool> cells(points); // vector<uint8_t>?
     //bool cells[points];
@@ -2730,8 +1126,8 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
     
     int totalnodes=1;
     
-    vector <sf::Vector2i> bordernodes; // Stores the location of the nodes.
-    vector <sf::Vector2i> nodeshifts; // Stores how much each node has been shifted from its default location.
+    vector <twointegers> bordernodes; // Stores the location of the nodes.
+    vector <twointegers> nodeshifts; // Stores how much each node has been shifted from its default location.
     
     int circleno;
     
@@ -2750,9 +1146,9 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
     int circlerightx=width/2;
     int circlelefty=height/2;
     int circlerighty=height/2;
-
+    
     makecontinentcircles(circlemap,width,height,circleno,circlesize,circleleftx,circlerightx,circlelefty,circlerighty);
-
+    
     // Shift the circles, so that not all continents are made with the same Voronoi cells.
     
     int circleswidth=circlerightx-circleleftx;
@@ -2760,14 +1156,14 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
     
     int rightshift=0;
     int downshift=0;
-
+    
     if (circleswidth<width-width/5 && circlesheight<height-height/5)
     {
         int leftcirclestart=random(width/10+circleswidth,width-width/10-circleswidth*2);
         
         rightshift=leftcirclestart-circleleftx;
     }
-
+    
     // Now, take the Voronoi cells that overlap those blobs, to get the rough continent.
     
     for (int i=circleleftx; i<=circlerightx; i++)
@@ -2825,7 +1221,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
                 
                 if (found)
                     outline[i][j]=1;
-
+                
             }
         }
     }
@@ -2878,14 +1274,14 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
         
         
     } while (keepgoing);
-
+    
     // Now get the list of nodes ready.
     
-    sf::Vector2i node;
+    twointegers node;
     node.x=x;
     node.y=y;
     
-    sf::Vector2i shift;
+    twointegers shift;
     shift.x=0;
     shift.y=0;
     
@@ -3002,7 +1398,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
                 }
             }
         }
-
+        
         if (found==0) // If we STILL didn't find one, we must have got to the end of the outline.
             keepgoing=0;
         else
@@ -3015,7 +1411,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
                 nodeshifts.push_back(shift); // This is just blank for now. We'll use it when we apply offsets.
                 totalnodes++;
                 crount=0;
-
+                
                 if (random(1,gapvarychance)==1)
                 {
                     nodegap=nodegap+randomsign(1);
@@ -3047,7 +1443,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
     
     if (abs(bordernodes[totalnodes-1].y-bordernodes[0].y)>maxdiff)
         return;
-
+    
     // Now apply offsets to our nodes.
     
     int maxoffset=40; //25; // No node can be offset further than this.
@@ -3173,12 +1569,12 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
     
     nodeshifts[totalnodes-1].x=(nodeshifts[0].x+nodeshifts[totalnodes-2].x)/2;
     nodeshifts[totalnodes-1].y=(nodeshifts[0].y+nodeshifts[totalnodes-2].y)/2;
-
+    
     // Now we've got all our nodes. We need to draw splines between them.
     
     int midvar=2; // Possible variation for the interpolated nodes. This is a fraction of the difference between the two nodes being interpolated, not an absolute value.
     
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     int nodeshiftedx=0;
     int nodeshiftedy=0; // This tells us how much the interpolated node is already shifted by. It's just the average of how much the other nodes are shifted by.
@@ -3311,7 +1707,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
     
     if (leftx<0)
         leftx=0;
-
+    
     if (rightx>width)
         rightx=width;
     
@@ -3348,7 +1744,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
     }
     
     // Now fill within that border.
-
+    
     fill(outline,width,height,leftx+1,lefty+1,1);
     fill(outline,width,height,rightx-1,lefty+1,1);
     fill(outline,width,height,rightx-1,righty-1,1);
@@ -3416,7 +1812,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
     int grain=8; // Level of detail on this fractal map.
     float valuemod=0.2;
     
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     createfractal(fractal,world.width(),world.height(),grain,valuemod,valuemod,1,world.maxelevation(),0,0);
     
@@ -3458,7 +1854,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
             }
             else
                 thisdistort=0;
-
+            
             int ii=i-originx+thisdistort;
             int jj=j-originy+thisdistort;
             
@@ -3532,6 +1928,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
 
 void makecontinentcircles(vector<vector<bool>> &circlemap, int width, int height, int circleno, int circlesize, int &circleleftx, int &circlerightx, int &circlelefty, int &circlerighty)
 {
+    //vector<vector<int>> circleinfo(circleno,vector<int>(2,0)); // This will hold information about each circle.
     vector<vector<int>> circleinfo(circleno,vector<int>(circleno,2)); // This will hold information about each circle.
     
     circleinfo[0][0]=width/2; // centre x coordinate
@@ -3579,7 +1976,7 @@ void makecontinentcircles(vector<vector<bool>> &circlemap, int width, int height
                 keepgoing=0;
             
         } while (keepgoing==1);
-
+        
         circleinfo[circle][3]=random((circlesize/3)*2,circlesize);
     }
     
@@ -3642,10 +2039,10 @@ void makecontinentcircles(vector<vector<bool>> &circlemap, int width, int height
             }
         }
     }
-
+    
     // Now just stick a few on around the edges, and also remove a few.
     
-    vector<vector<bool>> circlecopy(width+1,vector<bool>(width+1,height+1));
+    vector<vector<bool>> circlecopy(width+1,vector<bool>(height+1,0));
     
     for (int n=0; n<2; n++)
     {
@@ -3799,7 +2196,7 @@ void makecontinentcircles(vector<vector<bool>> &circlemap, int width, int height
 
 // This function creates chains of mountains, with associated land where appropriate.
 
-void createchains(planet &world, int baseheight, int conheight, vector<vector<int>> &fractal, vector<vector<int>> &plateaumap, boolshapetemplate landshape[], boolshapetemplate chainland[], sf::Vector2i focuspoints[], int focustotal, int focaldistance, int mode)
+void createchains(planet &world, int baseheight, int conheight, vector<vector<int>> &fractal, vector<vector<int>> &plateaumap, boolshapetemplate landshape[], boolshapetemplate chainland[], twointegers focuspoints[], int focustotal, int focaldistance, int mode)
 {
     // mode=0: continental chains (with associated land).
     // mode=1: smaller mountains (no associated land, can form peninsulas).
@@ -3830,7 +2227,7 @@ void createchains(planet &world, int baseheight, int conheight, vector<vector<in
         mode=3;
         fewer=1;
     }
-
+    
     //int temptotal=24; // Total number of mountain range templates available.
     
     int rangestartvar=2; //6; // Possible distance between previous range and next one in a chain
@@ -3852,9 +2249,9 @@ void createchains(planet &world, int baseheight, int conheight, vector<vector<in
     int maxelev=world.maxelevation();
     int sealevel=world.sealevel();
     
-    vector<vector<unsigned char>> rangeheighttemplate(height+1,vector<unsigned char>(height+1,height+1));
-    vector<vector<unsigned char>> rangeridgetemplate(height+1,vector<unsigned char>(height+1,height+1)); // These will hold the range we're currently putting on.
-
+    vector<vector<unsigned char>> rangeheighttemplate(height+1,vector<unsigned char>(height+1,0));
+    vector<vector<unsigned char>> rangeridgetemplate(height+1,vector<unsigned char>(height+1,0)); // These will hold the range we're currently putting on.
+    
     int chainno=0;
     int minchainlength=0;
     int maxchainlength=0;
@@ -4478,9 +2875,9 @@ void createchains(planet &world, int baseheight, int conheight, vector<vector<in
 
 // This function creates a chain of mountains from one point to another.
 
-void createdirectedchain(planet &world, int baseheight, int conheight, short thiscontinent, vector<vector<short>> &continentnos, vector<vector<int>> &fractal, boolshapetemplate landshape[], boolshapetemplate chainland[], int chainstartx, int chainstarty, int chainendx, int chainendy, int mode, vector<sf::Vector2i> &rangepoints, vector<vector<bool>> &currentland, int volcanochance)
+void createdirectedchain(planet &world, int baseheight, int conheight, short thiscontinent, vector<vector<short>> &continentnos, vector<vector<int>> &fractal, boolshapetemplate landshape[], boolshapetemplate chainland[], int chainstartx, int chainstarty, int chainendx, int chainendy, int mode, vector<twointegers> &rangepoints, vector<vector<bool>> &currentland, int volcanochance)
 {
-
+    
     // mode=0: overlapping continents (over land, no associated land is created).
     // mode=1: along the edge of a continent (creates land if necessary, removes land to one side).
     
@@ -4509,17 +2906,19 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
     int maxelev=world.maxelevation();
     int sealevel=world.sealevel();
     
-    vector<vector<bool>> thischain(width+1,vector<bool>(width+1,height+1));
+    vector<vector<bool>> thischain(width+1,vector<bool>(height+1,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             thischain[i][j]=0;
     }
+    */
     
-    vector<vector<unsigned char>> rangeheighttemplate(height+1,vector<unsigned char>(height+1,height+1));
-    vector<vector<unsigned char>> rangeridgetemplate(height+1,vector<unsigned char>(height+1,height+1)); // These will hold the range we're currently putting on.
-
+    vector<vector<unsigned char>> rangeheighttemplate(height+1,vector<unsigned char>(height+1,0));
+    vector<vector<unsigned char>> rangeridgetemplate(height+1,vector<unsigned char>(height+1,0)); // These will hold the range we're currently putting on.
+    
     int halfwayx=(chainstartx+chainendx)/2;
     int halfwayy=(chainstarty+chainendy)/2;
     
@@ -4558,16 +2957,16 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
     
     if (waypoint2y>height)
         waypoint2y=height;
-
+    
     short goingto=1;
     
     // Now do the chain.
-
+    
     int oldx=chainstartx;
     int oldy=chainstarty;
-
+    
     short chaindir=0; // Chaindir is the direction of the chain, from 1-8 (sort of on the diagonals!).
-
+    
     int rangeno=1;
     bool goahead=1;
     
@@ -4594,7 +2993,7 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
                 chaindir=getmountaindir(world,oldx,oldy,chainendx,chainendy);
             else
             {
-                sf::Vector2i sea=nearestsea(world,oldx,oldy,0,height,10);
+                twointegers sea=nearestsea(world,oldx,oldy,0,height,10);
                 
                 chainendx=sea.x;
                 chainendy=sea.y;
@@ -4641,7 +3040,7 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
         int dampner=maxelev/12; // This is to reduce the maximum height a bit.
         int rangeheight=random((maxelev-sealevel)/2,maxelev-sealevel); // Approximate height of the range (above sea level)
         rangeheight=rangeheight-dampner;
-
+        
         if (rangeheight<200)
             rangeheight=200;
         
@@ -4768,7 +3167,7 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
         
         if (x<=0 || x>width)
             x=wrap(x,width);
-
+        
         if (mode==0) // Mountains on overlapping continents can't start in the sea.
         {
             if (world.seawrap(oldx,oldy)==1)
@@ -4777,7 +3176,7 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
         
         // x and y are now the coordinates of the top left of the new range template.
         // Now we need to see whether there is a clear area to paste it.
-
+        
         for (int i=x; i<=x+span; i++)
         {
             int ii=i;
@@ -4795,7 +3194,7 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
                 }
             }
         }
-
+        
         if (goahead==1) // If the area is clear
         {
             for (int i=0; i<=span; i++)
@@ -4851,7 +3250,7 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
                                     else
                                         goahead=0;
                                 }
-
+                                
                                 if (mode==1) // Mountains of this kind can create their own land.
                                 {
                                     thischain[ii][jj]=1;
@@ -4920,7 +3319,7 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
                                         int landy=jj;
                                         
                                         // Now paste a lump under the mountain.
-
+                                        
                                         landx=landx+movex;
                                         landy=landy+movey;
                                         
@@ -5041,7 +3440,7 @@ short getmountaindir(planet &world, int startx, int starty, int endx, int endy)
     int width=world.width();
     
     // First, work out whether we need to do any wrapping.
-
+    
     int xdist=startx-endx;
     int ydist=starty-endy;
     
@@ -5107,7 +3506,7 @@ short getmountaindir(planet &world, int startx, int starty, int endx, int endy)
         else
             dir=7;
     }
-
+    
     return dir;
 }
 
@@ -5348,7 +3747,7 @@ void cuts(planet &world, int cuttotal, int baseheight, int conheight, boolshapet
 
 void fractalmerge(planet &world, vector<vector<int>> &fractal)
 {
-    vector<vector<int>> temp(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will be used to merge the fractal onto the main map in a varied way.
+    vector<vector<int>> temp(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will be used to merge the fractal onto the main map in a varied way.
     
     int width=world.width();
     int height=world.height();
@@ -5400,23 +3799,23 @@ void fractalmerge(planet &world, vector<vector<int>> &fractal)
 
 void fractalmergemodified(planet &world, vector<vector<int>> &fractal, vector<vector<int>> &plateaumap, vector<vector<bool>> &removedland)
 {
-    vector<vector<int>> temp(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will be used to merge the fractal onto the main map in a varied way.
+    vector<vector<int>> temp(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will be used to merge the fractal onto the main map in a varied way.
     
     int width=world.width();
     int height=world.height();
     int sealevel=world.sealevel();
     int maxelev=world.maxelevation();
-
+    
     int grain=4;
     float valuemod=0.003;
     float valuemod2=0.003;
-
+    
     bool extreme=0;
     
     createfractalformodifiedmerging(temp,width,height,grain,valuemod,valuemod2,1,maxelev,extreme);
     
     int tippingpoint=maxelev/4;
-
+    
     for (int j=0; j<=height; j++)
     {
         for (int i=0; i<=width; i++)
@@ -5448,7 +3847,7 @@ void fractalmergeland(planet &world, vector<vector<int>> &fractal, int conheight
     
     // First we create a template map, which we will use to vary divamount.
     
-    vector<vector<int>> templ(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> templ(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -5461,7 +3860,7 @@ void fractalmergeland(planet &world, vector<vector<int>> &fractal, int conheight
     shift(templ,width,height,offset);
     
     // Now we use that template to apply the fractal to the map, to create highlands and lowlands.
-
+    
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -5506,7 +3905,7 @@ void fractaladdland(planet &world, vector<vector<int>> &fractal)
     
     // First we create a template map, which we will use to vary divamount.
     
-    vector<vector<int>> templ(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> templ(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -5565,9 +3964,9 @@ void removeseas(planet &world, int level)
         world.setnom(width,j,amount);
     }
     
-    vector<vector<bool>> checked(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT)); // This array marks which sea areas have already been scanned.
+    vector<vector<bool>> checked(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0)); // This array marks which sea areas have already been scanned.
     
-    vector<vector<int>> area(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This array marks the area of each bit of sea.
+    vector<vector<int>> area(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This array marks the area of each bit of sea.
     
     for (int i=0; i<=width; i++)
     {
@@ -5580,7 +3979,7 @@ void removeseas(planet &world, int level)
     
     int seax=-1;
     int seay=-1;
-
+    
     // First, we find the area of each section of sea and mark them on the area array.
     
     for (int i=width-1; i>0; i--)
@@ -5651,12 +4050,12 @@ int areacheck (planet &world, vector<vector<bool>> &checked, int startx, int sta
     int row[]={-1,0,0,1};
     int col[]={0,-1,1,0};
     
-    sf::Vector2i node;
+    twointegers node;
     
     node.x=startx;
     node.y=starty;
     
-    queue<sf::Vector2i> q; // Create a queue
+    queue<twointegers> q; // Create a queue
     q.push(node); // Put our starting node into the queue
     
     while (q.empty()!=1) // Keep going while there's anything left in the queue
@@ -5671,7 +4070,7 @@ int areacheck (planet &world, vector<vector<bool>> &checked, int startx, int sta
             
             for (int k=0; k<4; k++) // Look at the four neighbouring nodes in turn
             {
-                sf::Vector2i nextnode;
+                twointegers nextnode;
                 
                 nextnode.x=node.x+row[k];
                 nextnode.y=node.y+col[k];
@@ -5708,12 +4107,12 @@ int markseasize (planet &world, vector<vector<bool>> &checked, vector<vector<int
     int row[]={-1,0,0,1};
     int col[]={0,-1,1,0};
     
-    sf::Vector2i node;
+    twointegers node;
     
     node.x=startx;
     node.y=starty;
     
-    queue<sf::Vector2i> q; // Create a queue
+    queue<twointegers> q; // Create a queue
     q.push(node); // Put our starting node into the queue
     
     while (q.empty()!=1) // Keep going while there's anything left in the queue
@@ -5728,7 +4127,7 @@ int markseasize (planet &world, vector<vector<bool>> &checked, vector<vector<int
             
             for (int k=0; k<4; k++) // Look at the four neighbouring nodes in turn
             {
-                sf::Vector2i nextnode;
+                twointegers nextnode;
                 
                 nextnode.x=node.x+row[k];
                 nextnode.y=node.y+col[k];
@@ -5933,7 +4332,7 @@ void removestraights(planet &world)
                         ii=0;
                     
                     int jj=j-1;
-
+                    
                     if (northwestlandonly(world,ii,jj)==1)
                     {
                         int iii=i-1;
@@ -6245,11 +4644,9 @@ int getcode(int dir)
 
 int getridge(planet &world, int x, int y, int dir)
 {
-    string n=decimaltobinarystring(world.mountainridge(x,y));
+    bool check=(world.mountainridge(x,y) & (1<<(dir-1)))!=0;
     
-    string nn=n.substr(n.length()-dir,1);
-    
-    if (nn=="1")
+    if (check==1)
         return(1);
     
     return(0);
@@ -6259,11 +4656,9 @@ int getridge(planet &world, int x, int y, int dir)
 
 int getridge(vector<vector<int>> &arr, int x, int y, int dir)
 {
-    string n=decimaltobinarystring(arr[x][y]);
+    bool check=(arr[x][y] & (1<<(dir-1)))!=0;
     
-    string nn=n.substr(n.length()-dir,1);
-    
-    if (nn=="1")
+    if (check==1)
         return(1);
     
     return(0);
@@ -6273,12 +4668,9 @@ int getridge(vector<vector<int>> &arr, int x, int y, int dir)
 
 int getoceanridge(planet &world, int x, int y, int dir)
 {
-    // FIXME: FG: this takes a lot of the runtime; don't convert to a string! Use bit shifts instead; the same for the getridge() functions
-    string n=decimaltobinarystring(world.oceanridges(x,y));
-    
-    string nn=n.substr(n.length()-dir,1);
-    
-    if (nn=="1")
+    bool check=(world.oceanridges(x,y) & (1<<(dir-1)))!=0;
+
+    if (check==1)
         return(1);
     
     return(0);
@@ -6518,7 +4910,7 @@ void raisemountainbases(planet &world, vector<vector<int>> &mountaindrainage)
 {
     int width=world.width();
     int height=world.height();
-
+    
     int maxradius=6; //4;
     int volcanomaxradius=2;
     float heightreduce=0.5; //0.5; // Multiply the extra height by this each time.
@@ -6586,7 +4978,7 @@ void raisemountainbases(planet &world, vector<vector<int>> &mountaindrainage)
                     
                     baseheight=baseheight*heightreduce;
                     //heightreduce=heightreduce-extraheightreduce;
-
+                    
                 }
             }
         }
@@ -6681,7 +5073,7 @@ void smoothland(planet &world, int amount)
     int v=random(3,6);
     float valuemod2=v;
     
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -6751,110 +5143,110 @@ void smoothland(planet &world, int amount)
 }
 
 /*
-void smoothland(planet &world, int amount)
-{
-    int width=world.width();
-    int height=world.height();
-    int sealevel=world.sealevel();
-    float maxelev=world.maxelevation();
-    float seaamount=amount*3;
-    float div=maxelev/seaamount;
-    
-    int grain=8; // Level of detail on this fractal map.
-    float valuemod=0.2;
-    int v=random(3,6);
-    float valuemod2=v;
-    
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            fractal[i][j]=0;
-    }
-    
-    createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
-
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            int crount=0;
-            int ave=0;
-            int origland=0;
-            int thisamount=amount;
-            
-            if (world.sea(i,j)==0) // Check to see whether this point is originally land or sea
-                origland=1;
-            else
-                thisamount=fractal[i][j]/div;
-            
-            if (thisamount<1)
-                thisamount=1;
-            
-            bool goahead=1;
-            
-            if (world.coast(i,j)==1)
-                goahead=0;
-
-            if (goahead==1)
-            {
-                if (world.sea(i,j)==0)
-                {
-                    for (int k=i-thisamount; k<=i+thisamount; k++)
-                    {
-                        int kk=k;
-                        
-                        if (kk<0 || kk>width)
-                            kk=wrap(kk,width);
-                        
-                        for (int l=j-thisamount; l<=j+thisamount; l++)
-                        {
-                            if (l>0 && l<height && world.sea(kk,l)==0)
-                            {
-                                ave=ave+world.nom(kk,l);
-                                crount++;
-                            }
-                        }
-                    }
-                    
-                    if (crount>0)
-                    {
-                        ave=ave/crount;
-                        world.setnom(i,j,ave);
-                    }
-                }
-                else
-                {
-                    for (int k=i-thisamount; k<=i+thisamount; k++)
-                    {
-                        int kk=k;
-                        
-                        if (kk<0 || kk>width)
-                            kk=wrap(kk,width);
-                        
-                        for (int l=j-thisamount; l<=j+thisamount; l++)
-                        {
-                            if (l>0 && l<height && world.sea(kk,l)==1 && world.coast(kk,l)==0)
-                            {
-                                ave=ave+world.nom(kk,l);
-                                crount++;
-                            }
-                        }
-                    }
-                    
-                    if (crount>0)
-                    {
-                        ave=ave/crount;
-                        world.setnom(i,j,ave);
-                    }
-                }
-            }
-        }
-    }
-}
-*/
+ void smoothland(planet &world, int amount)
+ {
+ int width=world.width();
+ int height=world.height();
+ int sealevel=world.sealevel();
+ float maxelev=world.maxelevation();
+ float seaamount=amount*3;
+ float div=maxelev/seaamount;
  
+ int grain=8; // Level of detail on this fractal map.
+ float valuemod=0.2;
+ int v=random(3,6);
+ float valuemod2=v;
+ 
+ vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+ 
+ for (int i=0; i<=width; i++)
+ {
+ for (int j=0; j<=height; j++)
+ fractal[i][j]=0;
+ }
+ 
+ createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
+ 
+ for (int i=0; i<=width; i++)
+ {
+ for (int j=0; j<=height; j++)
+ {
+ int crount=0;
+ int ave=0;
+ int origland=0;
+ int thisamount=amount;
+ 
+ if (world.sea(i,j)==0) // Check to see whether this point is originally land or sea
+ origland=1;
+ else
+ thisamount=fractal[i][j]/div;
+ 
+ if (thisamount<1)
+ thisamount=1;
+ 
+ bool goahead=1;
+ 
+ if (world.coast(i,j)==1)
+ goahead=0;
+ 
+ if (goahead==1)
+ {
+ if (world.sea(i,j)==0)
+ {
+ for (int k=i-thisamount; k<=i+thisamount; k++)
+ {
+ int kk=k;
+ 
+ if (kk<0 || kk>width)
+ kk=wrap(kk,width);
+ 
+ for (int l=j-thisamount; l<=j+thisamount; l++)
+ {
+ if (l>0 && l<height && world.sea(kk,l)==0)
+ {
+ ave=ave+world.nom(kk,l);
+ crount++;
+ }
+ }
+ }
+ 
+ if (crount>0)
+ {
+ ave=ave/crount;
+ world.setnom(i,j,ave);
+ }
+ }
+ else
+ {
+ for (int k=i-thisamount; k<=i+thisamount; k++)
+ {
+ int kk=k;
+ 
+ if (kk<0 || kk>width)
+ kk=wrap(kk,width);
+ 
+ for (int l=j-thisamount; l<=j+thisamount; l++)
+ {
+ if (l>0 && l<height && world.sea(kk,l)==1 && world.coast(kk,l)==0)
+ {
+ ave=ave+world.nom(kk,l);
+ crount++;
+ }
+ }
+ }
+ 
+ if (crount>0)
+ {
+ ave=ave/crount;
+ world.setnom(i,j,ave);
+ }
+ }
+ }
+ }
+ }
+ }
+ */
+
 // This function creates areas of raised elevation around where canyons might form later.
 
 void createextraelev(planet &world)
@@ -6862,13 +5254,15 @@ void createextraelev(planet &world)
     int width=world.width();
     int height=world.height();
     
-    vector<vector<int>> tempelev(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> tempelev(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             tempelev[i][j]=0;
     }
+    */
     
     float maxextra=1000; // Maximum amount that the extraelev array can have.
     float maxelev=world.maxelevation();
@@ -7233,7 +5627,7 @@ void depressionfill(planet &world)
     neighbours[7][0]=-1;
     neighbours[7][1]=-1;
     
-    vector<vector<int>> noise(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will contain noise that allows us to vary the value of e from tile to tile.
+    vector<vector<int>> noise(ARRAYWIDTH,vector<int>(ARRAYWIDTH,0)); // This will contain noise that allows us to vary the value of e from tile to tile.
     
     for (int i=0; i<=width; i++)
     {
@@ -7241,7 +5635,7 @@ void depressionfill(planet &world)
             noise[i][j]=random(0,5);
     }
     
-    vector<vector<int>> filledmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will be the new version of the map.
+    vector<vector<int>> filledmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,0)); // This will be the new version of the map.
     
     for (int i=0; i<=width; i++) // First, fill the new map to a huge height.
     {
@@ -7286,7 +5680,11 @@ void depressionfill(planet &world)
     
     // Now we're ready to start!
     
-    sf::Vector2i lowest(0,0);
+    twointegers lowest;
+    
+    lowest.x=0;
+    lowest.y=0;
+
     bool somethingdone=0;
     
     do
@@ -7453,7 +5851,7 @@ void seadepressionfill(planet &world, vector<vector<bool>> &shelves)
     neighbours[7][0]=-1;
     neighbours[7][1]=-1;
     
-    vector<vector<int>> noise(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will contain noise that allows us to vary the value of e from tile to tile.
+    vector<vector<int>> noise(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will contain noise that allows us to vary the value of e from tile to tile.
     
     for (int i=0; i<=width; i++)
     {
@@ -7461,7 +5859,7 @@ void seadepressionfill(planet &world, vector<vector<bool>> &shelves)
             noise[i][j]=random(0,5);
     }
     
-    vector<vector<int>> filledmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will be the new version of the map.
+    vector<vector<int>> filledmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will be the new version of the map.
     
     for (int i=0; i<=width; i++) // First, fill the new map to a huge height.
     {
@@ -7510,7 +5908,11 @@ void seadepressionfill(planet &world, vector<vector<bool>> &shelves)
         filledmap[i][height]=world.nom(i,height);
     }
     
-    sf::Vector2i lowest(0,0);
+    twointegers lowest;
+    
+    lowest.x=0;
+    lowest.y=0;
+
     bool somethingdone=0;
     
     do
@@ -7691,12 +6093,15 @@ bool checkdepressiontile(planet &world, vector<vector<int>> &filledmap, int i, i
 
 // This function finds the lowest neighbouring point on the filledmap.
 
-sf::Vector2i lowestfill(planet &world, vector<vector<int>> &filledmap, int x, int y, int neighbours[8][2])
+twointegers lowestfill(planet &world, vector<vector<int>> &filledmap, int x, int y, int neighbours[8][2])
 {
     int width=world.width();
     int height=world.height();
     
-    sf::Vector2i lowest(-1,-1);
+    twointegers lowest;
+    
+    lowest.x=-1;
+    lowest.y=-1;
     
     int lowestheight=world.maxelevation()*3;
     
@@ -7732,7 +6137,10 @@ void dryupwardcell(planet &world, vector<vector<int>> &filledmap, int x, int y, 
     int height=world.height();
     int maxelev=world.maxelevation();
     
-    sf::Vector2i lowest(-1,-1);
+    twointegers lowest;
+    
+    lowest.x=-1;
+    lowest.y=-1;
     
     int start=random(0,7);
     
@@ -7815,7 +6223,7 @@ void lowercoasts(planet &world)
     int height=world.height();
     int sealevel=world.sealevel();
     
-    vector<vector<int>> loweredland(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> loweredland(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     for (int i=0; i<=width; i++)
     {
@@ -7974,13 +6382,15 @@ void normalisecoasts(planet &world, int landheight, int seadepth, int severity)
     
     // Now we need to smooth the seabeds around them.
     
-    vector<vector<bool>> done(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
-
+    vector<vector<bool>> done(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
+    
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
             done[i][j]=0;
     }
+    */
     
     int amount=2;
     int amount2=2;
@@ -8136,7 +6546,7 @@ void checkislands(planet &world)
                 if (crount==0) // This is a one-tile island!
                 {
                     world.setisland(i,j,1);
-
+                    
                     for (int k=i-1; k<=i+1; k++)
                     {
                         int kk=k;
@@ -8180,46 +6590,46 @@ void checkislands(planet &world)
                         world.setvolcano(i,j,volcano);
                         
                         /*
-                        world.setvolcano(i,j,volcano);
-                        world.setnom(i,j,sealevel+random(5,20));
-                        
-                        if (random(1,3)==1) // Maybe make a bigger island here.
-                        {
-                            for (int k=i-1; k<=i+1; k++)
-                            {
-                                int kk=k;
-                                
-                                if (kk<0 || kk>width)
-                                    kk=wrap(kk,width);
-                                
-                                for (int l=j-1; l<=j+1; l++)
-                                {
-                                    if (l>=0 && l<=height)
-                                    {
-                                        if (random(1,2)==1)
-                                        {
-                                            world.setnom(kk,l,sealevel+random(5,20));
-                                            
-                                            if (world.volcano(kk,l)==0 && random(1,2)==1) // Maybe put an extinct volcano here!
-                                            {
-                                                int newvolcano=world.volcano(i,j)+randomsign(random(1,100));
-                                                
-                                                if (newvolcano>0)
-                                                    newvolcano=0-newvolcano;
-                                                
-                                                world.setvolcano(kk,l,newvolcano);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            world.setisland(i,j,1);
-                            world.setmountainisland(i,j,1);
-                        }
-                        */
+                         world.setvolcano(i,j,volcano);
+                         world.setnom(i,j,sealevel+random(5,20));
+                         
+                         if (random(1,3)==1) // Maybe make a bigger island here.
+                         {
+                         for (int k=i-1; k<=i+1; k++)
+                         {
+                         int kk=k;
+                         
+                         if (kk<0 || kk>width)
+                         kk=wrap(kk,width);
+                         
+                         for (int l=j-1; l<=j+1; l++)
+                         {
+                         if (l>=0 && l<=height)
+                         {
+                         if (random(1,2)==1)
+                         {
+                         world.setnom(kk,l,sealevel+random(5,20));
+                         
+                         if (world.volcano(kk,l)==0 && random(1,2)==1) // Maybe put an extinct volcano here!
+                         {
+                         int newvolcano=world.volcano(i,j)+randomsign(random(1,100));
+                         
+                         if (newvolcano>0)
+                         newvolcano=0-newvolcano;
+                         
+                         world.setvolcano(kk,l,newvolcano);
+                         }
+                         }
+                         }
+                         }
+                         }
+                         }
+                         else
+                         {
+                         world.setisland(i,j,1);
+                         world.setmountainisland(i,j,1);
+                         }
+                         */
                     }
                 }
             }
@@ -8234,13 +6644,15 @@ void extendnoshade(planet &world)
     int width=world.width();
     int height=world.height();
     
-    vector<vector<bool>> extra(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT)); // This is to mark all cells touching the no-shade ones as themselves no-shade.
+    vector<vector<bool>> extra(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0)); // This is to mark all cells touching the no-shade ones as themselves no-shade.
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=width; j++)
             extra[i][j]=0;
     }
+    */
     
     for (int i=0; i<=width; i++)
     {
@@ -8288,9 +6700,10 @@ void addfjordmountains(planet &world)
     int minmountheight=0; // Ignore mountains lower than this.
     int noglacchance=8; //3; //15; // Chance of making sea mountain ridges in non-glaciated areas (to add occasional rocky peninsulas).
     
-    vector<vector<int>> justadded(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> previouslyadded(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> justadded(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> previouslyadded(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -8299,6 +6712,7 @@ void addfjordmountains(planet &world)
             previouslyadded[i][j]=0;
         }
     }
+    */
     
     for (int n=1; n<=2; n++)
     {
@@ -8415,7 +6829,7 @@ void addfjordmountains(planet &world)
                                 justadded[i][j]=1;
                                 
                                 //if (world.mountainheight(i,j)!=0)
-                                    //world.settest(i,j,world.mountainheight(i,j));
+                                //world.settest(i,j,world.mountainheight(i,j));
                             }
                         }
                     }
@@ -8447,20 +6861,22 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
     
     // First, sort out the outline.
     
-    vector<vector<bool>> outline(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> outline(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=width; j++)
             outline[i][j]=0;
     }
+    */
     
     int grain=8; // Level of detail on this fractal map.
     float valuemod=0.2; //0.4;
     int v=random(3,6);
     float valuemod2=v;
     
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
     
@@ -8469,7 +6885,7 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
     int maxradius=20;
     int raddiv=maxelev/maxradius;
     
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     for (int i=0; i<=width; i++)
     {
@@ -8510,7 +6926,7 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
                     warpdisty=0-(midelev-fractal[warpx][warpy])/warpdiv;
                 
                 int jj=j+warpdisty;
-
+                
                 // ii and jj are the centre of the circle we're drawing. But we want to draw a line from the actual outline to that centre, to ensure that there isn't a gap in the shelf.
                 
                 mm1.x=i;
@@ -8546,7 +6962,7 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
                         outline[x][y]=1;
                     }
                 }
-
+                
                 // Now we can draw a circle.
                 
                 if (ii<0 || ii>width)
@@ -8557,7 +6973,7 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
                 
                 if (jj>height)
                     jj=height;
-
+                
                 int radius=fractal[i][j]/raddiv;
                 
                 for (int x=-radius; x<=radius; x++)
@@ -8581,11 +6997,10 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
             }
         }
     }
-
+    
     // Now, we need a voronoi map.
     
-    vector<vector<short>> voronoi(width+1,vector<short>(width+1,height+1));
-
+    vector<vector<short>> voronoi(width+1,vector<short>(height+1,0));
     
     makeshelvesvoronoi(world,voronoi,outline,pointdist);
     
@@ -8632,13 +7047,15 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
     
     // Now add a circles of shelf to the shelves, to make the edges a bit more varied.
     
-    vector<vector<bool>> circles(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> circles(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=width; j++)
             circles[i][j]=0;
     }
+    */
     
     int circlechance=40;
     int mindist=5; // Minimum distance to non-shelf sea.
@@ -8676,7 +7093,7 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
                 
                 if (nearsea==0)
                 {
-
+                    
                     for (int x=-radius; x<=radius; x++)
                     {
                         int xx=i+x;
@@ -8720,13 +7137,14 @@ void removeshelfgaps(planet &world, vector<vector<bool>> &shelves)
 {
     int width=world.width();
     int height=world.height();
-
+    
     int minseasize=(width*height)/4;
     
-    vector<vector<bool>> checked(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT)); // This array marks which sea areas have already been scanned.
+    vector<vector<bool>> checked(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0)); // This array marks which sea areas have already been scanned.
     
-    vector<vector<int>> area(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This array marks the area of each bit of sea.
+    vector<vector<int>> area(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This array marks the area of each bit of sea.
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -8735,6 +7153,7 @@ void removeshelfgaps(planet &world, vector<vector<bool>> &shelves)
             area[i][j]=0;
         }
     }
+    */
     
     int seax=-1;
     int seay=-1;
@@ -8805,12 +7224,12 @@ int nonshelfareacheck (planet &world, vector<vector<bool>> &shelves, vector<vect
     int row[]={-1,0,0,1};
     int col[]={0,-1,1,0};
     
-    sf::Vector2i node;
+    twointegers node;
     
     node.x=startx;
     node.y=starty;
     
-    queue<sf::Vector2i> q; // Create a queue
+    queue<twointegers> q; // Create a queue
     q.push(node); // Put our starting node into the queue
     
     while (q.empty()!=1) // Keep going while there's anything left in the queue
@@ -8825,7 +7244,7 @@ int nonshelfareacheck (planet &world, vector<vector<bool>> &shelves, vector<vect
             
             for (int k=0; k<4; k++) // Look at the four neighbouring nodes in turn
             {
-                sf::Vector2i nextnode;
+                twointegers nextnode;
                 
                 nextnode.x=node.x+row[k];
                 nextnode.y=node.y+col[k];
@@ -8858,17 +7277,18 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
     int height=world.height();
     int maxelev=world.maxelevation();
     
-    vector<vector<int>> nearestshelfdist(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> nearestshelfx(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> nearestshelfy(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<bool>> edgepoints(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<bool>> boundaries(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> grid(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> gridnumbers(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> ridges(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> ridgesmap(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> ridgedistances(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> nearestshelfdist(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> nearestshelfx(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,-1));
+    vector<vector<int>> nearestshelfy(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,-1));
+    vector<vector<bool>> edgepoints(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
+    vector<vector<bool>> boundaries(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
+    vector<vector<int>> grid(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> gridnumbers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> ridges(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> ridgesmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> ridgedistances(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=width; j++)
@@ -8885,6 +7305,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
             ridgedistances[i][j]=0;
         }
     }
+    */
     
     // We need a grid of edge points - points where the coastal shelves meet ocean.
     
@@ -8896,7 +7317,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
                 edgepoints[i][j]=1;
         }
     }
-
+    
     // Now we need to go over all the ocean points and work out their closest edge points.
     
     for (int i=0; i<=width; i++) // Every cell that *is* an edge point is closest to itself.
@@ -8959,7 +7380,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
             int d=0;
             int e=height;
             int f=1;
-     
+            
             if (random(1,2)==1)
             {
                 a=width;
@@ -8973,7 +7394,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
                 e=0;
                 f=-1;
             }
-
+            
             for (int i=a; i!=b; i=i+c)
             {
                 for (int j=d; j!=e; j=j+f)
@@ -9072,7 +7493,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
         
         sweep++;
     }
-
+    
     // Now we need to find where the zones meet.
     
     int maxdiff=400; //100; // If neighbouring cells have closest edgepoints that are further away than this, it means they are on the boundary between different zones.
@@ -9275,7 +7696,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
                         k=righti+halfgrid;
                     }
                 }
-
+                
                 
                 if (downj<=height)
                 {
@@ -9296,7 +7717,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
             }
         }
     }
-
+    
     // Now for each point, we know its location, the distance to the closest shelf, and also which points (if any) border it to the N, NE, E, and SE. Now we just offset it a bit.
     
     // First, we want a fractal to offset all points.
@@ -9306,7 +7727,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
     int v=random(3,6);
     float valuemod2=v;
     
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
     
@@ -9381,11 +7802,11 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
         
         if (tosoutheast[thispoint]!=0)
             drawoceanridgeline(world,pointx[thispoint],pointy[thispoint],pointx[tosoutheast[thispoint]],pointy[tosoutheast[thispoint]],ridges,distance[thispoint]);
-
+        
     }
     
     // Now get rid of excess points around the diagonals.
- 
+    
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -9480,15 +7901,15 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
                 }
             }
         }
-
+        
     } while (found==1);
     
     // Now raise the land around the ridges.
     
     int maxradius=70;//50; // The bigger this is, the wider the ridge areas will be.
     int heightmult=6; // The bigger this is, the higher the ridge areas will be.
-    int maxvolcanoradius=6; // Volcanos can't be further than this from the central ridge.
-
+    int maxvolcanoradius=6; // Volcanoes can't be further than this from the central ridge.
+    
     for (int i=0; i<=width; i++) // First, the ridges.
     {
         for (int j=0; j<=height; j++)
@@ -9543,7 +7964,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
     
     maxradius=50; // The bigger this is, the wider the ridge areas will be.
     heightmult=6; // The bigger this is, the higher the ridge areas will be.
-
+    
     for (int i=0; i<=width; i++) // Now add some more for just the land.
     {
         for (int j=0; j<=height; j++)
@@ -9586,7 +8007,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
             }
         }
     }
-
+    
     // Add the rift in the middle
     
     for (int i=0; i<=width; i++)
@@ -9620,7 +8041,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
     
     // Now we need to go through every rift cell, and work out the angle of the line that would cross it at right angles.
     
-    vector<vector<bool>> checked(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> checked(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
     
     short dist=3; // Go this far away from the point in question in each direction.
     
@@ -9649,7 +8070,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
                 }
                 
                 // Now go along the line twice - once in each direction.
-
+                
                 for (int dir=1; dir<=2; dir++)
                 {
                     int x=i;
@@ -9714,7 +8135,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
             }
         }
     }
-
+    
     // Mark out the ridge mountains, following the contours of the raised land
     
     for (int i=0; i<=width; i++)
@@ -9764,7 +8185,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
                 
                 if (ii>width)
                     ii=0;
-
+                
                 if (ridgedistances[ii][jj]==ridgedistances[i][j])
                 {
                     if (getoceanridge(world,i,j,dir)==0)
@@ -9865,7 +8286,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
             }
         }
     }
-
+    
     // Now remove extraneous ridges
     
     for (int i=0; i<=width; i++)
@@ -9909,7 +8330,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
             }
         }
     }
-
+    
     // Now we'll make a fractal. This will be used to displace the ridges in the regional map.
     
     int maxdisplace=16; // Maximum displacement of the ridges in the regional map.
@@ -9918,7 +8339,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
     valuemod=4.0;;
     valuemod2=8;
     
-    vector<vector<int>> ridgefractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> ridgefractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     createfractal(ridgefractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
     
@@ -9944,7 +8365,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
     }
     
     
-
+    
     // Now we need to disrupt the rifts by adding some faults.
     
     for (int n=1; n<=4; n++)
@@ -10004,7 +8425,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
         }
     }
     
-
+    
     
     // Remove any ridge-related stuff that's on continental plates
     
@@ -10023,7 +8444,7 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
             }
         }
     }
-
+    
     // Draw the raised land onto the actual sea bed
     
     for (int i=0; i<=width; i++)
@@ -10082,11 +8503,11 @@ void drawoceanridgeline(planet &world, int fromx, int fromy, int tox, int toy, v
     
     int minvar=2;
     int maxvar=distance/8;
-
+    
     if (maxvar<3)
         maxvar=3;
     
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     mm1.x=fromx;
     mm1.y=fromy;
@@ -10206,7 +8627,7 @@ void createoceanfault(planet &world, int midx, int midy, int mindist, int maxdis
             y2=y;
         }
     }
-
+    
     // Now we need to find the coordinates of the four corners of the area to be moved.
     
     int length=70; //100; // Distance to go out from the central rift.
@@ -10331,13 +8752,15 @@ void createoceanfault(planet &world, int midx, int midy, int mindist, int maxdis
     
     // Now we need to create a mask of this area.
     
-    vector<vector<bool>> mask(masksize+1,vector<bool>(masksize+1,masksize+1));
+    vector<vector<bool>> mask(masksize+1,vector<bool>(masksize+1,0));
     
+    /*
     for (int i=0; i<=masksize; i++)
     {
         for (int j=0; j<=masksize; j++)
             mask[i][j]=0;
     }
+    */
     
     // To convert coordinates from the map to the mask, add the offsets.
     // To convert them from the mask to the map, subtract the offsets.
@@ -10532,12 +8955,12 @@ void createoceanfault(planet &world, int midx, int midy, int mindist, int maxdis
     
     // Now we need to record all of the ridge information for this area
     
-    vector<vector<int>> oldridgesmap(masksize+1,vector<int>(masksize+1,masksize+1));
-    vector<vector<int>> oldoceanrifts(masksize+1,vector<int>(masksize+1,masksize+1));
-    vector<vector<int>> oldoceanridges(masksize+1,vector<int>(masksize+1,masksize+1));
-    vector<vector<int>> oldoceanridgeheights(masksize+1,vector<int>(masksize+1,masksize+1));
-    vector<vector<int>> oldoceanridgeangle(masksize+1,vector<int>(masksize+1,masksize+1));
-    vector<vector<int>> oldoceanridgeoffset(masksize+1,vector<int>(masksize+1,masksize+1));
+    vector<vector<int>> oldridgesmap(masksize+1,vector<int>(masksize+1,0));
+    vector<vector<int>> oldoceanrifts(masksize+1,vector<int>(masksize+1,0));
+    vector<vector<int>> oldoceanridges(masksize+1,vector<int>(masksize+1,0));
+    vector<vector<int>> oldoceanridgeheights(masksize+1,vector<int>(masksize+1,0));
+    vector<vector<int>> oldoceanridgeangle(masksize+1,vector<int>(masksize+1,0));
+    vector<vector<int>> oldoceanridgeoffset(masksize+1,vector<int>(masksize+1,0));
     
     for (int i=0; i<=masksize; i++)
     {
@@ -10590,7 +9013,7 @@ void createoceanfault(planet &world, int midx, int midy, int mindist, int maxdis
     int yshift=(shiftdist*cos(fangle));
     
     // Now we rewrite all that information, offset by the new shift values.
-
+    
     for (int i=0; i<=masksize; i++)
     {
         int iii=i-offsetx+xshift;
@@ -10632,9 +9055,10 @@ void createoceantrenches(planet &world, vector<vector<bool>> &shelves)
     
     int div=(maxelev-trenchmin)/maxradius;
     
-    vector<vector<bool>> trenchmap(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> trenchmap(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
+    vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -10643,7 +9067,8 @@ void createoceantrenches(planet &world, vector<vector<bool>> &shelves)
             fractal[i][j]=0;
         }
     }
-
+    */
+    
     int grain=4; // Level of detail on this fractal map.
     float valuemod=0.01;
     int v=1; //random(3,6);
@@ -10716,13 +9141,14 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
     int height=world.height();
     int maxelev=world.maxelevation();
     
-    vector<vector<int>> extraraw(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will hold extra raw ridges that we add near the start.
-    vector<vector<int>> mountaindist(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This holds the proximity to the central peaks (the higher the value, the closer it is).
-    vector<vector<int>> mountainbaseheight(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This holds the height that this peak will be (to start with, it's just recorded as the same as the central peak that it's measured from).
-    vector<vector<bool>> timesten(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT)); // This records whether the ridge distance has been multiplied by ten (this is done so that the ridges on either side of the main ridge don't join up with each other).
-    vector<vector<int>> mountainridges(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    vector<vector<int>> mountainheights(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // These two are the same as the world mountain ridges/heights arrays, but we'll do everything on these first and then copy them over.
+    vector<vector<int>> extraraw(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will hold extra raw ridges that we add near the start.
+    vector<vector<int>> mountaindist(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This holds the proximity to the central peaks (the higher the value, the closer it is).
+    vector<vector<int>> mountainbaseheight(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This holds the height that this peak will be (to start with, it's just recorded as the same as the central peak that it's measured from).
+    vector<vector<bool>> timesten(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0)); // This records whether the ridge distance has been multiplied by ten (this is done so that the ridges on either side of the main ridge don't join up with each other).
+    vector<vector<int>> mountainridges(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+    vector<vector<int>> mountainheights(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // These two are the same as the world mountain ridges/heights arrays, but we'll do everything on these first and then copy them over.
     
+    /*
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -10735,13 +9161,14 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
             mountainheights[i][j]=0;
         }
     }
+    */
     
     int grain=256;
     float valuemod=8;
     int v=random(3,6);
     float valuemod2=v;
     
-    vector<vector<int>> heightsfractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will vary the heights of the peaks in the subsidiary ridges.
+    vector<vector<int>> heightsfractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will vary the heights of the peaks in the subsidiary ridges.
     createfractal(heightsfractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
     
     grain=16;
@@ -10749,7 +9176,7 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
     v=random(3,6);
     valuemod2=v;
     
-    vector<vector<int>> radiusfractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT)); // This will vary the effective radius of each mountain point.
+    vector<vector<int>> radiusfractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will vary the effective radius of each mountain point.
     createfractal(radiusfractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
     
     float maxradius=6; // 10; // The bigger this is, the wider the mountain ranges will be.
@@ -10799,7 +9226,7 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
                     rawmountains[i][jj]=0;
                 
                 jj=j-1;
-
+                
                 if (rawmountains[iright][j]!=0 && rawmountains[ileft][j]!=0)
                     rawmountains[i][jj]=0;
             }
@@ -11275,7 +9702,7 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
             
             if (thismountaindist<maxradius-2)
                 thismountaindist=thismountaindist*0.8;
-
+            
             float distmult=radiusfractal[i][j];
             distmult=distmult*heightmult2;
             
@@ -11284,7 +9711,7 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
             
             if (thismountaindist>2)
                 thismountaindist=thismountaindist*distmult;
-
+            
             thisheight=thisheight*thismountaindist*heightmult;
             
             float thisheightmult=heightsfractal[i][j]; // This is to vary it using the fractal
@@ -11456,168 +9883,168 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
     }
     
     {
-    /*
-    // Now add in the main, central ridge.
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=1; j<height; j++)
-        {
-            if (rawmountains[i][j]!=0)
-            {
-                mountainheights[i][j]=rawmountains[i][j];
-                
-                int dir, ii, jj;
-                
-                // Looking north
-                
-                dir=1;
-                ii=i;
-                jj=j-1;
-                
-                if (rawmountains[ii][jj]!=0)
-                {
-                    if (getridge(mountainridges,i,j,dir)==0)
-                    {
-                        int code=getcode(dir);
-                        mountainridges[i][j]=mountainridges[i][j]+code;
-                    }
-                    
-                }
-                
-                // Looking northeast
-                
-                dir=2;
-                ii=i+1;
-                jj=j-1;
-                
-                if (ii<0 || ii>width)
-                    ii=wrap(ii,width);
-                
-                if (rawmountains[ii][jj]!=0)
-                {
-                    if (getridge(mountainridges,i,j,dir)==0)
-                    {
-                        int code=getcode(dir);
-                        mountainridges[i][j]=mountainridges[i][j]+code;
-                    }
-                    
-                }
-                
-                // Looking east
-                
-                dir=3;
-                ii=i+1;
-                jj=j;
-                
-                if (ii<0 || ii>width)
-                    ii=wrap(ii,width);
-                
-                if (rawmountains[ii][jj]!=0)
-                {
-                    if (getridge(mountainridges,i,j,dir)==0)
-                    {
-                        int code=getcode(dir);
-                        mountainridges[i][j]=mountainridges[i][j]+code;
-                    }
-                    
-                }
-                
-                // Looking southeast
-                
-                dir=4;
-                ii=i+1;
-                jj=j+1;
-                
-                if (ii<0 || ii>width)
-                    ii=wrap(ii,width);
-                
-                if (rawmountains[ii][jj]!=0)
-                {
-                    if (getridge(mountainridges,i,j,dir)==0)
-                    {
-                        int code=getcode(dir);
-                        mountainridges[i][j]=mountainridges[i][j]+code;
-                    }
-                    
-                }
-                
-                // Looking south
-                
-                dir=5;
-                ii=i;
-                jj=j+1;
-                
-                if (rawmountains[ii][jj]!=0)
-                {
-                    if (getridge(mountainridges,i,j,dir)==0)
-                    {
-                        int code=getcode(dir);
-                        mountainridges[i][j]=mountainridges[i][j]+code;
-                    }
-                    
-                }
-                
-                // Looking southwest
-                
-                dir=6;
-                ii=i-1;
-                jj=j+1;
-                
-                if (ii<0 || ii>width)
-                    ii=wrap(ii,width);
-                
-                if (rawmountains[ii][jj]!=0)
-                {
-                    if (getridge(mountainridges,i,j,dir)==0)
-                    {
-                        int code=getcode(dir);
-                        mountainridges[i][j]=mountainridges[i][j]+code;
-                    }
-                    
-                }
-                
-                // Looking west
-                
-                dir=7;
-                ii=i-1;
-                jj=j;
-                
-                if (ii<0 || ii>width)
-                    ii=wrap(ii,width);
-                
-                if (rawmountains[ii][jj]!=0)
-                {
-                    if (getridge(mountainridges,i,j,dir)==0)
-                    {
-                        int code=getcode(dir);
-                        mountainridges[i][j]=mountainridges[i][j]+code;
-                    }
-                    
-                }
-                
-                // Looking northwest
-                
-                dir=8;
-                ii=i-1;
-                jj=j-1;
-                
-                if (ii<0 || ii>width)
-                    ii=wrap(ii,width);
-                
-                if (rawmountains[ii][jj]!=0)
-                {
-                    if (getridge(mountainridges,i,j,dir)==0)
-                    {
-                        int code=getcode(dir);
-                        mountainridges[i][j]=mountainridges[i][j]+code;
-                    }
-                    
-                }
-            }
-        }
-    }
-    */
+        /*
+         // Now add in the main, central ridge.
+         
+         for (int i=0; i<=width; i++)
+         {
+         for (int j=1; j<height; j++)
+         {
+         if (rawmountains[i][j]!=0)
+         {
+         mountainheights[i][j]=rawmountains[i][j];
+         
+         int dir, ii, jj;
+         
+         // Looking north
+         
+         dir=1;
+         ii=i;
+         jj=j-1;
+         
+         if (rawmountains[ii][jj]!=0)
+         {
+         if (getridge(mountainridges,i,j,dir)==0)
+         {
+         int code=getcode(dir);
+         mountainridges[i][j]=mountainridges[i][j]+code;
+         }
+         
+         }
+         
+         // Looking northeast
+         
+         dir=2;
+         ii=i+1;
+         jj=j-1;
+         
+         if (ii<0 || ii>width)
+         ii=wrap(ii,width);
+         
+         if (rawmountains[ii][jj]!=0)
+         {
+         if (getridge(mountainridges,i,j,dir)==0)
+         {
+         int code=getcode(dir);
+         mountainridges[i][j]=mountainridges[i][j]+code;
+         }
+         
+         }
+         
+         // Looking east
+         
+         dir=3;
+         ii=i+1;
+         jj=j;
+         
+         if (ii<0 || ii>width)
+         ii=wrap(ii,width);
+         
+         if (rawmountains[ii][jj]!=0)
+         {
+         if (getridge(mountainridges,i,j,dir)==0)
+         {
+         int code=getcode(dir);
+         mountainridges[i][j]=mountainridges[i][j]+code;
+         }
+         
+         }
+         
+         // Looking southeast
+         
+         dir=4;
+         ii=i+1;
+         jj=j+1;
+         
+         if (ii<0 || ii>width)
+         ii=wrap(ii,width);
+         
+         if (rawmountains[ii][jj]!=0)
+         {
+         if (getridge(mountainridges,i,j,dir)==0)
+         {
+         int code=getcode(dir);
+         mountainridges[i][j]=mountainridges[i][j]+code;
+         }
+         
+         }
+         
+         // Looking south
+         
+         dir=5;
+         ii=i;
+         jj=j+1;
+         
+         if (rawmountains[ii][jj]!=0)
+         {
+         if (getridge(mountainridges,i,j,dir)==0)
+         {
+         int code=getcode(dir);
+         mountainridges[i][j]=mountainridges[i][j]+code;
+         }
+         
+         }
+         
+         // Looking southwest
+         
+         dir=6;
+         ii=i-1;
+         jj=j+1;
+         
+         if (ii<0 || ii>width)
+         ii=wrap(ii,width);
+         
+         if (rawmountains[ii][jj]!=0)
+         {
+         if (getridge(mountainridges,i,j,dir)==0)
+         {
+         int code=getcode(dir);
+         mountainridges[i][j]=mountainridges[i][j]+code;
+         }
+         
+         }
+         
+         // Looking west
+         
+         dir=7;
+         ii=i-1;
+         jj=j;
+         
+         if (ii<0 || ii>width)
+         ii=wrap(ii,width);
+         
+         if (rawmountains[ii][jj]!=0)
+         {
+         if (getridge(mountainridges,i,j,dir)==0)
+         {
+         int code=getcode(dir);
+         mountainridges[i][j]=mountainridges[i][j]+code;
+         }
+         
+         }
+         
+         // Looking northwest
+         
+         dir=8;
+         ii=i-1;
+         jj=j-1;
+         
+         if (ii<0 || ii>width)
+         ii=wrap(ii,width);
+         
+         if (rawmountains[ii][jj]!=0)
+         {
+         if (getridge(mountainridges,i,j,dir)==0)
+         {
+         int code=getcode(dir);
+         mountainridges[i][j]=mountainridges[i][j]+code;
+         }
+         
+         }
+         }
+         }
+         }
+         */
     }
     
     // Now we want to add some variation to the ridge directions.
@@ -11775,53 +10202,53 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
             }
         }
     }
-
-    /*
-    // Now remove extraneous ridges.
     
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (mountainridges[i][j]!=0)
-            {
-                short total=0;
-                
-                for (int dir=1; dir<=8; dir++)
-                {
-                    if (getridge(mountainridges,i,j,dir)==1)
-                        total++;
-                }
-                
-                if (total>3)
-                {
-                    int extra=total-3;
-                    
-                    for (int n=1; n<=extra; n++)
-                    {
-                        int a=1;
-                        int b=8;
-                        int c=1;
-                        
-                        if (random(1,2)==1)
-                        {
-                            a=8;
-                            b=1;
-                            c=-1;
-                        }
-                        
-                        for (int dir=a; dir!=b; dir=dir+c)
-                        {
-                            if (getridge(mountainridges,i,j,dir)==1)
-                                deleteridge(world,mountainridges,mountainheights,i,j,dir);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    */
-
+    /*
+     // Now remove extraneous ridges.
+     
+     for (int i=0; i<=width; i++)
+     {
+     for (int j=0; j<=height; j++)
+     {
+     if (mountainridges[i][j]!=0)
+     {
+     short total=0;
+     
+     for (int dir=1; dir<=8; dir++)
+     {
+     if (getridge(mountainridges,i,j,dir)==1)
+     total++;
+     }
+     
+     if (total>3)
+     {
+     int extra=total-3;
+     
+     for (int n=1; n<=extra; n++)
+     {
+     int a=1;
+     int b=8;
+     int c=1;
+     
+     if (random(1,2)==1)
+     {
+     a=8;
+     b=1;
+     c=-1;
+     }
+     
+     for (int dir=a; dir!=b; dir=dir+c)
+     {
+     if (getridge(mountainridges,i,j,dir)==1)
+     deleteridge(world,mountainridges,mountainheights,i,j,dir);
+     }
+     }
+     }
+     }
+     }
+     }
+     */
+    
     
     // Now apply the new mountain heights and ridges to the world.
     
@@ -11836,7 +10263,7 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
             }
         }
     }
-
+    
     removefloatingmountains(world);
     cleanmountainridges(world);
 }
@@ -11859,7 +10286,7 @@ void makearchipelagos(planet &world, vector<vector<bool>> &removedland, boolshap
     float valuemod=0.05;
     float valuemod2=valuemod;
     
-    vector<vector<int>> islandfractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<int>> islandfractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
     createfractal(islandfractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
     
@@ -11960,7 +10387,7 @@ void makemountainisland(planet &world, int x, int y, int peakheight)
         
         if (xx<0 || xx>width)
             xx=wrap(xx,width);
-
+        
         if (world.mountainheight(x,y)<peakheight)
             world.setmountainheight(x,y,peakheight);
         
@@ -11994,7 +10421,7 @@ void makemountainisland(planet &world, int x, int y, int peakheight)
                     world.setmountainisland(i,j,1);
             }
         }
-
+        
         if (world.nom(x,y)<landheight)
             world.setnom(x,y,landheight);
         
@@ -12044,7 +10471,7 @@ void createisolatedvolcano(planet &world, int x, int y, vector<vector<bool>> &sh
     
     int shelfcheck=5;
     
-    if (world.sea(x,y)==1) // Don't do any submarine volcanos near continental shelves.
+    if (world.sea(x,y)==1) // Don't do any submarine volcanoes near continental shelves.
     {
         for (int i=x-shelfcheck; i<=x+shelfcheck; i++)
         {
@@ -12072,7 +10499,7 @@ void createisolatedvolcano(planet &world, int x, int y, vector<vector<bool>> &sh
     {
         if (world.sea(x,y)==1)
         {
-            for (int i=x-1; i<=x+1; i++) // No shading around undersea volcanos.
+            for (int i=x-1; i<=x+1; i++) // No shading around undersea volcanoes.
             {
                 int ii=i;
                 
@@ -12096,7 +10523,7 @@ void createisolatedvolcano(planet &world, int x, int y, vector<vector<bool>> &sh
         if (active==0)
             thispeakheight=0-peakheight;
         
-        for (int i=x-1; i<=x+1; i++) // Remove any volcanos immediately around
+        for (int i=x-1; i<=x+1; i++) // Remove any volcanoes immediately around
         {
             int ii=i;
             
@@ -12140,7 +10567,7 @@ void createisolatedvolcano(planet &world, int x, int y, vector<vector<bool>> &sh
         if (y<0 || y>height)
             return;
         
-        if (world.sea(x,y)==1) // Don't do any submarine volcanos near continental shelves.
+        if (world.sea(x,y)==1) // Don't do any submarine volcanoes near continental shelves.
         {
             for (int i=x-shelfcheck; i<=x+shelfcheck; i++)
             {

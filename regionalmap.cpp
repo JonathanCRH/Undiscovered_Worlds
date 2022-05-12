@@ -3,7 +3,7 @@
 //  Undiscovered Worlds
 //
 //  Created by Jonathan Hill on 01/11/2019.
-//  
+//
 //  Please see functions.hpp for notes.
 
 #include <iostream>
@@ -12,2392 +12,22 @@
 #include <stdio.h>
 //#include <unistd.h>
 #include <queue>
-#include <SFML/Graphics.hpp>
-#include <nanogui/nanogui.h>
+//#include <SFML/Graphics.hpp>
+//#include <nanogui/nanogui.h>
 
 #include "classes.hpp"
 #include "planet.hpp"
 #include "region.hpp"
 #include "functions.hpp"
 
-#define REGIONALTILEWIDTH 32
+#define REGIONALTILEWIDTH 32 // Height and width of the regional map measured in tiles
 #define REGIONALTILEHEIGHT 32
-
-// This function creates the region.
-
-void generateregionalmap(planet &world, region &region, nanogui::Screen &screen, nanogui::ProgressBar &regionprogress, float progressstep, vector<vector<vector<int>>> &circletemplates, boolshapetemplate smalllake[], boolshapetemplate island[], peaktemplate &peaks, vector<vector<float>> &riftblob, int riftblobsize, int partial, byteshapetemplate smudge[], byteshapetemplate smallsmudge[])
-{
-    int xleft=0;
-    int xright=35;
-    int ytop=0;
-    int ybottom=35;
-    
-    if (partial==7)
-        xright=2+STRIPWIDTH;
-    
-    int xstart=xleft*16;
-    int xend=xright*16+16;
-    int ystart=ytop*16;
-    int yend=ybottom*16+16; // These define the actual area of the regional map that we're creating (with some margin).
-    
-    int leftx=region.leftx();
-    int lefty=region.lefty(); // These mark the upper left corner of the part of the global map we're expanding on.
-    
-    int width=world.width();
-    int height=world.height();
-    int sealevel=world.sealevel();
-    int maxelev=world.maxelevation();
-    
-    int rwidth=region.rwidth();
-    int rheight=region.rheight();
-
-    if (leftx<0 || leftx>width)
-    {
-        leftx=wrap(leftx,width);
-        region.setleftx(leftx);
-    }
-    
-    if (partial==0)
-        region.clear();
-    
-    vector<vector<bool>> safesaltlakes(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
-    vector<vector<int>> rriverscarved(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> fakesourcex(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> fakesourcey(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> rmountainmap(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> pathchecked(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<bool>> riverinlets(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
-    vector<vector<bool>> lakeislands(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
-    vector<vector<bool>> poolchecked(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
-    vector<vector<bool>> disruptpoints(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
-    vector<vector<bool>> riftlakemap(RARRAYWIDTH*2,vector<bool>(RARRAYHEIGHT*2,0));
-    vector<vector<bool>> lakemap(RARRAYWIDTH*4,vector<bool>(RARRAYHEIGHT*4,0));
-    vector<vector<int>> underseamap(RARRAYWIDTH*4,vector<int>(RARRAYHEIGHT*4,0));
-    vector<vector<bool>> rivercurves(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
-    vector<vector<int>> elevs(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> severities(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> ridgeids(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> nearestridgepointdist(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> nearestridgepointx(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> nearestridgepointy(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<bool>> mountainedges(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
-    vector<vector<bool>> buttresspoints(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
-    vector<vector<int>> underseabeforechannels(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<bool>> undersearidgelines(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
-    vector<vector<int>> undersearidges(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> underseaspikes(RARRAYWIDTH*4,vector<int>(RARRAYHEIGHT*4,0));
-    vector<vector<int>> rotatearray(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    
-    vector<vector<int>> source(ARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> destination(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> wintermountainrain(ARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<int>> summermountainrain(ARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
-    vector<vector<stbi_uc>> wintermountainraindir(ARRAYWIDTH,vector<stbi_uc>(RARRAYHEIGHT,0));
-    vector<vector<stbi_uc>> summermountainraindir(ARRAYWIDTH,vector<stbi_uc>(RARRAYHEIGHT,0));
-    
-    for (int i=0; i<RARRAYWIDTH; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT; j++)
-        {
-            safesaltlakes[i][j]=0;
-            rriverscarved[i][j]=0;
-            destination[i][j]=-5000;
-            fakesourcex[i][j]=0;
-            fakesourcey[i][j]=0;
-            rmountainmap[i][j]=0;
-            pathchecked[i][j]=0;
-            riverinlets[i][j]=0;
-            lakeislands[i][j]=0;
-            poolchecked[i][j]=0;
-            rivercurves[i][j]=0;
-            elevs[i][j]=0;
-            severities[i][j]=0;
-            ridgeids[i][j]=0;
-            nearestridgepointdist[i][j]=0;
-            nearestridgepointx[i][j]=0;
-            nearestridgepointy[i][j]=0;
-            mountainedges[i][j]=0;
-            buttresspoints[i][j]=0;
-            undersearidgelines[i][j]=0;
-            undersearidges[i][j]=0;
-            disruptpoints[i][j]=0;
-            rotatearray[i][j]=0;
-        }
-    }
-    
-    for (int i=0; i<RARRAYWIDTH*2; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT*2; j++)
-            riftlakemap[i][j]=0;
-    }
-    
-    for (int i=0; i<RARRAYWIDTH*4; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT*4; j++)
-        {
-            lakemap[i][j]=0;
-            underseamap[i][j]=0;
-            underseaspikes[i][j]=0;
-        }
-    }
-    
-    for (int i=0; i<ARRAYWIDTH; i++)
-    {
-        for (int j=0; j<ARRAYHEIGHT; j++)
-        {
-            wintermountainrain[i][j]=0;
-            summermountainrain[i][j]=0;
-            wintermountainraindir[i][j]=0;
-            summermountainraindir[i][j]=0;
-        }
-    }
-    
-    int coords[4][2];
-    
-    // Time to make the tiles.
-    
-    // Counter-intuitively, we do the lakes and rivers first. Rivers are drawn at a somewhat lower elevation than the rest of the tile will be. After that, we draw in the rest of the elevation around them. This creates the effect of rivers carving out valleys in the landscape, when in fact the landscape is built around the rivers.
-    
-    // First, sort out the roughness.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            source[i][j]=world.roughness(i,j)*12000;
-    }
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop+1; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            float valuemod=0.1;
-            
-            makegenerictile(world,x*16,y*16,xx,yy,valuemod,coords,source,destination,100000,0,0);
-        }
-    }
-    
-    for (int i=xstart; i<=xend; i++)
-    {
-        for (int j=ystart; j<=yend; j++)
-        {
-            float roughness=destination[i][j];
-            roughness=roughness/15000; // 10000 originally. I changed it because it was sometimes just too rough.
-            
-            if (roughness<0.2) // Because perfect smoothness looks a bit unnatural.
-                roughness=0.2;
-            
-            region.setroughness(i,j,roughness);
-        }
-    }
-    
-    // Now large lakes.
-    
-    int extra=20; // For these, we will create a *bigger* map than the actual regional area. This is so that we can work out the whole coastline of lakes even if only a part of them appears on the regional map. extra is the amount of additional margin to put around the regional map for this.
-    
-    // Start by marking the edges of the lake tiles on this map.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft-extra; x<=xright+extra; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra; y<=ybottom+extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.lakesurface(xx,yy)!=0)
-                marklakeedges(world,region,x*16,y*16,xx,yy,extra,lakemap);
-        }
-    }
-    
-    // Now, turn those edges into borders.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft-extra; x<=xright+extra; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra; y<=ybottom+extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.lakestart(xx,yy)!=0 && world.riftlakesurface(xx,yy)==0)
-                makelaketemplates(world,region,x*16,y*16,xx,yy,extra,lakemap);
-        }
-    }
-    
-    // Now, actually create the lakes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft-extra; x<=xright+extra; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra; y<=ybottom+extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            int surfacelevel=nearlake(world,xx,yy,1,0);
-            
-            if (surfacelevel!=0)
-                makelaketile(world,region,x*16,y*16,xx,yy,extra,lakemap,surfacelevel,coords,source,destination,safesaltlakes,smalllake);
-        }
-    }
-
-    // Check for any diagonal sections in the lake coastlines.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            findlakecoastdiagonals(world,region,x*16,y*16,xx,yy,disruptpoints);
-        }
-    }
-    
-    // Now remove them.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removelakecoastdiagonals(world,region,x*16,y*16,xx,yy,disruptpoints,smalllake);
-        }
-    }
-    
-    for (int i=0; i<RARRAYWIDTH; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT; j++)
-            disruptpoints[i][j]=0;
-    }
-    
-    // Now put islands in those lakes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft-extra; x<=xright+extra; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra; y<=ybottom+extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            int surfacelevel=nearlake(world,xx,yy,1,0);
-            
-            if (surfacelevel!=0)
-                makelakeislands(world,region,x*16,y*16,xx,yy,surfacelevel,island,lakeislands);
-        }
-    }
-    
-    // Now salt pans around salt lakes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            makesaltpantile(world,region,x*16,y*16,xx,yy,smalllake);
-        }
-    }
-    
-    // Now, rivers.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            makerivertile(world,region,x*16,y*16,xx,yy,rriverscarved,smalllake,rivercurves);
-        }
-    }
-    
-    // Now, fill in any missing sections of river.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    fixrivers(world,region,xstart,ystart,xend,yend);
-
-    // Now rift lakes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    extra=10; // For these, we will create a *bigger* map than the actual regional area. This is so that we can work out the whole coastline of lakes even if only a part of them appears on the regional map. extra is the amount of additional margin to put around the regional map for this.
-    
-    for (int x=xleft-extra; x<=xright+extra; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra; y<=ybottom+extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.lakestart(xx,yy)!=0 && world.riftlakesurface(xx,yy)!=0)
-                makeriftlaketemplates(world,region,x*16,y*16,xx,yy,extra,riftlakemap);
-        }
-    }
-    
-    // We've got the templates for the rift lakes. Now go through the map again and create the lakes from the templates.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            makeriftlaketile(world,region,x*16,y*16,xx,yy,extra,riftlakemap,riftblob,riftblobsize);
-        }
-    }
-    
-    // If any rivers inexplicably stop, extend them until they hit sea, lake, or another river.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    finishrivers(world,region,xstart,ystart,xend,yend);
-    
-    // Remove any sections of rivers that flow out of lakes and then back into the same lakes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft+1; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop+1; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removeriverlakeloops(world,region,x*16,y*16,xx,yy,smalllake);
-        }
-    }
-    
-    // Now, expand those rivers to their proper widths.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            expandrivers(world,region,x*16,y*16,xx,yy,circletemplates,0,fakesourcex,fakesourcey);
-        }
-    }
-
-    // Remove weird river elevations.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removeweirdelevations(world,region,x*16,y*16,xx,yy);
-        }
-    }
-    
-    // Only now, surprisingly, do we do basic elevation.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            makeelevationtile(world,region,x*16,y*16,xx,yy,coords,smalllake);
-        }
-    }
-    
-    // Make coastlines on single-tile islands more interesting.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.island(xx,yy)==1)
-                
-                complicatecoastlines(world,region,x*16,y*16,xx,yy,smalllake,8);
-        }
-    }
-    
-    // Check for any diagonal sections in the coastlines.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            findcoastdiagonals(world,region,x*16,y*16,xx,yy,disruptpoints);
-        }
-    }
-    
-    // Now remove them.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removecoastdiagonals(world,region,x*16,y*16,xx,yy,disruptpoints,smalllake);
-        }
-    }
-    
-    // Ensure that delta regions are above sea level.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removedeltasea(world,region,x*16,y*16,xx,yy);
-        }
-    }
-    
-    // Perform rotations on the edges of the tiles, to break up any grid-like artefacts. (This creates the nicely granular texture to many maps, especially in wetter climates.)
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            rotatetileedges(world,region,x*16,y*16,xx,yy,rotatearray,0);
-        }
-    }
-    
-    // Remove awkward straight lines on the elevation map. (Note: This is the function that adds the pretty but probably unrealistic terrace-like texturing to many maps, especially around mountains and deserts.)
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            addterraces(world,region,x*16,y*16,xx,yy,smalllake,smallsmudge);
-        }
-    }
-    
-    // Now ensure that there are no lakes bordering the sea.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removesealakes(world,region,xstart,ystart,xend,yend);
-    
-    // Now, delta branches.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft+1; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop+1; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            makedeltatile(world,region,x*16,y*16,xx,yy,rriverscarved);
-        }
-    }
-    
-    // Now, expand those branches to their proper widths.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            expandrivers(world,region,x*16,y*16,xx,yy,circletemplates,1,fakesourcex,fakesourcey);
-        }
-    }
-    
-    // Now add the delta branches to the normal river map.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    adddeltamap(world,region,xstart,ystart,xend,yend);
-    
-    // Now remove any sinks from the land.
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            //removesinks(world,region,x*16,y*16,xx,yy);
-        }
-    }
-
-    // Now we make the main mountain ridges.
-    
-    int maxridgedist=10;
-    int maxmaxridgedist=maxridgedist*maxridgedist+maxridgedist*maxridgedist;
-    int buttressspacing=14;
-    short markgap=6;
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++) // Wider
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            makemountaintile(world,region,x*16,y*16,xx,yy,peaks,rmountainmap,ridgeids,markgap);
-        }
-    }
-    
-    // Add in shield volcanoes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++) // Wider
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.sea(xx,yy)==0 && world.volcano(xx,yy)!=0 && world.strato(xx,yy)==0)
-            {
-                int templateno=random(1,2);
-                
-                makevolcano(world,region,x*16,y*16,xx,yy,peaks,rmountainmap,ridgeids,templateno);
-            }
-        }
-    }
-
-    // Now we find cells that are close to those ridges.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            assignridgeregions(world,region,x*16,y*16,xx,yy,rmountainmap,ridgeids,nearestridgepointdist,nearestridgepointx,nearestridgepointy,maxridgedist,maxmaxridgedist);
-        }
-    }
-    
-    // Now we find the edges of the mountain ranges.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            findmountainedges(world,region,x*16,y*16,xx,yy,nearestridgepointdist,nearestridgepointx,nearestridgepointy,mountainedges);
-        }
-    }
-    
-    // Now we identify the points where buttresses will end.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            int thisbuttressspacing=buttressspacing;
-            
-            if (world.sea(xx,yy)==1)
-                thisbuttressspacing=thisbuttressspacing*2;
-            
-            findbuttresspoints(world,region,x*16,y*16,xx,yy,ridgeids,nearestridgepointdist,nearestridgepointx,nearestridgepointy,mountainedges,buttresspoints,maxmaxridgedist,thisbuttressspacing);
-        }
-    }
-    
-    // Now we actually do the buttresses.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int i=0; i<=rwidth; i++)
-    {
-        for (int j=0; j<=rheight; j++)
-            ridgeids[i][j]=0;
-    }
-    
-    markgap=4; // This is for marking where we want the mini-buttresses to go to.
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            //if (world.sea(xx,yy)==0)
-                makebuttresses(world,region,x*16,y*16,xx,yy,rmountainmap,peaks,nearestridgepointx,nearestridgepointy,nearestridgepointdist,maxridgedist,buttresspoints,ridgeids,markgap,0);
-        }
-    }
-
-    // Now do all that again for mini-buttresses!
-    
-    for (int i=0; i<=rwidth; i++)
-    {
-        for (int j=0; j<=rheight; j++)
-        {
-            nearestridgepointx[i][j]=0;
-            nearestridgepointy[i][j]=0;
-            nearestridgepointdist[i][j]=0;
-            mountainedges[i][j]=0;
-            buttresspoints[i][j]=0;
-        }
-    }
-    
-    maxridgedist=5;
-    maxmaxridgedist=maxridgedist*maxridgedist+maxridgedist*maxridgedist;
-    buttressspacing=3;
-
-    // Find cells that are close to those buttresses.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            assignridgeregions(world,region,x*16,y*16,xx,yy,rmountainmap,ridgeids,nearestridgepointdist,nearestridgepointx,nearestridgepointy,maxridgedist,maxmaxridgedist);
-        }
-    }
-    
-    // Now we find the edges of the mountain ranges.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            findmountainedges(world,region,x*16,y*16,xx,yy,nearestridgepointdist,nearestridgepointx,nearestridgepointy,mountainedges);
-        }
-    }
-    
-    // Now we identify the points where mini-buttresses will end.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            findbuttresspoints(world,region,x*16,y*16,xx,yy,ridgeids,nearestridgepointdist,nearestridgepointx,nearestridgepointy,mountainedges,buttresspoints,maxmaxridgedist,buttressspacing);
-        }
-    }
-    
-    // Now we actually do the mini-buttresses.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-           
-            if (world.sea(xx,yy)==0)
-                makebuttresses(world,region,x*16,y*16,xx,yy,rmountainmap,peaks,nearestridgepointx,nearestridgepointy,nearestridgepointdist,maxridgedist,buttresspoints,ridgeids,markgap,1);
-        }
-    }
-
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int i=xstart; i<=xend; i++) // Now put those mountains onto the regional map.
-    {
-        for (int j=ystart; j<=yend; j++)
-        {
-            if (region.map(i,j)<rmountainmap[i][j] && region.lakesurface(i,j)==0 && region.riverdir(i,j)==0)
-            {
-                region.setmap(i,j,rmountainmap[i][j]);
-            }
-        }
-    }
-    
-    // Now do stratovolcanoes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int i=xstart; i<=xend; i++) // Now put those mountains onto the regional map.
-    {
-        for (int j=ystart; j<=yend; j++)
-            rmountainmap[i][j]=0;
-    }
-    
-    for (int x=xleft; x<=xright; x++) // Wider
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.sea(xx,yy)==0 && world.strato(xx,yy)==1)
-            {
-                int templateno=1;
-                
-                makevolcano(world,region,x*16,y*16,xx,yy,peaks,rmountainmap,ridgeids,templateno);
-            }
-        }
-    }
-    
-    for (int i=xstart; i<=xend; i++) // Now put those onto the regional map.
-    {
-        for (int j=ystart; j<=yend; j++)
-        {
-            if (region.map(i,j)<rmountainmap[i][j] && region.lakesurface(i,j)==0 && region.riverdir(i,j)==0)
-            {
-                region.setmap(i,j,rmountainmap[i][j]);
-            }
-        }
-    }
-    
-    // Now, remove extra land around mountain islands.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.mountainisland(xx,yy)==1)
-                trimmountainislands(world,region,x*16,y*16,xx,yy,rmountainmap);
-        }
-    }
-
-    // Now we widen any diagonal waterways.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removediagonalwater(region,xstart,ystart,xend,yend,sealevel);
-    
-    /*
-    // Now remove pools. (Turned off for now as it creates weird artefacts, and the turnpoolstolakes routine pretty much catches them all anyway.)
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    int checkno=0;
-    
-    for (int x=xleft+1; x<xright; x++) // Note that we don't do the ones on the edges of the regional map.
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop+1; y<ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removepools(world,region,x*16,y*16,xx,yy,pathchecked,checkno);
-        }
-    }
-    */
-    
-    // Remove straight edges on the coastlines again.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removestraights(world,region,x*16,y*16,xx,yy,smalllake);
-        }
-    }
-    
-    // Now turn any pools that may be left into lakes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    int checkno=0;
-    
-    for (int i=0; i<RARRAYWIDTH; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT; j++)
-            
-            pathchecked[i][j]=0;
-    }
-    
-    for (int x=xleft+1; x<xright; x++) // Note that we don't do the ones on the edges of the regional map.
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop+1; y<ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            turnpoolstolakes(world,region,x*16,y*16,xx,yy,pathchecked,checkno);
-        }
-    }
-    
-    // Remove bits of lakes that touch the sea. (Turned off as it sometimes had the unfortunate effect of turning the entire sea into lake.)
-    
-    // //removelakesbysea(region,rstart,rstart,rwidth,rheight,sealevel);
-    
-    // Now, remove weird bits of rivers from inside seas.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removeextrasearivers(world,region,x*16,y*16,xx,yy);
-        }
-    }
-    
-    // Now remove rivers that emerge from the sea onto land.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removeriverscomingfromsea(world,region,x*16,y*16,xx,yy,fakesourcex,fakesourcey);
-        }
-    }
-    
-    // Now, add inlets to rivers.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            addinlets(world,region,x*16,y*16,xx,yy,riverinlets);
-        }
-    }
-    
-    // Now, remove extraneous islands from the sea.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x=x+2)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y=y+2) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removesmallislands(world,region,x*16,y*16,xx,yy);
-        }
-    }
-    
-    // Now, do submarine elevation.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    extra=20; // For these again, we will create a *bigger* map than the actual regional area. This is because the templates that we're going to use to disrupt this terrain are quite big, so we need to have a big margin around the visible area to ensure that every tile looks the same no matter where the regional map is centred.
-
-    for (int x=xleft-extra; x<=xright+extra; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra; y<=ybottom+extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            makesubmarineelevationtile(world,region,x*16,y*16,xx,yy,underseamap,coords,extra);
-        }
-    }
-
-    // Now disrupt that elevation a bit.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    // The sweep over the whole region needs to be staggered to keep the disruption evenly distributed.
-    
-    for (int x=xleft-extra; x<=xright+extra; x=x+2)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra; y<=ybottom+extra; y=y+2) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.sea(xx,yy)==1)
-                disruptsubmarineelevationtile(world,region,x*16,y*16,xx,yy,underseamap,smudge,extra);
-        }
-    }
-    
-    for (int x=xright+extra-1; x>=xleft-extra; x=x-2)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ybottom+extra; y>=ytop-extra; y=y-2) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.sea(xx,yy)==1)
-                disruptsubmarineelevationtile(world,region,x*16,y*16,xx,yy,underseamap,smudge,extra);
-        }
-    }
-    
-    for (int x=xleft-extra; x<=xright+extra; x=x+2)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra+1; y<=ybottom+extra; y=y+2) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.sea(xx,yy)==1)
-                disruptsubmarineelevationtile(world,region,x*16,y*16,xx,yy,underseamap,smudge,extra);
-        }
-    }
-    
-    for (int x=xright+extra-1; x>=xleft-extra; x=x-2)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ybottom+extra-1; y>=ytop-extra; y=y-2) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.sea(xx,yy)==1)
-                disruptsubmarineelevationtile(world,region,x*16,y*16,xx,yy,underseamap,smudge,extra);
-        }
-    }
-    
-    for (int i=0; i<=rwidth; i++)
-    {
-        for (int j=0; j<=rheight; j++)
-        {
-            if (region.sea(i,j))
-                region.setmap(i,j,underseamap[i+extra*16][j+extra*16]);
-        }
-    }
-    
-    for (int i=0; i<=rwidth; i++)
-    {
-        for (int j=0; j<=rheight; j++)
-            underseabeforechannels[i][j]=region.map(i,j);
-    }
-    
-    /*
-    
-    // Now we add channels to the sea bed. (Turned off as it didn't work.)
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++) // Wider
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.sea(xx,yy)==1)
-                makesubmarinechannelstile(world,region,x*16,y*16,xx,yy,underseabeforechannels,smallsmudge);
-        }
-    }
-    */
-
-    // Now we find the paths of the submarine ridges.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.oceanridges(xx,yy)!=0)
-                makesubmarineridgelines(world,region,x*16,y*16,xx,yy,undersearidgelines);
-        }
-    }
-    
-    // Now we draw the ridges onto the ridge map.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.sea(xx,yy)==1)
-                drawsubmarineridges(world,region,x*16,y*16,xx,yy,undersearidgelines,peaks,undersearidges);
-        }
-    }
-    
-    // Now we add the central mountains to the ridges.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.oceanrifts(xx,yy)!=0)
-                makesubmarineriftmountains(world,region,x*16,y*16,xx,yy,undersearidges,peaks);
-        }
-    }
-    
-    // Now we carve out the central rift valley.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.oceanrifts(xx,yy)!=0)
-                makesubmarinerift(world,region,x*16,y*16,xx,yy,undersearidges,smallsmudge);
-        }
-    }
-    
-    // Now we add the spikes radiating away from the rifts.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    extra=20; // This one has to be done with a wide margin around the visible map, as there could be spikes coming in from outside.
-    
-    for (int x=xleft-extra; x<=xright+extra; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra; y<=ybottom+extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.oceanrifts(xx,yy)!=0)
-                makesubmarineriftradiations(world,region,x*16,y*16,xx,yy,underseaspikes,peaks,extra);
-        }
-    }
-    
-    // Apply the spikes map to the ridges map.
-    
-    int dextra=extra*16;
-    
-    for (int i=0; i<=rwidth; i++)
-    {
-        for (int j=0; j<=rheight; j++)
-        {
-            if (region.sea(i,j))
-            {
-                if (underseaspikes[i+dextra][j+dextra]<0)
-                {
-                    undersearidges[i][j]=undersearidges[i][j]+underseaspikes[i+dextra][j+dextra];
-                    
-                    if (undersearidges[i][j]<0)
-                        undersearidges[i][j]=0;
-                }
-                else
-                {
-                    if (undersearidges[i][j]<underseaspikes[i+dextra][j+dextra])
-                        undersearidges[i][j]=underseaspikes[i+dextra][j+dextra];
-                }
-            }
-        }
-    }
-    
-    // Now, add submarine volcanoes (seamounts).
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft-extra; x<=xright+extra; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop-extra; y<=ybottom+extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.sea(xx,yy)==1 && world.volcano(xx,yy)!=0)
-                makesubmarinevolcano(world,region,x*16,y*16,xx,yy,peaks,undersearidges);
-        }
-    }
-    
-    // Apply the ridges to the map.
-    
-    for (int i=0; i<=rwidth; i++)
-    {
-        for (int j=0; j<=rheight; j++)
-            region.setmap(i,j,region.map(i,j)+undersearidges[i][j]);
-    }
-
-    // Now, wetlands.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            makewetlandtile(world,region,x*16,y*16,xx,yy,smalllake);
-        }
-    }
-    
-    // Make sure special "lakes" are correctly identified.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            convertlakestospecials(world,region,x*16,y*16,xx,yy,safesaltlakes);
-        }
-    }
-    
-    // Now we do barrier islands.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            addbarrierislands(world,region,x*16,y*16,xx,yy,riverinlets);
-        }
-    }
-    
-    // Now, remove odd little parallel lines of islands that sometimes get created by the barrier islands routine.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removeparallelislands(region,xstart,ystart,xend,yend,sealevel);
-    
-    // Check for any impossibly low areas of elevation.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removetoolow(world,region,x*16,y*16,xx,yy);
-        }
-    }
-    
-    // Now remove any bits of sea that are next to lakes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removelakeseas(world,region,x*16,y*16,xx,yy);
-        }
-    }
-    
-    // Now smooth lake beds.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    smoothlakebeds(region);
-    
-    // Now do rotations on the lake beds.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            rotatetileedges(world,region,x*16,y*16,xx,yy,rotatearray,1);
-        }
-    }
-    
-    // Now remove any weirdly high elevation.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            removetoohighelevations(world,region,x*16,y*16,xx,yy);
-        }
-    }
-    
-    // Now disrupt lake beds again.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            addlaketerraces(world,region,x*16,y*16,xx,yy,smalllake,smallsmudge);
-        }
-    }
-
-    // Now we do glaciers.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            addregionalglaciers(world,region,x*16,y*16,xx,yy);
-        }
-    }
-    
-    /*
-    // Now smooth the beds of rift lakes.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    smoothlakebeds(region);
-    */
-    
-    // Now we do the precipitation maps.
-    
-    // First, winter precipitation.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int i=0; i<RARRAYWIDTH; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT; j++)
-        {
-            destination[i][j]=-5000;
-            rotatearray[i][j]=0;
-        }
-    }
-
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (world.wintermountainraindir(i,j)==0)
-                source[i][j]=world.winterrain(i,j);
-            else
-                source[i][j]=world.wintermountainrain(i,j);
-        }
-    }
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            float valuemod=0.04; //0.02;
-            
-            makegenerictile(world,x*16,y*16,xx,yy,valuemod,coords,source,destination,100000,0,1);
-            
-            if (yy==height) // If this is the very bottom of the global map, ensure there's no weirdness.
-            {
-                int maxval=world.winterrain(xx,yy);
-                
-                for (int i=x*16; i<=x*16+16; i++)
-                {
-                    for (int j=y*16; j<=y*16+16; j++)
-                    {
-                        if (destination[i][j]>maxval)
-                            destination[i][j]=maxval;
-                    }
-                }
-            }
-        }
-    }
-    
-    // Now add rotations to that precipitation map, to improve the look.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft+2; x<xright-1; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop+2; y<ybottom-1; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            rotatetileedgesarray(world,region,x*16,y*16,xx,yy,destination,rotatearray,-5000);
-        }
-    }
-    
-    for (int i=xstart; i<=xend; i++)
-    {
-        for (int j=ystart; j<=yend; j++)
-            region.setwinterrain(i,j,destination[i][j]);
-    }
-    
-    // Now, summer precipitation.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int i=0; i<RARRAYWIDTH; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT; j++)
-        {
-            destination[i][j]=-5000;
-            rotatearray[i][j]=0;
-        }
-    }
-
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (world.summermountainraindir(i,j)==0)
-                source[i][j]=world.summerrain(i,j);
-            else
-                source[i][j]=world.summermountainrain(i,j);
-        }
-    }
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            float valuemod=0.04; //0.02;
-            
-            makegenerictile(world,x*16,y*16,xx,yy,valuemod,coords,source,destination,100000,0,1);
-            
-            if (yy==height) // If this is the very bottom of the global map, ensure there's no weirdness.
-            {
-                int maxval=world.summerrain(xx,yy);
-                
-                for (int i=x*16; i<=x*16+16; i++)
-                {
-                    for (int j=y*16; j<=y*16+16; j++)
-                    {
-                        if (destination[i][j]>maxval)
-                            destination[i][j]=maxval;
-                    }
-                }
-            }
-        }
-    }
-    
-    // Now add rotations to that precipitation map, to improve the look.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft+2; x<xright-1; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop+2; y<ybottom-1; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            rotatetileedgesarray(world,region,x*16,y*16,xx,yy,destination,rotatearray,-5000);
-        }
-    }
-    
-    for (int i=xstart; i<=xend; i++)
-    {
-        for (int j=ystart; j<=yend; j++)
-            region.setsummerrain(i,j,destination[i][j]);
-    }
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    smoothprecipitation(region,xstart,ystart,xend,yend,2);
-    
-    // Now add extra precipitation to mountains, where appropriate.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (world.wintermountainraindir(xx,yy)!=0)
-                addregionalmountainprecipitation(world,region,x*16,y*16,xx,yy,0);
-            
-            if (world.summermountainraindir(xx,yy)!=0)
-                addregionalmountainprecipitation(world,region,x*16,y*16,xx,yy,1);
-        }
-    }
-    
-    // Now remove any salt pans from areas that have too much precipitation.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removewetsaltpans(region,xstart,ystart,xend,yend);
-    
-    // Now we do the temperature maps.
-    
-    // First, maximum temperature.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int i=0; i<RARRAYWIDTH; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT; j++)
-        {
-            destination[i][j]=-5000;
-            rotatearray[i][j]=0;
-        }
-    }
-    
-    // Note that we remove the elevation element of temperatures (because that is determined by the elevation of the regional map, not of the global map). Also we multiply temperatures by 100 temporarily, to ensure smoother fractals.
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            source[i][j]=tempelevremove(world,world.maxtemp(i,j),i,j)*100;
-    }
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            float valuemod=0.01;
-            
-            makegenerictile(world,x*16,y*16,xx,yy,valuemod,coords,source,destination,5000,-5000,0);
-        }
-    }
-    
-    // Now add rotations to that temperature map, to improve the look.
-
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            rotatetileedgesarray(world,region,x*16,y*16,xx,yy,destination,rotatearray,-5000);
-        }
-    }
-    
-    // Now add the elevation element back in.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-
-             for (int i=x*16; i<=x*16+15; i++) // Divide by 100 and add the elevation element back in.
-             {
-                 for (int j=y*16; j<=y*16+15; j++)
-                 {
-                     int amount=tempelevadd(region,destination[i][j],i,j)-destination[i][j];
-                     
-                     region.setextramaxtemp(i,j,destination[i][j]+amount*100);
-                     
-                     region.setmaxtemp(i,j,tempelevadd(region,destination[i][j]/100,i,j));
-                 }
-             }
-        }
-    }
-    
-    // Now, minimum temperature.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int i=0; i<RARRAYWIDTH; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT; j++)
-        {
-            destination[i][j]=-5000;
-            rotatearray[i][j]=0;
-        }
-    }
-    
-    // Note that we remove the elevation element of temperatures (because that is determined by the elevation of the regional map, not of the global map). Also we multiply temperatures by 100 temporarily, to ensure smoother fractals.
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            source[i][j]=tempelevremove(world,world.mintemp(i,j),i,j)*100;
-    }
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            float valuemod=0.01;
-            
-            makegenerictile(world,x*16,y*16,xx,yy,valuemod,coords,source,destination,5000,-5000,0);
-            
-            if (yy==height) // If this is the very bottom of the global map, ensure there's no weirdness.
-            {
-                int maxval=world.mintemp(xx,yy);
-                
-                for (int i=x*16; i<=x*16+16; i++)
-                {
-                    for (int j=y*16; j<=y*16+16; j++)
-                    {
-                        if (destination[i][j]>maxval)
-                            destination[i][j]=maxval;
-                    }
-                }
-            }
-        }
-    }
-    
-    // Now add rotations to that temperature map, to improve the look.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            rotatetileedgesarray(world,region,x*16,y*16,xx,yy,destination,rotatearray,-5000);
-        }
-    }
-    
-    // Now add the elevation element back in.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-
-             for (int i=x*16; i<=x*16+15; i++) // Divide by 100 and add the elevation element back in.
-             {
-                 for (int j=y*16; j<=y*16+15; j++)
-                 {
-                     int amount=tempelevadd(region,destination[i][j],i,j)-destination[i][j];
-                     
-                     region.setextramintemp(i,j,destination[i][j]+amount*100);
-                     
-                     region.setmintemp(i,j,tempelevadd(region,destination[i][j]/100,i,j));
-                 }
-             }
-        }
-    }
-    
-    // Now sort out any problems with the temperatures at the very bottom of the map.
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ybottom-2; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            if (yy>height-10)
-            {
-                int maxmaxtemp=world.maxtemp(xx,yy);
-                int maxmintemp=world.mintemp(xx,yy);
-                
-                for (int i=x*16; i<=x*16+15; i++)
-                {
-                    for (int j=y*16; j<=y*16+15; j++)
-                    {
-                        if (region.maxtemp(i,j)>maxmaxtemp)
-                            region.setmaxtemp(i,j,maxmaxtemp);
-                        
-                        if (region.mintemp(i,j)>maxmintemp)
-                            region.setmintemp(i,j,maxmintemp);
-                    }
-                }
-            }
-        }
-    }
- 
-    // Now the sea ice map.
-    // Here again we have to fiddle with the values, as it only has three values and that's not much use for the diamond-square function to get to work on.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    int icediv=20;
-    
-    for (int i=0; i<RARRAYWIDTH; i++)
-    {
-        for (int j=0; j<RARRAYHEIGHT; j++)
-            destination[i][j]=-5000;
-    }
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            switch (world.seaice(i,j))
-            {
-                case 0:
-                    source[i][j]=icediv/2;
-                    break;
-                    
-                case 1:
-                    source[i][j]=icediv/2+icediv;
-                    break;
-                    
-                case 2:
-                    source[i][j]=icediv/2+icediv*2;
-                    break;
-            }
-        }
-    }
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            int surroundingice=getsurroundingice(world,xx,yy);
-            
-            if (surroundingice!=-1) // If this isn't a mixed tile
-            {
-                for (int i=x*16; i<=x*16+15; i++)
-                {
-                    for (int j=y*16; j<=y*16+15; j++)
-                        region.setseaice(i,j,world.seaice(xx,yy));
-                }
-            }
-            else
-            {
-                float valuemod=0.015;
-                
-                makegenerictile(world,x*16,y*16,xx,yy,valuemod,coords,source,destination,icediv*3,0,0);
-                
-                for (int i=x*16; i<=x*16+15; i++) // Translate the values back to sea ice values.
-                {
-                    for (int j=y*16; j<=y*16+15; j++)
-                    {
-                        if (destination[i][j]<=icediv)
-                        {
-                            bool openseaok=1;
-                            
-                            for (int k=xx-1; k<=xx+1; k++)
-                            {
-                                int kk=k;
-                                
-                                if (kk<0 || kk>width)
-                                    kk=wrap(kk,width);
-                                
-                                for (int l=yy-1; l<=yy+1; l++)
-                                {
-                                    if (l>=0 && l<=height)
-                                    {
-                                        if (world.seaice(kk,l)==2)
-                                        {
-                                            openseaok=0;
-                                            k=xx+1;
-                                            l=yy+1;
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            if (openseaok==1)
-                                region.setseaice(i,j,0);
-                            else
-                                region.setseaice(i,j,1);
-                            
-                        }
-                        else
-                        {
-                            if (destination[i][j]>icediv && destination[i][j]<=icediv*2)
-                                region.setseaice(i,j,1);
-                            else
-                            {
-                                bool permiceok=1;
-                                
-                                for (int k=xx-1; k<=xx+1; k++)
-                                {
-                                    int kk=k;
-                                    
-                                    if (kk<0 || kk>width)
-                                        kk=wrap(kk,width);
-                                    
-                                    for (int l=yy-1; l<=yy+1; l++)
-                                    {
-                                        if (l>=0 && l<=height)
-                                        {
-                                            if (world.seaice(kk,l)==0)
-                                            {
-                                                permiceok=0;
-                                                k=xx+1;
-                                                l=yy+1;
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                if (permiceok==1)
-                                    region.setseaice(i,j,2);
-                                else
-                                    region.setseaice(i,j,1);
-                                
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    // Now remove glitches in the sea ice map.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    removeseaiceglitches(region);
-    
-    // Now we do the climate map.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int i=xstart; i<=xend; i++)
-    {
-        for (int j=ystart; j<=yend; j++)
-        {
-            string climate=getclimate(region,i,j);
-            region.setclimate(i,j,climate);
-        }
-    }
-    
-    // Now create small salt pans.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    for (int x=xleft; x<=xright; x++)
-    {
-        int xx=leftx+x;
-        
-        if (xx<0 || xx>width)
-            xx=wrap(xx,width);
-        
-        for (int y=ytop; y<=ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy=lefty+y;
-            
-            makesmallsaltpans(world,region,x*16,y*16,xx,yy,safesaltlakes,smalllake);
-        }
-    }
-    
-    // Now just check that all the lake beds make sense.
-    
-    regionprogress.set_value(regionprogress.value()+progressstep);
-    screen.redraw();
-    screen.draw_all();
-    
-    checklakebeds(region,xstart,ystart,xend,yend);
-}
 
 // This returns the global coordinate of the tile that a regional coordinate is in.
 
-sf::Vector2i convertregionaltoglobal(planet &world, region &region, int x, int y)
+twointegers convertregionaltoglobal(planet &world, region &region, int x, int y)
 {
-    sf::Vector2i global;
+    twointegers global;
     
     int width=world.width();
     
@@ -2478,13 +108,7 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
             rriverscarved[i][j]=-1;
     }
     
-    vector<vector<int>> mainriver(17,vector<int>(17,17));
-    
-    for (int i=0; i<=16; i++)
-    {
-        for (int j=0; j<=16; j++)
-            mainriver[i][j]=0;
-    }
+    vector<vector<int>> mainriver(17,vector<int>(17,0));
     
     // First, get coordinates for the tiles around this one.
     
@@ -2559,22 +183,19 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
     if (aveflow==0 && world.deltadir(sx,sy)<1)
         return;
     
-    sf::Vector2f pt, mm1, mm2, mm3, mm4;
-    sf::Vector2i riverpoint;
+    twofloats pt, mm1, mm2, mm3, mm4;
+    twointegers riverpoint;
     
-    sf::Vector3i rinfo;
+    threeintegers rinfo;
     
     int margin=2; // This is to ensure that the midpoints aren't too close to the edges.
     int mmargin=16-margin;
     bool goingtolake=0;
-    
-    int maxvar=4; // Maximum amount the central junction can be offset by.
+
     int minmidvar=2; // Minimum amount the midpoints between the junction and the sides can be offset by.
     int maxmidvar=3; // Maximum amount the midpoints between the junction and the sides can be offset by.
     int minpoint=3; // Minimum distance the points on the sides (where rivers go off the tile) can be from the corners.
-    
-    int maxvardiag=6; // Maximum amount the central junction can be offset by on diagonal tiles.
-    int minvardiag=3; // Minimum amount the central junction can be offset by on diagonal tiles.
+
     int maxmidvardiag=4; // Maximum amount the midpoints can be offset by on a diagonal tile.
     int minmidvardiag=2; // Minimum amount the midpoints can be offset by on a diagonal tile.
     
@@ -2888,151 +509,10 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
     
     // Now we can use all of that to get the central junction location.
     
-    int junctionpointx=-1;
-    int junctionpointy=-1;
+    twointegers jp=getjunctionpoint(world,region,dx,dy,sx,sy,lakepresent,goingtolake,diag,maininflow,inx,iny,outx,outy);
     
-    fast_srand((sy*width+sx)+world.nom(sx,sy)+world.summerrain(sx,sy));
-    
-    if (lakepresent==1 && goingtolake==0) //  If this is a river flowing out of a lake, make sure the junction point is in the lake.
-    {
-        int a, b, c, d, e, f;
-        
-        if (random(0,1)==1)
-        {
-            a=dx;
-            b=dx+16;
-            c=1;
-        }
-        else
-        {
-            a=dx+16;
-            b=dx;
-            c=-1;
-        }
-        
-        if (random(0,1)==1)
-        {
-            d=dy;
-            e=dy+16;
-            f=1;
-        }
-        else
-        {
-            d=dy+16;
-            e=dy;
-            f=-1;
-        }
-        
-        for (int i=a; i!=b; i=i+c)
-        {
-            for (int j=d; j!=e; j=j+f)
-            {
-                if (region.truelake(i,j)==1)
-                {
-                    junctionpointx=i;
-                    junctionpointy=j;
-                }
-            }
-        }
-    }
-    else // Just find the junction point normally.
-    {
-        junctionpointx=(inx+outx)/2;
-        junctionpointx=(junctionpointx+dx+8)/2;
-        
-        junctionpointy=(iny+outy)/2;
-        junctionpointy=(junctionpointy+dy+8)/2;
-        
-        if (diag==1) // If the main river is going diagonally across the tile, we need to make sure the junction point is well off-centre
-        {
-            if ((maininflow==8 && riverdir==4) || (maininflow==4 && riverdir==8)) // Top left to bottom right or vice versa
-            {
-                if (random(1,2)==1)
-                {
-                    junctionpointx=junctionpointx+random(minvardiag,maxvardiag);
-                    junctionpointy=junctionpointy-random(minvardiag,maxvardiag);
-                }
-                else
-                {
-                    junctionpointx=junctionpointx-random(minvardiag,maxvardiag);
-                    junctionpointy=junctionpointy+random(minvardiag,maxvardiag);
-                }
-            }
-            else
-            {
-                if (random(1,2)==1)
-                {
-                    junctionpointx=junctionpointx+random(minvardiag,maxvardiag);
-                    junctionpointy=junctionpointy+random(minvardiag,maxvardiag);
-                }
-                else
-                {
-                    junctionpointx=junctionpointx-random(minvardiag,maxvardiag);
-                    junctionpointy=junctionpointy-random(minvardiag,maxvardiag);
-                }
-            }
-        }
-        else
-        {
-            junctionpointx=junctionpointx+randomsign(random(0,maxvar));
-            junctionpointy=junctionpointy+randomsign(random(0,maxvar));
-        }
-        
-        // If this isn't a lake tile and there's lake along the edges, move the junction point away from it.
-        
-        int amounttomove=6;
-        
-        if (lakepresent==0)
-        {
-            for (int n=dx; n<=dx+16; n++)
-            {
-                if (region.truelake(n,dy)!=0)
-                {
-                    junctionpointy=junctionpointy+amounttomove;
-                    n=dx+16;
-                }
-            }
-            
-            for (int n=dx; n<=dx+16; n++)
-            {
-                if (region.truelake(n,dy+16)!=0)
-                {
-                    junctionpointy=junctionpointy-amounttomove;
-                    n=dx+16;
-                }
-            }
-            
-            for (int n=dy; n<=dy+16; n++)
-            {
-                if (region.truelake(dx,n)!=0)
-                {
-                    junctionpointx=junctionpointx+amounttomove;
-                    n=dy+16;
-                }
-            }
-            
-            for (int n=dy; n<=dy+16; n++)
-            {
-                if (region.truelake(dx+16,n)!=0)
-                {
-                    junctionpointx=junctionpointx-amounttomove;
-                    n=dy+16;
-                }
-            }
-            
-            if (junctionpointx<dx+4)
-                junctionpointx=dx+4;
-            
-            if (junctionpointx>dx+12)
-                junctionpointx=dx+12;
-            
-            if (junctionpointy<dy+4)
-                junctionpointy=dy+4;
-            
-            if (junctionpointy>dy+12)
-                junctionpointy=dy+12;
-        }
-    }
+    int junctionpointx=jp.x;
+    int junctionpointy=jp.y;
     
     fast_srand((sy*width+sx)+world.nom(sx,sy)+world.summerrain(sx,sy));
     
@@ -3051,135 +531,140 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
     int fromtilelevel=0;
     int totilelevel=0;
     
-    switch (maininflow)
+    if (maininflow==1)
     {
-        case 1:
-            mm1.x=northpointx;
-            mm1.y=northpointy;
-            
-            janinflow=world.riverjan(nox,noy);
-            julinflow=world.riverjul(nox,noy);
-            
-            fromtilelevel=nexttolake(world,nox,noy);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.riftlakesurface(nox,noy);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.nom(nox,noy)-riverlandreduce;
-            break;
-            
-        case 2:
-            mm1.x=northeastpointx;
-            mm1.y=northeastpointy;
-            
-            janinflow=world.riverjan(nex,ney);
-            julinflow=world.riverjul(nex,ney);
-            
-            fromtilelevel=nexttolake(world,nex,ney);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.riftlakesurface(nex,ney);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.nom(nex,ney)-riverlandreduce;
-            break;
-            
-        case 3:
-            mm1.x=eastpointx;
-            mm1.y=eastpointy;
-            
-            janinflow=world.riverjan(eax,eay);
-            julinflow=world.riverjul(eax,eay);
-            
-            fromtilelevel=nexttolake(world,eax,eay);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.riftlakesurface(eax,eay);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.nom(eax,eay)-riverlandreduce;
-            break;
-            
-        case 4:
-            mm1.x=southeastpointx;
-            mm1.y=southeastpointy;
-            
-            janinflow=world.riverjan(sex,sey);
-            julinflow=world.riverjul(sex,sey);
-            
-            fromtilelevel=nexttolake(world,sex,sey);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.riftlakesurface(sex,sey);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.nom(sex,sey)-riverlandreduce;
-            break;
-            
-        case 5:
-            mm1.x=southpointx;
-            mm1.y=southpointy;
-            
-            janinflow=world.riverjan(sox,soy);
-            julinflow=world.riverjul(sox,soy);
-            
-            fromtilelevel=nexttolake(world,sox,soy);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.riftlakesurface(sox,soy);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.nom(sox,soy)-riverlandreduce;
-            break;
-            
-        case 6:
-            mm1.x=southwestpointx;
-            mm1.y=southwestpointy;
-            
-            janinflow=world.riverjan(swx,swy);
-            julinflow=world.riverjul(swx,swy);
-            
-            fromtilelevel=nexttolake(world,swx,swy);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.riftlakesurface(swx,swy);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.nom(swx,swy)-riverlandreduce;
-            break;
-            
-        case 7:
-            mm1.x=westpointx;
-            mm1.y=westpointy;
-            
-            janinflow=world.riverjan(wex,wey);
-            julinflow=world.riverjul(wex,wey);
-            
-            fromtilelevel=nexttolake(world,wex,wey);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.riftlakesurface(wex,wey);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.nom(wex,wey)-riverlandreduce;
-            break;
-            
-        case 8:
-            mm1.x=northwestpointx;
-            mm1.y=northwestpointy;
-            
-            janinflow=world.riverjan(nwx,nwy);
-            julinflow=world.riverjul(nwx,nwy);
-            
-            fromtilelevel=nexttolake(world,nwx,nwy);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.riftlakesurface(nwx,nwy);
-            
-            if (fromtilelevel==0)
-                fromtilelevel=world.nom(nwx,nwy)-riverlandreduce;
-            break;
+        mm1.x=northpointx;
+        mm1.y=northpointy;
+        
+        janinflow=world.riverjan(nox,noy);
+        julinflow=world.riverjul(nox,noy);
+        
+        fromtilelevel=nexttolake(world,nox,noy);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.riftlakesurface(nox,noy);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.nom(nox,noy)-riverlandreduce;
+    }
+    
+    if (maininflow==2)
+    {
+        mm1.x=northeastpointx;
+        mm1.y=northeastpointy;
+        
+        janinflow=world.riverjan(nex,ney);
+        julinflow=world.riverjul(nex,ney);
+        
+        fromtilelevel=nexttolake(world,nex,ney);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.riftlakesurface(nex,ney);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.nom(nex,ney)-riverlandreduce;
+    }
+    
+    if (maininflow==3)
+    {
+        mm1.x=eastpointx;
+        mm1.y=eastpointy;
+        
+        janinflow=world.riverjan(eax,eay);
+        julinflow=world.riverjul(eax,eay);
+        
+        fromtilelevel=nexttolake(world,eax,eay);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.riftlakesurface(eax,eay);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.nom(eax,eay)-riverlandreduce;
+    }
+    
+    if (maininflow==4)
+    {
+        mm1.x=southeastpointx;
+        mm1.y=southeastpointy;
+        
+        janinflow=world.riverjan(sex,sey);
+        julinflow=world.riverjul(sex,sey);
+        
+        fromtilelevel=nexttolake(world,sex,sey);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.riftlakesurface(sex,sey);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.nom(sex,sey)-riverlandreduce;
+    }
+    
+    if (maininflow==5)
+    {
+        mm1.x=southpointx;
+        mm1.y=southpointy;
+        
+        janinflow=world.riverjan(sox,soy);
+        julinflow=world.riverjul(sox,soy);
+        
+        fromtilelevel=nexttolake(world,sox,soy);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.riftlakesurface(sox,soy);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.nom(sox,soy)-riverlandreduce;
+    }
+    
+    if (maininflow==6)
+    {
+        mm1.x=southwestpointx;
+        mm1.y=southwestpointy;
+        
+        janinflow=world.riverjan(swx,swy);
+        julinflow=world.riverjul(swx,swy);
+        
+        fromtilelevel=nexttolake(world,swx,swy);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.riftlakesurface(swx,swy);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.nom(swx,swy)-riverlandreduce;
+    }
+    
+    if (maininflow==7)
+    {
+        mm1.x=westpointx;
+        mm1.y=westpointy;
+        
+        janinflow=world.riverjan(wex,wey);
+        julinflow=world.riverjul(wex,wey);
+        
+        fromtilelevel=nexttolake(world,wex,wey);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.riftlakesurface(wex,wey);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.nom(wex,wey)-riverlandreduce;
+    }
+    
+    if (maininflow==8)
+    {
+        mm1.x=northwestpointx;
+        mm1.y=northwestpointy;
+        
+        janinflow=world.riverjan(nwx,nwy);
+        julinflow=world.riverjul(nwx,nwy);
+        
+        fromtilelevel=nexttolake(world,nwx,nwy);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.riftlakesurface(nwx,nwy);
+        
+        if (fromtilelevel==0)
+            fromtilelevel=world.nom(nwx,nwy)-riverlandreduce;
     }
     
     if (world.truelake(sx,sy)==1)
@@ -3189,7 +674,7 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
     }
     else
     {
-        sf::Vector2i upstream=getupstreamcell(world,sx,sy);
+        twointegers upstream=getupstreamcell(world,sx,sy);
         
         if (world.truelake(upstream.x,upstream.y)==1)
         {
@@ -3290,7 +775,7 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
                     {
                         int dir=region.riverdir(i,j);
                         
-                        sf::Vector2i dest=getregionalflowdestination(region,i,j,dir);
+                        twointegers dest=getregionalflowdestination(region,i,j,dir);
                         
                         if (dest.x==junctionpointx && dest.y==junctionpointy)
                         {
@@ -3452,7 +937,7 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
     rinfo=calculateregionalriver(world,region,dx,dy,sx,sy,pt,mm1,mm2,mm3,janinflow,julinflow,riverlength,0,goingtolake,0);
     
     riverlength=rinfo.z;
-
+    
     // Now remove any orphans there might be.
     
     if (lakepresent==0)
@@ -3486,7 +971,7 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
     
     if (additionalrivers>0)
     {
-        sf::Vector2i junction;
+        twointegers junction;
         
         bool extrarivers[9]; // This will tell us which incoming rivers still need doing.
         
@@ -3551,119 +1036,116 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
                 
                 int janinflow, julinflow, fromtilelevel;
                 
-                switch (rivernumber)
+                if (rivernumber==1)
                 {
-                    case 1:
-                        mm1.x=northpointx;
-                        mm1.y=northpointy;
-                        
-                        janinflow=world.riverjan(nox,noy);
-                        julinflow=world.riverjul(nox,noy);
-                        
-                        if (world.lakesurface(nox,noy)==0)
-                            fromtilelevel=world.nom(nox,noy)-riverlandreduce;
-                        else
-                            fromtilelevel=nexttolake(world,nox,noy);
-                        
-                        break;
-                        
-                    case 2:
-                        mm1.x=northeastpointx;
-                        mm1.y=northeastpointy;
-                        
-                        janinflow=world.riverjan(nex,ney);
-                        julinflow=world.riverjul(nex,ney);
-                        
-                        if (world.lakesurface(nex,ney)==0)
-                            fromtilelevel=world.nom(nex,ney)-riverlandreduce;
-                        else
-                            fromtilelevel=nexttolake(world,nex,ney);
-                        
-                        break;
-                        
-                    case 3:
-                        mm1.x=eastpointx;
-                        mm1.y=eastpointy;
-                        
-                        janinflow=world.riverjan(eax,eay);
-                        julinflow=world.riverjul(eax,eay);
-                        
-                        if (world.lakesurface(eax,eay)==0)
-                            fromtilelevel=world.nom(eax,eay)-riverlandreduce;
-                        else
-                            fromtilelevel=nexttolake(world,eax,eay);
-                        
-                        break;
-                        
-                    case 4:
-                        mm1.x=southeastpointx;
-                        mm1.y=southeastpointy;
-                        
-                        janinflow=world.riverjan(sex,sey);
-                        julinflow=world.riverjul(sex,sey);
-                        
-                        if (world.lakesurface(sex,sey)==0)
-                            fromtilelevel=world.nom(sex,sey)-riverlandreduce;
-                        else
-                            fromtilelevel=nexttolake(world,sex,sey);
-                        
-                        break;
-                        
-                    case 5:
-                        mm1.x=southpointx;
-                        mm1.y=southpointy;
-                        
-                        janinflow=world.riverjan(sox,soy);
-                        julinflow=world.riverjul(sox,soy);
-                        
-                        if (world.lakesurface(sox,soy)==0)
-                            fromtilelevel=world.nom(sox,soy)-riverlandreduce;
-                        else
-                            fromtilelevel=nexttolake(world,sox,soy);
-                        
-                        break;
-                        
-                    case 6:
-                        mm1.x=southwestpointx;
-                        mm1.y=southwestpointy;
-                        
-                        janinflow=world.riverjan(swx,swy);
-                        julinflow=world.riverjul(swx,swy);
-                        
-                        if (world.lakesurface(swx,swy)==0)
-                            fromtilelevel=world.nom(swx,swy)-riverlandreduce;
-                        else
-                            fromtilelevel=nexttolake(world,swx,swy);
-                        
-                        break;
-                        
-                    case 7:
-                        mm1.x=westpointx;
-                        mm1.y=westpointy;
-                        
-                        janinflow=world.riverjan(wex,wey);
-                        julinflow=world.riverjul(wex,wey);
-                        
-                        if (world.lakesurface(wex,wey)==0)
-                            fromtilelevel=world.nom(wex,wey)-riverlandreduce;
-                        else
-                            fromtilelevel=nexttolake(world,wex,wey);
-                        
-                        break;
-                        
-                    case 8:
-                        mm1.x=northwestpointx;
-                        mm1.y=northwestpointy;
-                        
-                        janinflow=world.riverjan(nwx,nwy);
-                        julinflow=world.riverjul(nwx,nwy);
-                        
-                        if (world.lakesurface(nwx,nwy)==0)
-                            fromtilelevel=world.nom(nwx,nwy)-riverlandreduce;
-                        else
-                            fromtilelevel=nexttolake(world,nwx,nwy);
-                        
-                        break;
+                    mm1.x=northpointx;
+                    mm1.y=northpointy;
+                    
+                    janinflow=world.riverjan(nox,noy);
+                    julinflow=world.riverjul(nox,noy);
+                    
+                    if (world.lakesurface(nox,noy)==0)
+                        fromtilelevel=world.nom(nox,noy)-riverlandreduce;
+                    else
+                        fromtilelevel=nexttolake(world,nox,noy);
+                }
+                
+                if (rivernumber==2)
+                {
+                    mm1.x=northeastpointx;
+                    mm1.y=northeastpointy;
+                    
+                    janinflow=world.riverjan(nex,ney);
+                    julinflow=world.riverjul(nex,ney);
+                    
+                    if (world.lakesurface(nex,ney)==0)
+                        fromtilelevel=world.nom(nex,ney)-riverlandreduce;
+                    else
+                        fromtilelevel=nexttolake(world,nex,ney);
+                }
+                
+                if (rivernumber==3)
+                {
+                    mm1.x=eastpointx;
+                    mm1.y=eastpointy;
+                    
+                    janinflow=world.riverjan(eax,eay);
+                    julinflow=world.riverjul(eax,eay);
+                    
+                    if (world.lakesurface(eax,eay)==0)
+                        fromtilelevel=world.nom(eax,eay)-riverlandreduce;
+                    else
+                        fromtilelevel=nexttolake(world,eax,eay);
+                }
+                
+                if (rivernumber==4)
+                {
+                    mm1.x=southeastpointx;
+                    mm1.y=southeastpointy;
+                    
+                    janinflow=world.riverjan(sex,sey);
+                    julinflow=world.riverjul(sex,sey);
+                    
+                    if (world.lakesurface(sex,sey)==0)
+                        fromtilelevel=world.nom(sex,sey)-riverlandreduce;
+                    else
+                        fromtilelevel=nexttolake(world,sex,sey);
+                }
+                
+                if (rivernumber==5)
+                {
+                    mm1.x=southpointx;
+                    mm1.y=southpointy;
+                    
+                    janinflow=world.riverjan(sox,soy);
+                    julinflow=world.riverjul(sox,soy);
+                    
+                    if (world.lakesurface(sox,soy)==0)
+                        fromtilelevel=world.nom(sox,soy)-riverlandreduce;
+                    else
+                        fromtilelevel=nexttolake(world,sox,soy);
+                }
+                
+                if (rivernumber==6)
+                {
+                    mm1.x=southwestpointx;
+                    mm1.y=southwestpointy;
+                    
+                    janinflow=world.riverjan(swx,swy);
+                    julinflow=world.riverjul(swx,swy);
+                    
+                    if (world.lakesurface(swx,swy)==0)
+                        fromtilelevel=world.nom(swx,swy)-riverlandreduce;
+                    else
+                        fromtilelevel=nexttolake(world,swx,swy);
+                }
+                
+                if (rivernumber==7)
+                {
+                    mm1.x=westpointx;
+                    mm1.y=westpointy;
+                    
+                    janinflow=world.riverjan(wex,wey);
+                    julinflow=world.riverjul(wex,wey);
+                    
+                    if (world.lakesurface(wex,wey)==0)
+                        fromtilelevel=world.nom(wex,wey)-riverlandreduce;
+                    else
+                        fromtilelevel=nexttolake(world,wex,wey);
+                }
+                
+                if (rivernumber==8)
+                {
+                    mm1.x=northwestpointx;
+                    mm1.y=northwestpointy;
+                    
+                    janinflow=world.riverjan(nwx,nwy);
+                    julinflow=world.riverjul(nwx,nwy);
+                    
+                    if (world.lakesurface(nwx,nwy)==0)
+                        fromtilelevel=world.nom(nwx,nwy)-riverlandreduce;
+                    else
+                        fromtilelevel=nexttolake(world,nwx,nwy);
                 }
                 
                 if (totilelevel<=sealevel)
@@ -3949,6 +1431,173 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
     }
 }
 
+// This finds a junction point for the river tile.
+
+twointegers getjunctionpoint (planet &world, region &region, int dx, int dy, int sx, int sy, bool lakepresent, bool goingtolake, bool diag, int maininflow, int inx, int iny, int outx, int outy)
+{
+    int width=world.width();
+    int height=world.height();
+    
+    int riverdir=world.riverdir(sx,sy);
+    
+    int maxvar=4; // Maximum amount the central junction can be offset by.
+    int maxvardiag=6; // Maximum amount the central junction can be offset by on diagonal tiles.
+    int minvardiag=3; // Minimum amount the central junction can be offset by on diagonal tiles.
+    
+    int junctionpointx=-1;
+    int junctionpointy=-1;
+    
+    fast_srand((sy*width+sx)+world.nom(sx,sy)+world.summerrain(sx,sy));
+    
+    if (lakepresent==1 && goingtolake==0) //  If this is a river flowing out of a lake, make sure the junction point is in the lake.
+    {
+        int a, b, c, d, e, f;
+        
+        if (random(0,1)==1)
+        {
+            a=dx;
+            b=dx+16;
+            c=1;
+        }
+        else
+        {
+            a=dx+16;
+            b=dx;
+            c=-1;
+        }
+        
+        if (random(0,1)==1)
+        {
+            d=dy;
+            e=dy+16;
+            f=1;
+        }
+        else
+        {
+            d=dy+16;
+            e=dy;
+            f=-1;
+        }
+        
+        for (int i=a; i!=b; i=i+c)
+        {
+            for (int j=d; j!=e; j=j+f)
+            {
+                if (region.truelake(i,j)==1)
+                {
+                    junctionpointx=i;
+                    junctionpointy=j;
+                }
+            }
+        }
+    }
+    else // Just find the junction point normally.
+    {
+        junctionpointx=(inx+outx)/2;
+        junctionpointx=(junctionpointx+dx+8)/2;
+        
+        junctionpointy=(iny+outy)/2;
+        junctionpointy=(junctionpointy+dy+8)/2;
+        
+        if (diag==1) // If the main river is going diagonally across the tile, we need to make sure the junction point is well off-centre
+        {
+            if ((maininflow==8 && riverdir==4) || (maininflow==4 && riverdir==8)) // Top left to bottom right or vice versa
+            {
+                if (random(1,2)==1)
+                {
+                    junctionpointx=junctionpointx+random(minvardiag,maxvardiag);
+                    junctionpointy=junctionpointy-random(minvardiag,maxvardiag);
+                }
+                else
+                {
+                    junctionpointx=junctionpointx-random(minvardiag,maxvardiag);
+                    junctionpointy=junctionpointy+random(minvardiag,maxvardiag);
+                }
+            }
+            else
+            {
+                if (random(1,2)==1)
+                {
+                    junctionpointx=junctionpointx+random(minvardiag,maxvardiag);
+                    junctionpointy=junctionpointy+random(minvardiag,maxvardiag);
+                }
+                else
+                {
+                    junctionpointx=junctionpointx-random(minvardiag,maxvardiag);
+                    junctionpointy=junctionpointy-random(minvardiag,maxvardiag);
+                }
+            }
+        }
+        else
+        {
+            junctionpointx=junctionpointx+randomsign(random(0,maxvar));
+            junctionpointy=junctionpointy+randomsign(random(0,maxvar));
+        }
+        
+        // If this isn't a lake tile and there's lake along the edges, move the junction point away from it.
+        
+        int amounttomove=6;
+        
+        if (lakepresent==0)
+        {
+            for (int n=dx; n<=dx+16; n++)
+            {
+                if (region.truelake(n,dy)!=0)
+                {
+                    junctionpointy=junctionpointy+amounttomove;
+                    n=dx+16;
+                }
+            }
+            
+            for (int n=dx; n<=dx+16; n++)
+            {
+                if (region.truelake(n,dy+16)!=0)
+                {
+                    junctionpointy=junctionpointy-amounttomove;
+                    n=dx+16;
+                }
+            }
+            
+            for (int n=dy; n<=dy+16; n++)
+            {
+                if (region.truelake(dx,n)!=0)
+                {
+                    junctionpointx=junctionpointx+amounttomove;
+                    n=dy+16;
+                }
+            }
+            
+            for (int n=dy; n<=dy+16; n++)
+            {
+                if (region.truelake(dx+16,n)!=0)
+                {
+                    junctionpointx=junctionpointx-amounttomove;
+                    n=dy+16;
+                }
+            }
+            
+            if (junctionpointx<dx+4)
+                junctionpointx=dx+4;
+            
+            if (junctionpointx>dx+12)
+                junctionpointx=dx+12;
+            
+            if (junctionpointy<dy+4)
+                junctionpointy=dy+4;
+            
+            if (junctionpointy>dy+12)
+                junctionpointy=dy+12;
+        }
+    }
+    
+    twointegers jp;
+    
+    jp.x=junctionpointx;
+    jp.y=junctionpointy;
+    
+    return jp;
+}
+
 // This adds delta branches to tiles on the regional map.
 
 void makedeltatile(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rriverscarved)
@@ -3972,13 +1621,7 @@ void makedeltatile(planet &world, region &region, int dx, int dy, int sx, int sy
             rriverscarved[i][j]=-1;
     }
     
-    vector<vector<int>> mainriver(17,vector<int>(17,17));
-    
-    for (int i=0; i<=16; i++)
-    {
-        for (int j=0; j<=16; j++)
-            mainriver[i][j]=0;
-    }
+    vector<vector<int>> mainriver(17,vector<int>(17,0));
     
     // First, get coordinates for the tiles around this one.
     
@@ -4023,10 +1666,10 @@ void makedeltatile(planet &world, region &region, int dx, int dy, int sx, int sy
     if (world.deltadir(sx,sy)<1)
         return;
     
-    sf::Vector2f pt, mm1, mm2, mm3, mm4;
-    sf::Vector2i riverpoint;
+    twofloats pt, mm1, mm2, mm3, mm4;
+    twointegers riverpoint;
     
-    sf::Vector3i rinfo;
+    threeintegers rinfo;
     
     int margin=2; // This is to ensure that the midpoints aren't too close to the edges.
     int mmargin=16-margin;
@@ -4614,7 +2257,7 @@ void makedeltatile(planet &world, region &region, int dx, int dy, int sx, int sy
     
     if (additionalrivers>0)
     {
-        sf::Vector2i junction;
+        twointegers junction;
         
         bool extrarivers[9]; // This will tell us which incoming rivers still need doing.
         
@@ -4834,9 +2477,9 @@ void makedeltatile(planet &world, region &region, int dx, int dy, int sx, int sy
 
 // This draws a section of river on a tile of the regional map.
 
-sf::Vector3i calculateregionalriver(planet &world, region &region, int dx, int dy, int sx, int sy, sf::Vector2f pt, sf::Vector2f mm1, sf::Vector2f mm2, sf::Vector2f mm3, int janinflow, int julinflow, int riverlength, int isittributary, int goingtolake, bool delta)
+threeintegers calculateregionalriver(planet &world, region &region, int dx, int dy, int sx, int sy, twofloats pt, twofloats mm1, twofloats mm2, twofloats mm3, int janinflow, int julinflow, int riverlength, int isittributary, int goingtolake, bool delta)
 {
-    sf::Vector3i rinfo;
+    threeintegers rinfo;
     
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -5124,7 +2767,7 @@ void removeweirdelevations(planet &world, region &region, int dx, int dy, int sx
                 {
                     int fromelev=region.map(i,j);
                     
-                    sf::Vector2i dest=getdestination(i,j,dir);
+                    twointegers dest=getdestination(i,j,dir);
                     
                     int toelev=region.map(dest.x,dest.y);
                     
@@ -5266,13 +2909,15 @@ void carveriver(planet &world, region &region, int dx, int dy, int sx, int sy, i
     if (startlandlevel<endlandlevel)
         startlandlevel=endlandlevel;
     
-    vector<vector<int>> carvedcheck(17,vector<int>(17,17)); // This will ensure that we don't double back on ourselves.
+    vector<vector<int>> carvedcheck(17,vector<int>(17,0)); // This will ensure that we don't double back on ourselves.
     
+    /*
     for (int i=0; i<=16; i++)
     {
         for (int j=0; j<=16; j++)
             carvedcheck[i][j]=0;
     }
+    */
     
     float totaldrop=startlandlevel-endlandlevel;
     float friverlength=riverlength;
@@ -5382,7 +3027,7 @@ void carverivertributary(planet &world, region &region, int dx, int dy, int sx, 
 {
     int sealevel=world.sealevel();
     
-    sf::Vector2i endpoint;
+    twointegers endpoint;
     
     if (thisendlandlevel==0) // If there's something wrong with the destination, recalculate it.
     {
@@ -5576,12 +3221,12 @@ void carverivertributary(planet &world, region &region, int dx, int dy, int sx, 
 
 // This function finds the point at which a tributary enters another river.
 
-sf::Vector2i gettributaryendpoint(region &region, int startx, int starty)
+twointegers gettributaryendpoint(region &region, int startx, int starty)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
     
-    sf::Vector2i endpoint;
+    twointegers endpoint;
     
     endpoint.x=-1;
     endpoint.y=-1;
@@ -5633,8 +3278,8 @@ void addsprings(planet &world, region &region, int sx, int sy, int dx, int dy, i
     
     float riverfactor=world.riverfactor();
     
-    sf::Vector2f pt, mm1, mm2, mm3;
-    sf::Vector3i rinfo;
+    twofloats pt, mm1, mm2, mm3;
+    threeintegers rinfo;
     
     int endlandlevel=region.map(riverendx,riverendy);
     
@@ -5675,7 +3320,7 @@ void addsprings(planet &world, region &region, int sx, int sy, int dx, int dy, i
     int janinitialload=jantotal/springtotal-springtotal;
     int julinitialload=jultotal/springtotal-springtotal;
     
-    sf::Vector2i destpoint;
+    twointegers destpoint;
     
     int springstartlandlevel=world.nom(sx,sy)-riverlandreduce;
     
@@ -5826,9 +3471,9 @@ void addsprings(planet &world, region &region, int sx, int sy, int dx, int dy, i
 
 // This finds the coordinates (on the regional map) of the nearest river point (within the current tile) that's lower than the point specified.
 
-sf::Vector2i nearestlowerriver(region &region, int dx, int dy, int i, int j, int landlevel)
+twointegers nearestlowerriver(region &region, int dx, int dy, int i, int j, int landlevel)
 {
-    sf::Vector2i riverpoint;
+    twointegers riverpoint;
     
     int distance=-1; // Distance to nearest lower river.
     int riverx=-1; // x coordinate of nearest lower river.
@@ -5970,7 +3615,7 @@ int removeriverorphans(planet &world, region &region, int sx, int sy, int dx, in
 
 void removeriverwidows(planet &world, region &region, int sx, int sy, int dx, int dy, int junctionpointx, int junctionpointy)
 {
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     for (int i=dx+1; i<=dx+15; i++)
     {
@@ -6362,14 +4007,16 @@ void createsmalllake(planet &world, region &region, int dx, int dy, int sx, int 
     
     int shapenumber=random(0,size);
     
-    vector<vector<int>> thislake(17,vector<int>(17,17));
+    vector<vector<int>> thislake(17,vector<int>(17,0));
     
+    /*
     for (int i=0; i<=16; i++)
     {
         for (int j=0; j<=16; j++)
             thislake[i][j]=0;
     }
-
+    */
+    
     int imheight=smalllake[shapenumber].ysize()-1;
     int imwidth=smalllake[shapenumber].ysize()-1;
     
@@ -6437,7 +4084,7 @@ void createsmalllake(planet &world, region &region, int dx, int dy, int sx, int 
     
     // Now we must remove any lake that borders a river that's not going into the lake.
     
-    sf::Vector2i destpoint;
+    twointegers destpoint;
     
     for (int i=dx; i<=dx+16; i++)
     {
@@ -6607,7 +4254,7 @@ void createsmallsaltlake (planet &world, region &region, int dx, int dy, int sx,
         for (int j=jstart; j!=destj; j=j+jstep)
         {
             jmap++;
-
+            
             if (smalllake[shapenumber].point(i,j)==1)
             {
                 int xx=x+imap;
@@ -6659,13 +4306,15 @@ void createsmallglaciallake(planet &world, region &region, int dx, int dy, int s
     int maxelev=world.maxelevation();
     int surfaceheight=region.map(centrex,centrey);
     
-    vector<vector<int>> thislake(17,vector<int>(17,17));
+    vector<vector<int>> thislake(17,vector<int>(17,0));
     
+    /*
     for (int i=0; i<=16; i++)
     {
         for (int j=0; j<=16; j++)
             thislake[i][j]=0;
     }
+    */
     
     int llimit=dx+random(1,3);
     int rlimit=dx+random(12,15);
@@ -6751,7 +4400,7 @@ void createsmallglaciallake(planet &world, region &region, int dx, int dy, int s
 
 // This function goes through the tile and expands the rivers to their correct widths.
 
-void expandrivers(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<vector<int>>> &circletemplates, bool delta, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey)
+void expandrivers(planet &world, region &region, int dx, int dy, int sx, int sy, bool delta, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey)
 {
     int pixelmetres=region.pixelmetres();
     
@@ -6777,12 +4426,12 @@ void expandrivers(planet &world, region &region, int dx, int dy, int sx, int sy,
                     valleypixels=40;
                 
                 if (riverpixels>1)
-                    pasterivercircle(region,i,j,riverpixels,1,circletemplates,dir,janload,julload,delta,fakesourcex,fakesourcey);
+                    pasterivercircle(region,i,j,riverpixels,1,dir,janload,julload,delta,fakesourcex,fakesourcey);
                 
                 if (world.sea(sx,sy)==0 && world.outline(sx,sy)==0)
                 {
                     if (valleypixels>1)
-                        pasterivercircle(region,i,j,valleypixels,0,circletemplates,dir,janload,julload,delta,fakesourcex,fakesourcey);
+                        pasterivercircle(region,i,j,valleypixels,0,dir,janload,julload,delta,fakesourcex,fakesourcey);
                 }
             }
         }
@@ -6820,12 +4469,12 @@ int getriverwidth(region &region, int x, int y, bool delta, int season)
 
 // This function pastes a river circle onto the regional map.
 
-void pasterivercircle(region &region, int centrex, int centrey, int pixels, bool river, vector<vector<vector<int>>> &circletemplates, int dir, int janload, int julload, bool delta, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey)
+void pasterivercircle(region &region, int centrex, int centrey, int pixels, bool river, int dir, int janload, int julload, bool delta, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
     
-    sf::Vector2i nearest;
+    twointegers nearest;
     
     int x=centrex-pixels/2+1;
     int y=centrey-pixels/2+1; // Coordinates of the top left corner.
@@ -6851,7 +4500,7 @@ void pasterivercircle(region &region, int centrex, int centrey, int pixels, bool
                     
                     if (goahead==1 && pixels>2) // Check that it's within a circle.
                     {
-                        if (circletemplates[pixels][i-x][j-y]==0)
+                        if ((i-x)*(j-y)>(pixels*pixels)+pixels)
                             goahead=0;
                     }
                     
@@ -6882,13 +4531,13 @@ void pasterivercircle(region &region, int centrex, int centrey, int pixels, bool
                     
                     if (goahead==1 && pixels>2) // Check that it's within a circle.
                     {
-                        if (circletemplates[pixels][i-x][j-y]==0)
+                        if ((i-x)*(j-y)>(pixels*pixels)+pixels)
                             goahead=0;
                     }
                     
                     if (goahead==1)
                     {
-                        nearest=findclosestriver(region,i,j,circletemplates,delta);
+                        nearest=findclosestriver(region,i,j,delta);
                         
                         if (nearest.x==-1)
                         {
@@ -6962,7 +4611,7 @@ void turnriverstolakes(planet &world, region &region, int dx, int dy, int sx, in
 
 void finishrivers(planet &world, region &region, int leftx, int lefty, int rightx, int righty)
 {
-    sf::Vector2i seapoint;
+    twointegers seapoint;
     
     // First, clean up the river map.
     
@@ -7177,20 +4826,20 @@ void makeelevationtile(planet &world, region &region, int dx, int dy, int sx, in
     }
     
     /*
-    // If any mountain islands are involved here, pretend that it's just sea for now.
-    
-    if (world.mountainisland(sx,sy)!=0)
-        region.setmap(dx,dy,world.mountainisland(sx,sy));
-    
-    if (world.mountainisland(eax,eay)!=0)
-        region.setmap(dx+16,dy,world.mountainisland(eax,eay));
-    
-    if (world.mountainisland(sox,soy)!=0)
-        region.setmap(dx,dy+16,world.mountainisland(sox,soy));
-    
-    if (world.mountainisland(sex,sey)!=0)
-        region.setmap(dx+16,dy+16,world.mountainisland(sex,sey));
-    */
+     // If any mountain islands are involved here, pretend that it's just sea for now.
+     
+     if (world.mountainisland(sx,sy)!=0)
+     region.setmap(dx,dy,world.mountainisland(sx,sy));
+     
+     if (world.mountainisland(eax,eay)!=0)
+     region.setmap(dx+16,dy,world.mountainisland(eax,eay));
+     
+     if (world.mountainisland(sox,soy)!=0)
+     region.setmap(dx,dy+16,world.mountainisland(sox,soy));
+     
+     if (world.mountainisland(sex,sey)!=0)
+     region.setmap(dx+16,dy+16,world.mountainisland(sex,sey));
+     */
     
     if (region.map(dx,dy)<1 || region.map(dx,dy)>maxelev)
         region.setmap(dx,dy,world.nom(sx,sy));
@@ -7203,7 +4852,7 @@ void makeelevationtile(planet &world, region &region, int dx, int dy, int sx, in
     
     if (region.map(dx+16,dy+16)<1 || region.map(dx+16,dy+16)>maxelev)
         region.setmap(dx+16,dy+16,world.nom(sx,sy));
-
+    
     // Now we need to fill in the rest.
     
     bool riverspresent=0;
@@ -8746,7 +6395,7 @@ void removeriverlakeloops(planet &world, region &region, int dx, int dy, int sx,
     
     int maxtilemoves=1; // Can't more from one tile to another more often than this.
     
-    sf::Vector2i destpoint;
+    twointegers destpoint;
     
     fast_srand((sy*width+sx)+world.nom(sx,sy)+world.summerrain(sx,sy));
     
@@ -8940,7 +6589,7 @@ void makemountaintile(planet &world, region &region, int dx, int dy, int sx, int
     
     int mountainheight=world.mountainheight(sx,sy);
     
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     int maxvar=4; // Maximum amount the central junction can be offset by.
     int maxmidvar=2; // Maximum amount the midpoints between the junction and the sides can be offset by.
@@ -9220,7 +6869,7 @@ void makemountaintile(planet &world, region &region, int dx, int dy, int sx, int
 
 // This function calculates and draws the mountain ridges on the regional map.
 
-void calculateridges(planet &world, region &region, int dx, int dy, int sx, int sy, sf::Vector2f pt, sf::Vector2f mm1, sf::Vector2f mm2, sf::Vector2f mm3, int newheight, int midheight, int destheight, peaktemplate &peaks, vector<vector<int>> &rmountainmap, int ridgedir, vector<vector<int>> &ridgeids, short markgap)
+void calculateridges(planet &world, region &region, int dx, int dy, int sx, int sy, twofloats pt, twofloats mm1, twofloats mm2, twofloats mm3, int newheight, int midheight, int destheight, peaktemplate &peaks, vector<vector<int>> &rmountainmap, int ridgedir, vector<vector<int>> &ridgeids, short markgap)
 {
     short markcount=markgap/(random(2,6));
     
@@ -9434,7 +7083,7 @@ void findmountainedges(planet &world, region &region, int dx, int dy, int sx, in
                     if (furtherx>=0 && furtherx<=rwidth && furthery>=0 && furthery<=rheight && nearestridgepointdist[furtherx][furthery]<nearestridgepointdist[i][j])
                         inneredge=1;
                 }
-
+                
                 if ((outeredge==1 || inneredge==1) && tooclose==0)
                 {
                     mountainedges[i][j]=1;
@@ -9516,7 +7165,7 @@ void findbuttresspoints(planet &world, region &region, int dx, int dy, int sx, i
                                         }
                                     }
                                 }
-
+                                
                                 if (tooclose==0)
                                     buttresspoints[k][l]=1;
                                 
@@ -9558,9 +7207,9 @@ void makebuttresses(planet &world, region &region, int dx, int dy, int sx, int s
                 float peakheight=(rmountainmap[nearestridgepointx[i][j]][nearestridgepointy[i][j]]-sealevel)*0.5+sealevel;
                 
                 //if (nearestridgepointdist[i][j]<maxdist) // Shorter buttress than usual
-                    //peakheight=rmountainmap[nearestridgepointx[i][j]][nearestridgepointy[i][j]];
+                //peakheight=rmountainmap[nearestridgepointx[i][j]][nearestridgepointy[i][j]];
                 
-                sf::Vector2f pt, mm1, mm2, mm3;
+                twofloats pt, mm1, mm2, mm3;
                 
                 mm1.x=i;
                 mm1.y=j;
@@ -9690,7 +7339,7 @@ void drawpeak(planet &world, region &region, int sx, int sy, int dx, int dy, int
     }
     
     //if (world.sea(sx,sy)==1)
-        //templateno=1;
+    //templateno=1;
     
     bool leftr=random(0,1); // If it's 1 then we reverse it left-right.
     bool downr=random(0,1); // If it's 1 then we reverse it top-bottom.
@@ -9807,7 +7456,7 @@ void pastepeak(planet &world, region &region, int x, int y, float peakheight, in
                     if (rmountainmap[xx][yy]<newheight) // && region.riverdir(xx,yy)==0)
                     {
                         rmountainmap[xx][yy]=newheight; // We put it on the rmountainmap rather than direct onto region.map to ensure that bits of different peaks don't add onto each other.
-
+                        
                         if (region.special(xx,yy)==110) // If there's salt pan here, remove it.
                         {
                             if (region.lakesurface(xx,yy)!=0)
@@ -9865,12 +7514,12 @@ void removepools(planet &world, region &region, int dx, int dy, int sx, int sy, 
     {
         for (int j=dy; j<=dy+16; j++)
         {
-           if (region.sea(i,j)==0)
-           {
-               landfound=1;
-               i=dx+16;
-               j=dy+16;
-           }
+            if (region.sea(i,j)==0)
+            {
+                landfound=1;
+                i=dx+16;
+                j=dy+16;
+            }
         }
     }
     
@@ -11618,7 +9267,7 @@ void removesinks(planet &world, region &region, int dx, int dy, int sx, int sy)
 
 void fillregionaldepression(region &region, int dx, int dy, int x, int y, int elev)
 {
-    vector<vector<bool>> checked(RARRAYWIDTH*2,vector<bool>(RARRAYWIDTH*2,RARRAYHEIGHT*2));
+    vector<vector<bool>> checked(RARRAYWIDTH*2,vector<bool>(RARRAYHEIGHT*2,0));
     
     int elevadded=elev-region.sealevel();
     int reduceamount=elevadded/4;
@@ -11818,7 +9467,7 @@ void addinlets(planet &world, region &region, int dx, int dy, int sx, int sy, ve
         {
             if (region.sea(i,j)==0 && region.riverdir(i,j)!=0)
             {
-                sf::Vector2i dest=getregionalflowdestination(region,i,j,0);
+                twointegers dest=getregionalflowdestination(region,i,j,0);
                 
                 if (region.sea(dest.x,dest.y)==1) // It's a river on land, flowing into the sea
                 {
@@ -11857,7 +9506,7 @@ void addinlets(planet &world, region &region, int dx, int dy, int sx, int sy, ve
                         int nextx=-1;
                         int nexty=-1;
                         
-                        sf::Vector2i dest;
+                        twointegers dest;
                         
                         for (int ii=x-1; ii<=x+1; ii++)
                         {
@@ -12890,13 +10539,15 @@ void makesmallsaltpans(planet &world, region &region, int dx, int dy, int sx, in
     
     int shapenumber=random(0,size-1);
     
-    vector<vector<int>> thislake(17,vector<int>(17,17));
+    vector<vector<int>> thislake(17,vector<int>(17,0));
     
+    /*
     for (int i=0; i<=16; i++)
     {
         for (int j=0; j<=16; j++)
             thislake[i][j]=0;
     }
+    */
     
     int imheight=smalllake[shapenumber].ysize()-1;
     int imwidth=smalllake[shapenumber].xsize()-1;
@@ -13853,13 +11504,7 @@ void makeriftlaketemplates(planet &world, region &region, int dx, int dy, int sx
     int width=world.width();
     int totalpossnodes=1000;
     
-    vector<vector<int>> bordernodes(totalpossnodes,vector<int>(totalpossnodes,2)); // This will hold the coordinates of the key nodes of the lake border.
-    
-    for (int i=0; i<totalpossnodes; i++)
-    {
-        for (int j=0; j<2; j++)
-            bordernodes[i][j]=-1;
-    }
+    vector<vector<int>> bordernodes(totalpossnodes,vector<int>(2,-1)); // This will hold the coordinates of the key nodes of the lake border.
     
     int totalnodes=0; // Number of nodes this lake coast will have.
     
@@ -13920,7 +11565,7 @@ void makeriftlaketemplates(planet &world, region &region, int dx, int dy, int sx
     
     // The starting one first.
     
-    sf::Vector2i dest=getupstreamcell(world,sx,sy);
+    twointegers dest=getupstreamcell(world,sx,sy);
     
     int dir=getdir(sx,sy,dest.x,dest.y); // dir is the direction to the upstream cell.
     
@@ -14138,135 +11783,124 @@ void makeriftlaketemplates(planet &world, region &region, int dx, int dy, int sx
         
         int dir=world.riverdir(x,y);
         
-        switch (dir)
+        if (dir==1)
         {
-            case 1:
-                
-                bordernodes[thisnode][0]=ddx+15;
-                bordernodes[thisnode][1]=ddy+12;
-                
-                bordernodes[thisnode+1][0]=ddx+15;
-                bordernodes[thisnode+1][1]=ddy+4;
-                
-                bordernodes[laternode][0]=ddx+1-extrawidth;
-                bordernodes[laternode][1]=ddy+4;
-                
-                bordernodes[laternode+1][0]=ddx+1-extrawidth;
-                bordernodes[laternode+1][1]=ddy+8;
-                
-                break;
-                
-            case 2:
-                
-                bordernodes[thisnode][0]=ddx+10;
-                bordernodes[thisnode][1]=ddy+15;
-                
-                bordernodes[thisnode+1][0]=ddx+15;
-                bordernodes[thisnode+1][1]=ddy+10;
-                
-                bordernodes[laternode][0]=ddx+5-(extrawidth/2);
-                bordernodes[laternode][1]=ddy+1-(extrawidth/2);
-                
-                bordernodes[laternode+1][0]=ddx+1-(extrawidth/2);
-                bordernodes[laternode+1][1]=ddy+5-(extrawidth/2);
-                
-                break;
-                
-            case 3:
-                
-                bordernodes[thisnode][0]=ddx+4;
-                bordernodes[thisnode][1]=ddy+15;
-                
-                bordernodes[thisnode+1][0]=ddx+12;
-                bordernodes[thisnode+1][1]=ddy+15;
-                
-                bordernodes[laternode][0]=ddx+12;
-                bordernodes[laternode][1]=ddy+1-extrawidth;
-                
-                bordernodes[laternode+1][0]=ddx+4;
-                bordernodes[laternode+1][1]=ddy+1-extrawidth;
-                
-                break;
-                
-            case 4:
-                
-                bordernodes[thisnode][0]=ddx+1;
-                bordernodes[thisnode][1]=ddy+10;
-                
-                bordernodes[thisnode+1][0]=ddx+5;
-                bordernodes[thisnode+1][1]=ddy+15;
-                
-                bordernodes[laternode][0]=ddx+15+(extrawidth/2);
-                bordernodes[laternode][1]=ddy+5-(extrawidth/2);
-                
-                bordernodes[laternode+1][0]=ddx+10+(extrawidth/2);
-                bordernodes[laternode+1][1]=ddy+1-(extrawidth/2);
-                
-                break;
-                
-            case 5:
-                
-                bordernodes[thisnode][0]=ddx+1;
-                bordernodes[thisnode][1]=ddy+4;
-                
-                bordernodes[thisnode+1][0]=ddx+1;
-                bordernodes[thisnode+1][1]=ddy+12;
-                
-                bordernodes[laternode][0]=ddx+15+extrawidth;
-                bordernodes[laternode][1]=ddy+12;
-                
-                bordernodes[laternode+1][0]=ddx+15+extrawidth;
-                bordernodes[laternode+1][1]=ddy+4;
-                
-                break;
-                
-            case 6:
-                
-                bordernodes[thisnode][0]=ddx+5;
-                bordernodes[thisnode][1]=ddy+1;
-                
-                bordernodes[thisnode+1][0]=ddx+1;
-                bordernodes[thisnode+1][1]=ddy+5;
-                
-                bordernodes[laternode][0]=ddx+10+(extrawidth/2);
-                bordernodes[laternode][1]=ddy+15+(extrawidth/2);
-                
-                bordernodes[laternode+1][0]=ddx+15+(extrawidth/2);
-                bordernodes[laternode+1][1]=ddy+10+(extrawidth/2);
-                
-                break;
-                
-            case 7:
-                
-                bordernodes[thisnode][0]=ddx+12;
-                bordernodes[thisnode][1]=ddy+1;
-                
-                bordernodes[thisnode+1][0]=ddx+4;
-                bordernodes[thisnode+1][1]=ddy+1;
-                
-                bordernodes[laternode][0]=ddx+4;
-                bordernodes[laternode][1]=ddy+15+extrawidth;
-                
-                bordernodes[laternode+1][0]=ddx+12;
-                bordernodes[laternode+1][1]=ddy+15+extrawidth;
-                
-                break;
-                
-            case 8:
-                
-                bordernodes[thisnode][0]=ddx+15;
-                bordernodes[thisnode][1]=ddy+5;
-                
-                bordernodes[thisnode+1][0]=ddx+10;
-                bordernodes[thisnode+1][1]=ddy+1;
-                
-                bordernodes[laternode][0]=ddx+1-(extrawidth/2);
-                bordernodes[laternode][1]=ddy+10+(extrawidth/2);
-                
-                bordernodes[laternode+1][0]=ddx+5-(extrawidth/2);
-                bordernodes[laternode+1][1]=ddy+15+(extrawidth/2);
-                
-                break;
+            bordernodes[thisnode][0]=ddx+15;
+            bordernodes[thisnode][1]=ddy+12;
+            
+            bordernodes[thisnode+1][0]=ddx+15;
+            bordernodes[thisnode+1][1]=ddy+4;
+            
+            bordernodes[laternode][0]=ddx+1-extrawidth;
+            bordernodes[laternode][1]=ddy+4;
+            
+            bordernodes[laternode+1][0]=ddx+1-extrawidth;
+            bordernodes[laternode+1][1]=ddy+8;
+        }
+        
+        if (dir==2)
+        {
+            bordernodes[thisnode][0]=ddx+10;
+            bordernodes[thisnode][1]=ddy+15;
+            
+            bordernodes[thisnode+1][0]=ddx+15;
+            bordernodes[thisnode+1][1]=ddy+10;
+            
+            bordernodes[laternode][0]=ddx+5-(extrawidth/2);
+            bordernodes[laternode][1]=ddy+1-(extrawidth/2);
+            
+            bordernodes[laternode+1][0]=ddx+1-(extrawidth/2);
+            bordernodes[laternode+1][1]=ddy+5-(extrawidth/2);
+        }
+        
+        if (dir==3)
+        {
+            bordernodes[thisnode][0]=ddx+4;
+            bordernodes[thisnode][1]=ddy+15;
+            
+            bordernodes[thisnode+1][0]=ddx+12;
+            bordernodes[thisnode+1][1]=ddy+15;
+            
+            bordernodes[laternode][0]=ddx+12;
+            bordernodes[laternode][1]=ddy+1-extrawidth;
+            
+            bordernodes[laternode+1][0]=ddx+4;
+            bordernodes[laternode+1][1]=ddy+1-extrawidth;
+        }
+        
+        if (dir==4)
+        {
+            bordernodes[thisnode][0]=ddx+1;
+            bordernodes[thisnode][1]=ddy+10;
+            
+            bordernodes[thisnode+1][0]=ddx+5;
+            bordernodes[thisnode+1][1]=ddy+15;
+            
+            bordernodes[laternode][0]=ddx+15+(extrawidth/2);
+            bordernodes[laternode][1]=ddy+5-(extrawidth/2);
+            
+            bordernodes[laternode+1][0]=ddx+10+(extrawidth/2);
+            bordernodes[laternode+1][1]=ddy+1-(extrawidth/2);
+        }
+        
+        if (dir==5)
+        {
+            bordernodes[thisnode][0]=ddx+1;
+            bordernodes[thisnode][1]=ddy+4;
+            
+            bordernodes[thisnode+1][0]=ddx+1;
+            bordernodes[thisnode+1][1]=ddy+12;
+            
+            bordernodes[laternode][0]=ddx+15+extrawidth;
+            bordernodes[laternode][1]=ddy+12;
+            
+            bordernodes[laternode+1][0]=ddx+15+extrawidth;
+            bordernodes[laternode+1][1]=ddy+4;
+        }
+        
+        if (dir==6)
+        {
+            bordernodes[thisnode][0]=ddx+5;
+            bordernodes[thisnode][1]=ddy+1;
+            
+            bordernodes[thisnode+1][0]=ddx+1;
+            bordernodes[thisnode+1][1]=ddy+5;
+            
+            bordernodes[laternode][0]=ddx+10+(extrawidth/2);
+            bordernodes[laternode][1]=ddy+15+(extrawidth/2);
+            
+            bordernodes[laternode+1][0]=ddx+15+(extrawidth/2);
+            bordernodes[laternode+1][1]=ddy+10+(extrawidth/2);
+        }
+        
+        if (dir==7)
+        {
+            bordernodes[thisnode][0]=ddx+12;
+            bordernodes[thisnode][1]=ddy+1;
+            
+            bordernodes[thisnode+1][0]=ddx+4;
+            bordernodes[thisnode+1][1]=ddy+1;
+            
+            bordernodes[laternode][0]=ddx+4;
+            bordernodes[laternode][1]=ddy+15+extrawidth;
+            
+            bordernodes[laternode+1][0]=ddx+12;
+            bordernodes[laternode+1][1]=ddy+15+extrawidth;
+        }
+        
+        if (dir==8)
+        {
+            bordernodes[thisnode][0]=ddx+15;
+            bordernodes[thisnode][1]=ddy+5;
+            
+            bordernodes[thisnode+1][0]=ddx+10;
+            bordernodes[thisnode+1][1]=ddy+1;
+            
+            bordernodes[laternode][0]=ddx+1-(extrawidth/2);
+            bordernodes[laternode][1]=ddy+10+(extrawidth/2);
+            
+            bordernodes[laternode+1][0]=ddx+5-(extrawidth/2);
+            bordernodes[laternode+1][1]=ddy+15+(extrawidth/2);
         }
         
         // Apply some random shifts to these nodes.
@@ -14523,7 +12157,7 @@ void makeriftlaketemplates(planet &world, region &region, int dx, int dy, int sx
     
     int midvar=2; //1; // Standard variation for the interpolated nodes.
     
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     bool stopping=0;
     
@@ -14660,7 +12294,7 @@ void makeriftlaketile(planet &world, region &region, int dx, int dy, int sx, int
     int minpoint=3; // Minimum distance the points on the sides (where rivers go off the tile) can be from the corners.
     int dextra=extra*16;
     
-    sf::Vector2i upstream=getupstreamcell(world,sx,sy);
+    twointegers upstream=getupstreamcell(world,sx,sy);
     
     int upstreamdir=getdir(sx,sy,upstream.x,upstream.y);
     int downstreamdir=world.riverdir(sx,sy);
@@ -14843,7 +12477,7 @@ void makeriftlaketile(planet &world, region &region, int dx, int dy, int sx, int
     
     // Now we know how long the river is as well as its entry and exit points.
     
-    sf::Vector2i dest=getflowdestination(world,sx,sy,0);
+    twointegers dest=getflowdestination(world,sx,sy,0);
     
     float startdepth=surfacelevel-world.riftlakebed(sx,sy);
     float enddepth=surfacelevel-world.riftlakebed(dest.x,dest.y);
@@ -15124,10 +12758,10 @@ void makelaketemplates(planet &world, region &region, int dx, int dy, int sx, in
     dy=dy+dextra;
     
     int totalnodes=1;
-    int nodegap=random(6,8); //6; // This is the number of positions to skip when setting up the initial nodes.
+    int nodegap=random(6,8); // This is the number of positions to skip when setting up the initial nodes.
     
-    vector <sf::Vector2i> bordernodes; // Stores the location of the nodes.
-    vector <sf::Vector2i> nodeshifts; // Stores how much each node has been shifted from its default location.
+    vector <twointegers> bordernodes; // Stores the location of the nodes.
+    vector <twointegers> nodeshifts; // Stores how much each node has been shifted from its default location.
     
     // First, find the first node in our first tile.
     
@@ -15151,11 +12785,11 @@ void makelaketemplates(planet &world, region &region, int dx, int dy, int sx, in
     if (startx==-1) // Something went terribly wrong
         return;
     
-    sf::Vector2i node;
+    twointegers node;
     node.x=startx;
     node.y=starty;
     
-    sf::Vector2i shift;
+    twointegers shift;
     shift.x=0;
     shift.y=0;
     
@@ -15358,7 +12992,7 @@ void makelaketemplates(planet &world, region &region, int dx, int dy, int sx, in
     
     int midvar=2; // Possible variation for the interpolated nodes. This is a fraction of the difference between the two nodes being interpolated, not an absolute value.
     
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     int nodeshiftedx=0;
     int nodeshiftedy=0; // This tells us how much the interpolated node is already shifted by. It's just the average of how much the other nodes are shifted by.
@@ -15498,7 +13132,7 @@ void makelaketemplates(planet &world, region &region, int dx, int dy, int sx, in
         if (stopping==1)
             node=totalnodes;
     }
-
+    
     leftx--;
     lefty--;
     rightx++;
@@ -15506,7 +13140,7 @@ void makelaketemplates(planet &world, region &region, int dx, int dy, int sx, in
     
     // Now create a copy of our template so far. We will use this so we know exactly where the outline is for our fill.
     
-    vector<vector<bool>> templatecopy(rightx-leftx,vector<bool>(rightx-leftx,righty-lefty));
+    vector<vector<bool>> templatecopy(rightx-leftx,vector<bool>(righty-lefty,0));
     
     for (int i=0; i<rightx-leftx; i++)
     {
@@ -16102,7 +13736,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
 {
     fast_srand((sy*world.width()+sx)+world.nom(sx,sy)+world.summerrain(sx,sy));
     
-    sf::Vector2f mm1, mm2, mm3, pt;
+    twofloats mm1, mm2, mm3, pt;
     
     int maxline=3; // Any lines longer than this will be dealt with.
     int minadd=1;
@@ -16112,11 +13746,11 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
     int removechance=2; // The lower this is, the more cells will be changed in straight diagonals.
     
     int diagmaxline=4; // Any diagonal lines longer than this will be dealt with.
-
+    
     // First, sort out diagonals. We go through and look for rivers that are heading diagonally (including those that are doing it in two steps). We randomly change some of them to take slightly different routes.
     
     // North then east.
-
+    
     for (int i=dx; i<=dx+16; i++)
     {
         for (int j=dy; j<=dy+16; j++)
@@ -16157,7 +13791,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
             }
         }
     }
-
+    
     // Northeast.
     
     for (int i=dx; i<=dx+16; i++)
@@ -16198,16 +13832,16 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                                 region.setriverdir(i,j-1,3);
                                 rivercurves[i][j-1]=1;
                             }
-
+                            
                         }
                     }
                 }
             }
         }
     }
-
+    
     // East then north.
-
+    
     for (int i=dx; i<=dx+16; i++)
     {
         for (int j=dy; j<=dy+16; j++)
@@ -16248,9 +13882,9 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
             }
         }
     }
-
+    
     // East then south.
-
+    
     for (int i=dx; i<=dx+16; i++)
     {
         for (int j=dy; j<=dy+16; j++)
@@ -16712,7 +14346,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                         step=1;
                     }
                 } while (keepgoing==1);
-
+                
                 if (linelength>diagmaxline) // Change some cells so the line looks more varied.
                 {
                     int riverjan=region.riverjan(i,j);
@@ -16725,7 +14359,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                     
                     bool keepgoing=1;
                     bool didlast=0;
-
+                    
                     do
                     {
                         bool stymied=0;
@@ -16779,7 +14413,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                                         region.setriverdir(xx,yy,0);
                                         region.setriverjan(xx,yy,0);
                                         region.setriverjul(xx,yy,0);
-                                    
+                                        
                                         region.setriverdir(xx-1,yy,5);
                                         
                                         region.setriverdir(xx-1,yy+1,3);
@@ -17293,9 +14927,9 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
             }
         }
     }
-
+    
     // Now, the straight vertical/horizontal lines.
-
+    
     // First, lines going south.
     
     for (int i=dx; i<=dx+16; i++)
@@ -17329,7 +14963,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
                     int riverjul=region.riverjul(i,j);
                     
                     int enddir=region.riverdir(x,y);
-
+                    
                     for (int yy=j; yy<=y; yy++) // Get rid of the existing section.
                     {
                         region.setriverdir(i,yy,0);
@@ -17371,9 +15005,9 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
             }
         }
     }
-
+    
     // Now, lines going north.
-
+    
     for (int i=dx; i<=dx+16; i++)
     {
         for (int j=dy+16; j>=dy+maxline; j--)
@@ -17603,7 +15237,7 @@ void removeregionalstraightrivers(planet &world, region &region, int dx, int dy,
 
 // This checks whether a proposed route for a new curve of river is clear.
 
-bool checkrivercurve(region &region, int dx, int dy, sf::Vector2f pt, sf::Vector2f mm1, sf::Vector2f mm2, sf::Vector2f mm3)
+bool checkrivercurve(region &region, int dx, int dy, twofloats pt, twofloats mm1, twofloats mm2, twofloats mm3)
 {
     for (int n=1; n<=2; n++) // Two halves of the curve.
     {
@@ -17633,14 +15267,14 @@ bool checkrivercurve(region &region, int dx, int dy, sf::Vector2f pt, sf::Vector
 
 // This adds a new curve to a river.
 
-void makenewrivercurve(region &region, sf::Vector2f pt, sf::Vector2f mm1, sf::Vector2f mm2, sf::Vector2f mm3, int riverjan, int riverjul)
+void makenewrivercurve(region &region, twofloats pt, twofloats mm1, twofloats mm2, twofloats mm3, int riverjan, int riverjul)
 {
     int x=mm1.x;
     int y=mm1.y;
-
+    
     int lastx=mm1.x;
     int lasty=mm1.y; // Coordinates of last point done.
-
+    
     region.setriverjan(lastx,lasty,riverjan);
     region.setriverjul(lastx,lasty,riverjul);
     
@@ -17656,8 +15290,8 @@ void makenewrivercurve(region &region, sf::Vector2f pt, sf::Vector2f mm1, sf::Ve
             {
                 if (n==1)
                     pt=curvepos(mm1,mm1,mm2,mm3,t);
-                    else
-                        pt=curvepos(mm1,mm2,mm3,mm3,t);
+                else
+                    pt=curvepos(mm1,mm2,mm3,mm3,t);
                 
                 x=pt.x;
                 y=pt.y;
@@ -17722,7 +15356,7 @@ void makenewrivercurve(region &region, sf::Vector2f pt, sf::Vector2f mm1, sf::Ve
                     
                     lastx=x;
                     lasty=y;
-
+                    
                 }
             }
         }
@@ -18073,7 +15707,7 @@ void disruptcliff(planet &world, region &region, int dx, int dy, int sx, int sy,
     if (islake==0)
     {
         int riversearch=2; // Don't do it if there's a river this close.
-    
+        
         for (int i=x-riversearch; i<=x+riversearch; i++)
         {
             if (i>=0 && i<=rwidth)
@@ -18221,7 +15855,7 @@ void disruptlakecliff(planet &world, region &region, int dx, int dy, int sx, int
             
             if (newheight>tileelev)
                 newheight=tileelev;
-
+            
             disruptlakebed(region,x,y,newheight,smalllake);
         }
         
@@ -18259,7 +15893,7 @@ void disruptland(region &region, int centrex, int centrey, int newheight, boolsh
     
     if (region.truelake(centrex,centrey)==1)
         islake=1;
-
+    
     int leftr=random(0,1); // If it's 1 then we reverse it left-right
     int downr=random(0,1); // If it's 1 then we reverse it top-bottom
     
@@ -18416,7 +16050,7 @@ void makesubmarineelevationtile(planet &world, region &region, int dx, int dy, i
         
         if (newamount>baseelev)
             newamount=baseelev;
-
+        
         underseamap[dx][dy]=newamount;
     }
     
@@ -18495,7 +16129,7 @@ void makesubmarineelevationtile(planet &world, region &region, int dx, int dy, i
                         
                         if (newvalue>baseelev)
                             newvalue=baseelev;
-
+                        
                         underseamap[dx+ourpoint][dy]=newvalue;
                     }
                 }
@@ -18834,7 +16468,7 @@ int disruptsubmarineelevationtile(planet &world, region &region, int dx, int dy,
 {
     int width=world.width();
     int height=world.height();
-
+    
     int sealevel=world.sealevel();
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -18853,7 +16487,7 @@ int disruptsubmarineelevationtile(planet &world, region &region, int dx, int dy,
     int searchdist=1; // Look this far away from the centre for the lowest elevation.
     
     int maxbordervar=12; // Maximum distance from the tile border that each smudge can be.
-
+    
     // First, get coordinates for the tiles around this one.
     
     int nox=sx;
@@ -18920,7 +16554,7 @@ void smudgesubmarineterrain(planet &world, region &region, int centrex, int cent
             }
         }
     }
-
+    
     int shapenumber=random(1,5);
     
     int imheight=smudge[shapenumber].ysize()-1;
@@ -18985,7 +16619,7 @@ void smudgeterrain(planet &world, region &region, int centrex, int centrey, int 
     int rwidth=region.rwidth();
     int rheight=region.rheight();
     int sealevel=world.sealevel();
-
+    
     float lowestelev=world.maxelevation();
     
     for (int i=centrex-searchdist; i<=centrex+searchdist; i++)
@@ -19056,215 +16690,6 @@ void smudgeterrain(planet &world, region &region, int centrex, int centrey, int 
                     float newelev=(oldelev*point+lowestelev*(255-point))/255.0;
                     
                     int diff=oldelev-newelev;
-                    
-                    region.setmap(xx,yy,newelev);
-                }
-            }
-        }
-    }
-}
-
-// This creates channels on the sea bed.
-
-void makesubmarinechannelstile (planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &underseabeforechannels, byteshapetemplate smudge[])
-{
-    int width=world.width();
-    int height=world.height();
-    
-    int rwidth=region.rwidth();
-    int rheight=region.rheight();
-    
-    int mintilediff=100; // Won't bother doing channels to tiles that are less than this much deeper than our tile
-    int thistileelev=world.nom(sx,sy);
-    
-    int maxvar=4; // Maximum amount the central junction can be offset by.
-    int maxmidvar=2; // Maximum amount the midpoint between one junction and the next can be offset by.
-    
-    // First, get the destination tile.
-    
-    sf::Vector2i dest=getdestination(sx,sy,world.subchanneldir(sx,sy));
-    
-    int desttilex=dest.x;
-    int desttiley=dest.y;
-    
-    if (world.nom(desttilex,desttiley)>world.nom(sx,sy)-mintilediff)
-        return;
-    
-    
-    // We've got the tile that we're drawing a channel to. Now we need to identify the junction points in each one.
-    
-    int thisseed=(sy*width+sx)+world.map(sx,sy)+world.summerrain(sx,sy);
-    int destseed=(desttiley*width+desttilex)+world.map(desttilex,desttiley)+world.summerrain(desttilex,desttiley);
-    
-    int fromx=dx+8;
-    int fromy=dy+8;
-    
-    int tox=fromx;
-    int toy=fromy;
-    
-    if (desttiley<sy)
-        toy=toy-16;
-    
-    if (desttiley>sy)
-        toy=toy+16;
-    
-    if (desttilex<sx)
-        tox=tox-16;
-    
-    if (desttilex>sx)
-        tox=tox+16;
-    
-    fast_srand(destseed);
-    
-    tox=tox+randomsign(random(1,maxvar));
-    toy=toy+randomsign(random(1,maxvar));
-    
-    fast_srand(thisseed);
-    
-    fromx=fromx+randomsign(random(1,maxvar));
-    fromy=fromy+randomsign(random(1,maxvar));
-    
-    int midx=(fromx+tox)/2;
-    int midy=(fromy+toy)/2;
-    
-    midx=midx+randomsign(random(1,maxmidvar));
-    midy=midy+randomsign(random(1,maxmidvar));
-    
-    if (fromx<0 || fromx>rwidth || fromy<0 || fromy>rheight || tox<0 || tox>rwidth || toy<0 || toy>rheight)
-        return;
-    
-    // We've got all the locations. The channel will start with the elevation of the start point minus the channeldepth and end with the elevation of the destination point minus the channeldepth of the destination point.
-    
-    sf::Vector2f pt, mm1, mm2, mm3;
-    
-    mm1.x=fromx;
-    mm1.y=fromy;
-    mm2.x=midx;
-    mm2.y=midy;
-    mm3.x=tox;
-    mm3.y=toy;
-    
-    int startelev=underseabeforechannels[fromx][fromy];
-    int endelev=underseabeforechannels[tox][toy];
-    
-    startelev=startelev-world.subchanneldepth(fromx,fromy);
-    endelev=endelev-world.subchanneldepth(tox,toy);
-    
-    // Work out the rough length of this channel
-    
-    int hozdist1=fromx-midx;
-    int vertdist1=fromy-midy;
-    
-    int hozdist2=midx-tox;
-    int vertdist2=midy-toy;
-    
-    float channellength=sqrt(hozdist1*hozdist1+vertdist1*vertdist1)+sqrt(hozdist2*hozdist2+vertdist2*vertdist2);
-    
-    float drop=startelev-endelev; // Vertical distance travelled in this channel
-    
-    float stepdist=drop/channellength; // Vertical distance travelled with each step
-    
-    calculatechannel(world,region,pt,mm1,mm2,mm3,endelev,stepdist,smudge);
-}
-
-// This draws the channels on the sea bed.
-
-void calculatechannel(planet &world, region &region, sf::Vector2f pt, sf::Vector2f mm1, sf::Vector2f mm2, sf::Vector2f mm3, int startelev, float stepdist, byteshapetemplate smudge[])
-{
-    int smudgechance=2; // The higher this is, the fewer actual smudges will be done.
-    
-    int lastx=mm1.x;
-    int lasty=mm1.y; // Coordinates of last point done.
-    
-    for (int n=1; n<=2; n++) // Two halves of the curve.
-    {
-        int thiselev=startelev;
-        
-        for (float t=0.0; t<=1.0; t=t+0.01)
-        {
-            if (n==1)
-                pt=curvepos(mm1,mm1,mm2,mm3,t);
-            else
-                pt=curvepos(mm1,mm2,mm3,mm3,t);
-            
-            int x=pt.x;
-            int y=pt.y;
-            
-            if (x!=lastx || y!=lasty)
-            {
-                thiselev=thiselev-stepdist;
-                
-                if (random(1,smudgechance)==1)
-                    makesubmarinechannelsmudge(world,region,x,y,thiselev,smudge);
-                
-                lastx=x;
-                lasty=y;
-            }
-        }
-    }
-}
-
-// This creates an area of smudge for an undersea channel.
-
-void makesubmarinechannelsmudge(planet &world, region &region, int centrex, int centrey, int lowestelev, byteshapetemplate smudge[])
-{
-    int sealevel=world.sealevel();
-    
-    int rwidth=RARRAYWIDTH*4-1;
-    int rheight=RARRAYHEIGHT*4-1;
-
-    int shapenumber=random(1,5);
-    
-    int imheight=smudge[shapenumber].ysize()-1;
-    int imwidth=smudge[shapenumber].xsize()-1;
-    
-    int x=centrex-imwidth/2; // Coordinates of the top left corner.
-    int y=centrey-imheight/2;
-    
-    bool leftr=random(0,1); // If it's 1 then we reverse it left-right
-    bool downr=random(0,1); // If it's 1 then we reverse it top-bottom
-    
-    int istart=0, desti=imwidth+1, istep=1;
-    int jstart=0, destj=imheight+1, jstep=1;
-    
-    if (leftr==1)
-    {
-        istart=imwidth;
-        desti=-1;
-        istep=-1;
-    }
-    
-    if (downr==1)
-    {
-        jstart=imheight;
-        destj=-1;
-        jstep=-1;
-    }
-    
-    int imap=-1;
-    int jmap=-1;
-    
-    for (int i=istart; i!=desti; i=i+istep)
-    {
-        imap++;
-        jmap=-1;
-        
-        for (int j=jstart; j!=destj; j=j+jstep)
-        {
-            jmap++;
-            
-            int xx=x+imap;
-            int yy=y+jmap;
-            
-            if (xx>=0 && xx<=rwidth && yy>=0 && yy<=rheight && region.map(xx,yy)<=sealevel && region.map(xx,yy)>lowestelev)
-            {
-                int point=smudge[shapenumber].point(i,j);
-                
-                int oldelev=region.map(xx,yy);
-                
-                if (lowestelev<oldelev)
-                {
-                    int newelev=(oldelev*point+lowestelev*(255-point))/255;
                     
                     region.setmap(xx,yy,newelev);
                 }
@@ -19360,7 +16785,7 @@ void makesubmarineridgelines(planet &world, region &region, int dx, int dy, int 
         marksubmarineridgeline(region,undersearidgelines,fromx,fromy,tox,toy);
         
     }
-
+    
     if (getoceanridge(world,sx,sy,4)==1) // Southeast
     {
         fast_srand(seseed);
@@ -19384,7 +16809,7 @@ void marksubmarineridgeline(region &region, vector<vector<bool>> &undersearidgel
     int midx=(fromx+tox)/2+randomsign(random(1,maxmidvar));
     int midy=(fromy+toy)/2+randomsign(random(1,maxmidvar));
     
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     mm1.x=fromx;
     mm1.y=fromy;
@@ -19597,7 +17022,7 @@ void makesubmarineriftradiations(planet &world, region &region, int dx, int dy, 
     
     int minlength=5*16;
     int maxlength=15*16; // The max/min length of each radiating spine.
-
+    
     fast_srand((sy*width+sx)+world.map(sx,sy)+world.winterrain(sx,sy));
     
     int angle=0-world.oceanridgeangle(sx,sy);
@@ -19631,7 +17056,7 @@ void makesubmarineriftradiations(planet &world, region &region, int dx, int dy, 
         float flength=length;
         
         int thisangle=angle+randomsign(random(1,5));
-
+        
         int peakheight=world.oceanridgeheights(sx,sy);
         
         peakheight=random(peakheight/4,peakheight*1.5);
@@ -19659,10 +17084,10 @@ void makesubmarineriftradiations(planet &world, region &region, int dx, int dy, 
                 
                 fangle=fangle*0.01745329;
             }
-
+            
             int endx=startx+(length*sin(fangle));
             int endy=starty+(length*cos(fangle));
-
+            
             drawriftspine(world,region,dx,dy,sx,sy,startx,starty,endx,endy,peakheight,heightstep,underseaspikes,peaks,lower);
         }
     }
@@ -19767,7 +17192,7 @@ void drawriftspine(planet &world, region &region, int dx, int dy, int sx, int sy
                 }
             }
         }
-
+        
         error-=py;
         if (error<0)
         {
@@ -19908,7 +17333,7 @@ void makeoceanicriftmountains(planet &world, region &region, int sx, int sy, int
     int midx=(fromx+tox)/2+randomsign(random(1,maxmidvar));
     int midy=(fromy+toy)/2+randomsign(random(1,maxmidvar));
     
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     mm1.x=fromx;
     mm1.y=fromy;
@@ -19936,7 +17361,7 @@ void makeoceanicriftmountains(planet &world, region &region, int sx, int sy, int
             {
                 lastx=x;
                 lasty=y;
-
+                
                 for (int radius=32; radius>4; radius=radius/2)
                 {
                     for (int thispeak=1; thispeak<=4; thispeak++)
@@ -20074,7 +17499,7 @@ void makesubmarineriftvalley(planet &world, region &region, int sx, int sy, int 
     int rheight=region.rheight();
     
     int amount=8;
-
+    
     int smudgechance=2; // The higher this is, the fewer smudges there will be
     int nudge=3; // The higher this is, the more irregular the line will be
     
@@ -20083,7 +17508,7 @@ void makesubmarineriftvalley(planet &world, region &region, int sx, int sy, int 
     int midx=(fromx+tox)/2+randomsign(random(1,maxmidvar));
     int midy=(fromy+toy)/2+randomsign(random(1,maxmidvar));
     
-    sf::Vector2f pt, mm1, mm2, mm3;
+    twofloats pt, mm1, mm2, mm3;
     
     mm1.x=fromx;
     mm1.y=fromy;
@@ -20111,7 +17536,7 @@ void makesubmarineriftvalley(planet &world, region &region, int sx, int sy, int 
             {
                 lastx=centrex;
                 lasty=centrey;
-
+                
                 if (random(1,smudgechance)==1)
                 {
                     int shapenumber=random(1,4);
@@ -20273,7 +17698,7 @@ void removetoohighelevations(planet &world, region &region, int dx, int dy, int 
     // Now check for weird lake beds. (Again.)
     
     int surface=world.lakesurface(sx,sy);
-
+    
     float depth=surface-tileelev;
     
     for (int i=dx; i<=dx+16; i++)
@@ -20337,7 +17762,7 @@ void makevolcano(planet &world, region &region, int dx, int dy, int sx, int sy, 
         downr=1;
     
     pastepeak(world,region,x,y,peakheight,templateno,leftr,downr,peaks,rmountainmap);
-
+    
     if (strato==0)
         ridgeids[x][y]=random(1,8);
     
@@ -20411,7 +17836,7 @@ void makesubmarinevolcano(planet &world, region &region, int dx, int dy, int sx,
     int y=dy+random(2,15);
     
     bool volcano=0;
-
+    
     pastesubmarinepeak(world,region,x,y,peakheight,templateno,peaks,undersearidges,rwidth,rheight);
     
     if (extinct==0)
@@ -20439,7 +17864,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
     int rheight=region.rheight();
     
     int minload=80; // minimum size of river to worry about
-
+    
     for (int i=leftx; i<=rightx; i++)
     {
         for (int j=lefty; j<=righty; j++)
@@ -20455,7 +17880,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                     int minjanload=janload/2;
                     int minjulload=julload/2; // If the flow drops by more than this, it's a problem.
                     
-                    sf::Vector2i dest=getdestination(i,j,dir);
+                    twointegers dest=getdestination(i,j,dir);
                     
                     if (dest.x>=leftx && dest.x<=rightx && dest.y>=lefty && dest.y<=righty)
                     {
@@ -20463,13 +17888,15 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                         {
                             if (region.riverjan(dest.x,dest.y)<minjanload || region.riverjul(dest.x,dest.y)<minjulload) // If the destination cell has less flow than the current one!
                             {
-                                vector<vector<bool>> checked(rwidth+1,vector<bool>(rwidth+1,rheight+1));
+                                vector<vector<bool>> checked(rwidth+1,vector<bool>(rheight+1,0));
                                 
+                                /*
                                 for (int k=0; k<=rwidth; k++)
                                 {
                                     for (int l=0; l<=rwidth; l++)
                                         checked[k][l]=0;
                                 }
+                                */
                                 
                                 int newdestx=-1;
                                 int newdesty=-1;
@@ -20496,7 +17923,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                                     
                                     if (dir==4 || dir==5 || dir==6)
                                         lstart=0;
-
+                                    
                                     for (int k=kstart; k<=kend; k++)
                                     {
                                         int kk=i+k;
@@ -20514,7 +17941,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                                                 
                                                 if (destjan>=janload && destjul>=julload) // This cell has a big enough river going through it
                                                 {
-                                                    sf::Vector2i thisload=gettotalinflow(region,kk,ll);
+                                                    twointegers thisload=gettotalinflow(region,kk,ll);
                                                     
                                                     if (thisload.x<destjan || thisload.y<destjul) // This cell isn't getting all the flow it should do.
                                                     {
@@ -20561,7 +17988,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                                                     
                                                     if (destjan>=janload && destjul>=julload) // This cell has a big enough river going through it
                                                     {
-                                                        sf::Vector2i thisload=gettotalinflow(region,kk,ll);
+                                                        twointegers thisload=gettotalinflow(region,kk,ll);
                                                         
                                                         if (thisload.x<destjan || thisload.y<destjul) // This cell isn't getting all the flow it should do.
                                                         {
@@ -20609,7 +18036,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                                                     
                                                     if (destjan>=janload && destjul>=julload) // This cell has a big enough river going through it
                                                     {
-                                                        sf::Vector2i thisload=gettotalinflow(region,kk,ll);
+                                                        twointegers thisload=gettotalinflow(region,kk,ll);
                                                         
                                                         if (thisload.x<destjan || thisload.y<destjul) // This cell isn't getting all the flow it should do.
                                                         {
@@ -20648,7 +18075,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                                                     
                                                     if (destjan>=janload && destjul>=julload) // This cell has a big enough river going through it
                                                     {
-                                                        sf::Vector2i thisload=gettotalinflow(region,kk,ll);
+                                                        twointegers thisload=gettotalinflow(region,kk,ll);
                                                         
                                                         if (thisload.x<destjan || thisload.y<destjul) // This cell isn't getting all the flow it should do.
                                                         {
@@ -20670,7 +18097,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                                 {
                                     int newelev=region.map(newdestx,newdesty);
                                     
-                                    sf::Vector2f mm1, mm2, mm3, pt;
+                                    twofloats mm1, mm2, mm3, pt;
                                     
                                     mm1.x=i;
                                     mm1.y=j;
@@ -20697,7 +18124,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                                     
                                     mm2.x=(mm1.x+mm3.x)/2+randomsign(random(1,rightshift));
                                     mm2.y=(mm1.y+mm3.y)/2+randomsign(random(1,downshift));
-
+                                    
                                     int lastx=mm1.x;
                                     int lasty=mm1.y; // Coordinates of last point done.
                                     
@@ -20718,7 +18145,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
                                                 int dir=getdir(lastx,lasty,x,y);
                                                 
                                                 region.setriverdir(lastx,lasty,dir);
-
+                                                
                                                 if (x!=mm3.x || y!=mm3.y)
                                                 {
                                                     if (region.riverjan(x,y)<janload && region.riverjul(x,y)<julload)
@@ -21017,31 +18444,6 @@ void rotatetileedges(planet &world, region &region, int dx, int dy, int sx, int 
     int rwidth=region.rwidth();
     int rheight=region.rheight();
     
-    /*
-    if (lakes==1) // Don't do lake rotations for rift lakes, as they look weird.
-    {
-        if (world.riftlakesurface(sx,sy)!=0)
-            return;
-     
-        for (int i=sx-1; i<=sx+1; i++)
-        {
-            int ii=i;
-     
-            if (ii<0 || ii>width)
-                wrap(ii,width);
-     
-            for (int j=sy-1; j<=sy+1; j++)
-            {
-                if (j>-0 && j<=height)
-                {
-                    if (world.riftlakesurface(i,j)!=0)
-                        return;
-                }
-            }
-        }
-    }
-    */
-    
     float radius=16; // The radius of the circle that will be rotated.
     
     fast_srand((sy*width+sx)+world.map(sx,sy)+world.summerrain(sx,sy));
@@ -21085,7 +18487,7 @@ void rotatetileedges(planet &world, region &region, int dx, int dy, int sx, int 
                 y=dy+randomsign(random(1,4));
             }
         }
-
+        
         if (goahead==1)
         {
             int angle;
@@ -21328,7 +18730,7 @@ void rotatetileedgesarray(planet &world, region &region, int dx, int dy, int sx,
             x=dx+random(4,12);
             y=dy+randomsign(random(1,4));
         }
-
+        
         int angle;
         
         if (random(1,2)==1)
@@ -21470,7 +18872,7 @@ void removesmallislands(planet &world, region &region, int dx, int dy, int sx, i
         if (region.map(dx+16+margin,j)>sealevel)
             return;
     }
-
+    
     for (int i=dx-margin+1; i<dx+16+margin; i++)
     {
         for (int j=dy-margin+1; j<dy+16+margin; j++)
@@ -21607,7 +19009,7 @@ void removetoolow(planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     int maxelev=world.maxelevation();
     int minelev=3;
-
+    
     for (int i=dx; i<=dx+16; i++)
     {
         for (int j=dy; j<=dy+16; j++)

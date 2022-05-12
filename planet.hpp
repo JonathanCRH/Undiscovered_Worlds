@@ -3,7 +3,7 @@
 //  Undiscovered Worlds
 //
 //  Created by Jonathan Hill on 22/07/2019.
-//  
+//
 //  Please see functions.hpp for notes.
 
 #ifndef planet_hpp
@@ -28,7 +28,7 @@ public:
     ~planet();  // destructor
     
     // accessor functions
-
+    
     long seed() const;   // seed
     void setseed(long amount);
     
@@ -164,7 +164,7 @@ public:
     
     int highbase3() const{return itshighbase3;};
     void sethighbase3(int amount){itshighbase3=amount;};
-
+    
     int desert1() const{return itsdesert1;};
     void setdesert1(int amount){itsdesert1=amount;};
     
@@ -227,7 +227,7 @@ public:
     
     int eqtundra3() const{return itseqtundra3;};
     void seteqtundra3(int amount){itseqtundra3=amount;};
-
+    
     int saltpan1() const{return itssaltpan1;};
     void setsaltpan1(int amount){itssaltpan1=amount;};
     
@@ -236,7 +236,7 @@ public:
     
     int saltpan3() const{return itssaltpan3;};
     void setsaltpan3(int amount){itssaltpan3=amount;};
-
+    
     int erg1() const{return itserg1;};
     void seterg1(int amount){itserg1=amount;};
     
@@ -254,7 +254,7 @@ public:
     
     int wetlands3() const{return itswetlands3;};
     void setwetlands3(int amount){itswetlands3=amount;};
-
+    
     int lake1() const{return itslake1;};
     void setlake1(int amount){itslake1=amount;};
     
@@ -559,10 +559,10 @@ public:
     
     int horsewrap(int x, int y) const;
     void sethorsewrap(int x, int y, int amount);
-  
+    
     // Other public functions.
     
-    void clear();   // Clears all of the maps.  
+    void clear();   // Clears all of the maps.
     void smoothnom(int amount); // Smoothes the no-mountain map to a given amount.
     void smoothextraelev(int amount); // Smoothes the extra elevation map to a given amount.
     void shiftterrain(int offset); // Shifts the physical terrain by a given amount.
@@ -734,7 +734,7 @@ private:
     int testmap[ARRAYWIDTH][ARRAYHEIGHT];
     
     int horselats[ARRAYWIDTH][6];
-        
+    
     // Private functions.
     
     int wrapx(int x) const;
@@ -834,10 +834,10 @@ inline int planet::map(int x, int y) const
     
     if (mapnom[x][y]<=itssealevel)
         return mapnom[x][y]+oceanridgeheightmap[x][y]+thisvolcano;
-
+    
     if (thisvolcano>mountainheights[x][y])
         return mapnom[x][y]+thisvolcano+extraelevmap[x][y];
-    else    
+    else
         return mapnom[x][y]+mountainheights[x][y]+extraelevmap[x][y];
     
     return 0;

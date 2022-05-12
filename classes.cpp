@@ -3,12 +3,35 @@
 //  Undiscovered Worlds
 //
 //  Created by Jonathan Hill on 17/04/2020.
-//  
+//
 //  Please see functions.hpp for notes.
 
 #include "classes.hpp"
 #include "functions.hpp"
 #include <list>
+
+// Multiple value classes
+
+twointegers::twointegers() // constructor
+{
+}
+twointegers::~twointegers() // destructor
+{
+}
+
+threeintegers::threeintegers() // constructor
+{
+}
+threeintegers::~threeintegers() // destructor
+{
+}
+
+twofloats::twofloats() // constructor
+{
+}
+twofloats::~twofloats() // destructor
+{
+}
 
 // Peaktemplate class
 
@@ -74,4 +97,3 @@ void byteshapetemplate::clear()
             itsvector[i][j]=0;
     }
 }
-

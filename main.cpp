@@ -7246,14 +7246,6 @@ int main(int /* argc */, char ** /* argv */)
                                              
                                              vector<vector<bool>> shelves(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
                                              
-                                             /*
-                                             for (int i=0; i<=width; i++)
-                                             {
-                                                 for (int j=0; j<=height; j++)
-                                                     shelves[i][j]=0;
-                                             }
-                                             */
-                                             
                                              makecontinentalshelves(*world,shelves,4);
                                              
                                              int grain=8; // Level of detail on this fractal map.
@@ -7462,14 +7454,6 @@ int main(int /* argc */, char ** /* argv */)
                                                
                                                vector<vector<int>> plateaumap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
                                                
-                                               /*
-                                               for (int i=0; i<=width; i++)
-                                               {
-                                                   for (int j=0; j<=height; j++)
-                                                       plateaumap[i][j]=0;
-                                               }
-                                               */
-                                               
                                                // First, make a fractal map.
                                                
                                                int grain=8; // Level of detail on this fractal map.
@@ -7517,14 +7501,6 @@ int main(int /* argc */, char ** /* argv */)
                                            int conheight=sealevel+50;
                                            
                                            vector<vector<int>> plateaumap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-                                           
-                                           /*
-                                           for (int i=0; i<=width; i++)
-                                           {
-                                               for (int j=0; j<=height; j++)
-                                                   plateaumap[i][j]=0;
-                                           }
-                                           */
                                            
                                            // First, make a fractal map.
                                            
@@ -7589,17 +7565,6 @@ int main(int /* argc */, char ** /* argv */)
                                              
                                              vector<vector<int>> mountaindrainage(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
                                              vector<vector<bool>> shelves(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
-                                             
-                                             /*
-                                             for (int i=0; i<=width; i++)
-                                             {
-                                                 for (int j=0; j<=height; j++)
-                                                 {
-                                                     mountaindrainage[i][j]=0;
-                                                     shelves[i][j]=0;
-                                                 }
-                                             }
-                                             */
                                              
                                              // First, finish off the terrain generation.
                                              
@@ -8817,22 +8782,6 @@ void drawglobalreliefmapimage(planet &world, stbi_uc globalreliefimage[], int gl
                             newbase2=(highno*world.highbase2()+lowno*thisbase2)/40;
                             newbase3=(highno*world.highbase3()+lowno*thisbase3)/40;
                             
-                            /*
-                             // Adjust it for monsoon colouring.
-                             
-                             monsoon=monsoon*0.3;
-                             
-                             float notmonsoon=1.0-monsoon;
-                             
-                             int monsooncol1=195;
-                             int monsooncol2=210;
-                             int monsooncol3=123;
-                             
-                             int thisgrass1=((monsoon*100*monsooncol1)+(notmonsoon*100*world.grass1()))/100;
-                             int thisgrass2=((monsoon*100*monsooncol1)+(notmonsoon*100*world.grass2()))/100;
-                             int thisgrass3=((monsoon*100*monsooncol1)+(notmonsoon*100*world.grass3()))/100;
-                             */
-                            
                             newgrass1=(highno*world.highbase1()+lowno*world.grass1())/40;
                             newgrass2=(highno*world.highbase2()+lowno*world.grass2())/40;
                             newgrass3=(highno*world.highbase3()+lowno*world.grass3())/40;
@@ -9458,26 +9407,6 @@ void drawregionalprecipitationmapimage(planet &world, region &region, stbi_uc re
                     colour2=0;
             }
             
-            /*
-             float ii=i; // Add a grid.
-             
-             float jj=j;
-             
-             if (i/16==ii/16 || j/16==jj/16)
-             {
-             colour1=250;
-             colour2=100;
-             colour3=50;
-             }
-             
-             if (region.test(i,j)!=0)
-             {
-             colour1=255;
-             colour2=0;
-             colour3=255;
-             }
-             */
-            
             index=((i-origregwidthbegin)+(j-origregheightbegin)*regionalimagewidth)*regionalimagechannels;
             
             regionalprecipitationimage[index]=colour1;
@@ -9943,11 +9872,6 @@ void drawregionalreliefmapimage(planet &world, region &region, stbi_uc regionalr
                                 if (nearest.x!=-1)
                                     biggestflow=region.riverjan(nearest.x,nearest.y)+region.riverjul(nearest.x,nearest.y);
                             }
-                            
-                            /*
-                             if ((world.deltajan(xx,yy)+world.deltajul(xx,yy))>(world.riverjan(xx,yy)+world.riverjul(xx,yy)) && biggestflow>world.riverjan(xx,yy)+world.riverjul(xx,yy))
-                             biggestflow=world.riverjan(xx,yy)+world.riverjul(xx,yy);
-                             */
                             
                             if (biggestflow>12000)
                                 biggestflow=12000;
@@ -11545,14 +11469,6 @@ void generateglobalterraintype2(planet &world, nanogui::Screen &screen, nanogui:
     smoothland(world,2);
     
     vector<vector<int>> slopes(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    /*
-     for (int i=0; i<=width; i++)
-     {
-     for (int j=0; j<=height; j++)
-     slopes[i][j]=0;
-     }
-     */
     
     getseaslopes(world,slopes); // Note down all the biggest slopes we currently have. This is so that we don't mark any non-shading areas over these slopes later.
     

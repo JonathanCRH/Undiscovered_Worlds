@@ -683,14 +683,6 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
     
     vector<vector<bool>> currentland(width+1,vector<bool>(height+1,0)); // This will show where new land has been placed around the mountains.
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            currentland[i][j]=0;
-    }
-    */
-    
     int volcanochance=random(40,120);
     
     createdirectedchain(world,baseheight,conheight,thiscontinent,continentnos,fractal,landshape,chainland,startpointx,startpointy,endpointx,endpointy,1,rangepoints,currentland,volcanochance);
@@ -725,14 +717,6 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
         return;
     
     vector<vector<bool>> landmask(width+1,vector<bool>(height+1,0)); // This will show where the mountains divide the continent into two.
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            landmask[i][j]=0;
-    }
-    */
     
     twofloats pt, mm1, mm2, mm3, mm4;
     
@@ -801,20 +785,6 @@ void makecontinentedgemountains(planet &world, short thiscontinent, vector<vecto
         
         mm4.x=rangepoints[n+3].x;
         mm4.y=rangepoints[n+3].y;
-        
-        /*
-         
-         if (mm2.x<mm1.x) // This dewraps them all, so some may extend beyond the eastern edge of the map.
-         
-         mm2.x=mm2.x+width;
-         
-         if (mm3.x<mm2.x)
-         mm3.x=mm3.x+width;
-         
-         if (mm4.x<mm3.x)
-         mm4.x=mm4.x+width;
-         
-         */
         
         for (float t=0.0; t<=1.0; t=t+0.01)
         {
@@ -983,17 +953,8 @@ void makeshelvesvoronoi(planet &world, vector<vector<short>> &voronoi, vector<ve
     
     vector<vector<int>> pointsmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            pointsmap[i][j]=0;
-    }
-    */
-    
-    //int pointdist=4;
     int pointnumber=1;
-    int movedist=(pointdist/4)*3; //3;
+    int movedist=(pointdist/4)*3;
     
     for (int i=0; i<=width; i=i+pointdist)
     {
@@ -1107,19 +1068,7 @@ void makecontinent(planet &world, vector<vector<bool>> &continent, vector<vector
     vector<vector<bool>> circlemap(width+1,vector<bool>(height+1,0));
     vector<vector<bool>> outline(width+1,vector<bool>(height+1,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            circlemap[i][j]=0;
-            outline[i][j]=0;
-        }
-    }
-    */
-    
     vector<bool> cells(points); // vector<uint8_t>?
-    //bool cells[points];
     
     for (int n=0; n<points; n++)
         cells[n]=0;
@@ -2907,14 +2856,6 @@ void createdirectedchain(planet &world, int baseheight, int conheight, short thi
     int sealevel=world.sealevel();
     
     vector<vector<bool>> thischain(width+1,vector<bool>(height+1,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            thischain[i][j]=0;
-    }
-    */
     
     vector<vector<unsigned char>> rangeheighttemplate(height+1,vector<unsigned char>(height+1,0));
     vector<vector<unsigned char>> rangeridgetemplate(height+1,vector<unsigned char>(height+1,0)); // These will hold the range we're currently putting on.
@@ -5142,111 +5083,6 @@ void smoothland(planet &world, int amount)
     }
 }
 
-/*
- void smoothland(planet &world, int amount)
- {
- int width=world.width();
- int height=world.height();
- int sealevel=world.sealevel();
- float maxelev=world.maxelevation();
- float seaamount=amount*3;
- float div=maxelev/seaamount;
- 
- int grain=8; // Level of detail on this fractal map.
- float valuemod=0.2;
- int v=random(3,6);
- float valuemod2=v;
- 
- vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
- 
- for (int i=0; i<=width; i++)
- {
- for (int j=0; j<=height; j++)
- fractal[i][j]=0;
- }
- 
- createfractal(fractal,width,height,grain,valuemod,valuemod2,1,maxelev,0,0);
- 
- for (int i=0; i<=width; i++)
- {
- for (int j=0; j<=height; j++)
- {
- int crount=0;
- int ave=0;
- int origland=0;
- int thisamount=amount;
- 
- if (world.sea(i,j)==0) // Check to see whether this point is originally land or sea
- origland=1;
- else
- thisamount=fractal[i][j]/div;
- 
- if (thisamount<1)
- thisamount=1;
- 
- bool goahead=1;
- 
- if (world.coast(i,j)==1)
- goahead=0;
- 
- if (goahead==1)
- {
- if (world.sea(i,j)==0)
- {
- for (int k=i-thisamount; k<=i+thisamount; k++)
- {
- int kk=k;
- 
- if (kk<0 || kk>width)
- kk=wrap(kk,width);
- 
- for (int l=j-thisamount; l<=j+thisamount; l++)
- {
- if (l>0 && l<height && world.sea(kk,l)==0)
- {
- ave=ave+world.nom(kk,l);
- crount++;
- }
- }
- }
- 
- if (crount>0)
- {
- ave=ave/crount;
- world.setnom(i,j,ave);
- }
- }
- else
- {
- for (int k=i-thisamount; k<=i+thisamount; k++)
- {
- int kk=k;
- 
- if (kk<0 || kk>width)
- kk=wrap(kk,width);
- 
- for (int l=j-thisamount; l<=j+thisamount; l++)
- {
- if (l>0 && l<height && world.sea(kk,l)==1 && world.coast(kk,l)==0)
- {
- ave=ave+world.nom(kk,l);
- crount++;
- }
- }
- }
- 
- if (crount>0)
- {
- ave=ave/crount;
- world.setnom(i,j,ave);
- }
- }
- }
- }
- }
- }
- */
-
 // This function creates areas of raised elevation around where canyons might form later.
 
 void createextraelev(planet &world)
@@ -5255,14 +5091,6 @@ void createextraelev(planet &world)
     int height=world.height();
     
     vector<vector<int>> tempelev(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            tempelev[i][j]=0;
-    }
-    */
     
     float maxextra=1000; // Maximum amount that the extraelev array can have.
     float maxelev=world.maxelevation();
@@ -6384,14 +6212,6 @@ void normalisecoasts(planet &world, int landheight, int seadepth, int severity)
     
     vector<vector<bool>> done(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            done[i][j]=0;
-    }
-    */
-    
     int amount=2;
     int amount2=2;
     
@@ -6588,48 +6408,6 @@ void checkislands(planet &world)
                             volcano=0-volcano;
                         
                         world.setvolcano(i,j,volcano);
-                        
-                        /*
-                         world.setvolcano(i,j,volcano);
-                         world.setnom(i,j,sealevel+random(5,20));
-                         
-                         if (random(1,3)==1) // Maybe make a bigger island here.
-                         {
-                         for (int k=i-1; k<=i+1; k++)
-                         {
-                         int kk=k;
-                         
-                         if (kk<0 || kk>width)
-                         kk=wrap(kk,width);
-                         
-                         for (int l=j-1; l<=j+1; l++)
-                         {
-                         if (l>=0 && l<=height)
-                         {
-                         if (random(1,2)==1)
-                         {
-                         world.setnom(kk,l,sealevel+random(5,20));
-                         
-                         if (world.volcano(kk,l)==0 && random(1,2)==1) // Maybe put an extinct volcano here!
-                         {
-                         int newvolcano=world.volcano(i,j)+randomsign(random(1,100));
-                         
-                         if (newvolcano>0)
-                         newvolcano=0-newvolcano;
-                         
-                         world.setvolcano(kk,l,newvolcano);
-                         }
-                         }
-                         }
-                         }
-                         }
-                         }
-                         else
-                         {
-                         world.setisland(i,j,1);
-                         world.setmountainisland(i,j,1);
-                         }
-                         */
                     }
                 }
             }
@@ -6645,14 +6423,6 @@ void extendnoshade(planet &world)
     int height=world.height();
     
     vector<vector<bool>> extra(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0)); // This is to mark all cells touching the no-shade ones as themselves no-shade.
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=width; j++)
-            extra[i][j]=0;
-    }
-    */
     
     for (int i=0; i<=width; i++)
     {
@@ -6702,17 +6472,6 @@ void addfjordmountains(planet &world)
     
     vector<vector<int>> justadded(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     vector<vector<int>> previouslyadded(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            justadded[i][j]=0;
-            previouslyadded[i][j]=0;
-        }
-    }
-    */
     
     for (int n=1; n<=2; n++)
     {
@@ -6862,14 +6621,6 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
     // First, sort out the outline.
     
     vector<vector<bool>> outline(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=width; j++)
-            outline[i][j]=0;
-    }
-    */
     
     int grain=8; // Level of detail on this fractal map.
     float valuemod=0.2; //0.4;
@@ -7049,14 +6800,6 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
     
     vector<vector<bool>> circles(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=width; j++)
-            circles[i][j]=0;
-    }
-    */
-    
     int circlechance=40;
     int mindist=5; // Minimum distance to non-shelf sea.
     int radius=8;
@@ -7143,17 +6886,6 @@ void removeshelfgaps(planet &world, vector<vector<bool>> &shelves)
     vector<vector<bool>> checked(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0)); // This array marks which sea areas have already been scanned.
     
     vector<vector<int>> area(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This array marks the area of each bit of sea.
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            checked[i][j]=0;
-            area[i][j]=0;
-        }
-    }
-    */
     
     int seax=-1;
     int seay=-1;
@@ -7287,25 +7019,6 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
     vector<vector<int>> ridges(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     vector<vector<int>> ridgesmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     vector<vector<int>> ridgedistances(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=width; j++)
-        {
-            nearestshelfdist[i][j]=0;
-            nearestshelfx[i][j]=-1;
-            nearestshelfy[i][j]=-1;
-            edgepoints[i][j]=0;
-            boundaries[i][j]=0;
-            grid[i][j]=0;
-            gridnumbers[i][j]=0;
-            ridges[i][j]=0;
-            ridgesmap[i][j]=0;
-            ridgedistances[i][j]=0;
-        }
-    }
-    */
     
     // We need a grid of edge points - points where the coastal shelves meet ocean.
     
@@ -8754,14 +8467,6 @@ void createoceanfault(planet &world, int midx, int midy, int mindist, int maxdis
     
     vector<vector<bool>> mask(masksize+1,vector<bool>(masksize+1,0));
     
-    /*
-    for (int i=0; i<=masksize; i++)
-    {
-        for (int j=0; j<=masksize; j++)
-            mask[i][j]=0;
-    }
-    */
-    
     // To convert coordinates from the map to the mask, add the offsets.
     // To convert them from the mask to the map, subtract the offsets.
     
@@ -9058,17 +8763,6 @@ void createoceantrenches(planet &world, vector<vector<bool>> &shelves)
     vector<vector<bool>> trenchmap(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
     vector<vector<int>> fractal(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            trenchmap[i][j]=0;
-            fractal[i][j]=0;
-        }
-    }
-    */
-    
     int grain=4; // Level of detail on this fractal map.
     float valuemod=0.01;
     int v=1; //random(3,6);
@@ -9147,21 +8841,6 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
     vector<vector<bool>> timesten(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0)); // This records whether the ridge distance has been multiplied by ten (this is done so that the ridges on either side of the main ridge don't join up with each other).
     vector<vector<int>> mountainridges(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     vector<vector<int>> mountainheights(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // These two are the same as the world mountain ridges/heights arrays, but we'll do everything on these first and then copy them over.
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            extraraw[i][j]=0;
-            mountaindist[i][j]=0;
-            mountainbaseheight[i][j]=0;
-            timesten[i][j]=0;
-            mountainridges[i][j]=0;
-            mountainheights[i][j]=0;
-        }
-    }
-    */
     
     int grain=256;
     float valuemod=8;
@@ -9882,171 +9561,6 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
         }
     }
     
-    {
-        /*
-         // Now add in the main, central ridge.
-         
-         for (int i=0; i<=width; i++)
-         {
-         for (int j=1; j<height; j++)
-         {
-         if (rawmountains[i][j]!=0)
-         {
-         mountainheights[i][j]=rawmountains[i][j];
-         
-         int dir, ii, jj;
-         
-         // Looking north
-         
-         dir=1;
-         ii=i;
-         jj=j-1;
-         
-         if (rawmountains[ii][jj]!=0)
-         {
-         if (getridge(mountainridges,i,j,dir)==0)
-         {
-         int code=getcode(dir);
-         mountainridges[i][j]=mountainridges[i][j]+code;
-         }
-         
-         }
-         
-         // Looking northeast
-         
-         dir=2;
-         ii=i+1;
-         jj=j-1;
-         
-         if (ii<0 || ii>width)
-         ii=wrap(ii,width);
-         
-         if (rawmountains[ii][jj]!=0)
-         {
-         if (getridge(mountainridges,i,j,dir)==0)
-         {
-         int code=getcode(dir);
-         mountainridges[i][j]=mountainridges[i][j]+code;
-         }
-         
-         }
-         
-         // Looking east
-         
-         dir=3;
-         ii=i+1;
-         jj=j;
-         
-         if (ii<0 || ii>width)
-         ii=wrap(ii,width);
-         
-         if (rawmountains[ii][jj]!=0)
-         {
-         if (getridge(mountainridges,i,j,dir)==0)
-         {
-         int code=getcode(dir);
-         mountainridges[i][j]=mountainridges[i][j]+code;
-         }
-         
-         }
-         
-         // Looking southeast
-         
-         dir=4;
-         ii=i+1;
-         jj=j+1;
-         
-         if (ii<0 || ii>width)
-         ii=wrap(ii,width);
-         
-         if (rawmountains[ii][jj]!=0)
-         {
-         if (getridge(mountainridges,i,j,dir)==0)
-         {
-         int code=getcode(dir);
-         mountainridges[i][j]=mountainridges[i][j]+code;
-         }
-         
-         }
-         
-         // Looking south
-         
-         dir=5;
-         ii=i;
-         jj=j+1;
-         
-         if (rawmountains[ii][jj]!=0)
-         {
-         if (getridge(mountainridges,i,j,dir)==0)
-         {
-         int code=getcode(dir);
-         mountainridges[i][j]=mountainridges[i][j]+code;
-         }
-         
-         }
-         
-         // Looking southwest
-         
-         dir=6;
-         ii=i-1;
-         jj=j+1;
-         
-         if (ii<0 || ii>width)
-         ii=wrap(ii,width);
-         
-         if (rawmountains[ii][jj]!=0)
-         {
-         if (getridge(mountainridges,i,j,dir)==0)
-         {
-         int code=getcode(dir);
-         mountainridges[i][j]=mountainridges[i][j]+code;
-         }
-         
-         }
-         
-         // Looking west
-         
-         dir=7;
-         ii=i-1;
-         jj=j;
-         
-         if (ii<0 || ii>width)
-         ii=wrap(ii,width);
-         
-         if (rawmountains[ii][jj]!=0)
-         {
-         if (getridge(mountainridges,i,j,dir)==0)
-         {
-         int code=getcode(dir);
-         mountainridges[i][j]=mountainridges[i][j]+code;
-         }
-         
-         }
-         
-         // Looking northwest
-         
-         dir=8;
-         ii=i-1;
-         jj=j-1;
-         
-         if (ii<0 || ii>width)
-         ii=wrap(ii,width);
-         
-         if (rawmountains[ii][jj]!=0)
-         {
-         if (getridge(mountainridges,i,j,dir)==0)
-         {
-         int code=getcode(dir);
-         mountainridges[i][j]=mountainridges[i][j]+code;
-         }
-         
-         }
-         }
-         }
-         }
-         */
-    }
-    
     // Now we want to add some variation to the ridge directions.
     
     int varchance=3; // The lower this is, the more variation there will be.
@@ -10202,53 +9716,6 @@ void createmountainsfromraw(planet &world, vector<vector<int>> &rawmountains)
             }
         }
     }
-    
-    /*
-     // Now remove extraneous ridges.
-     
-     for (int i=0; i<=width; i++)
-     {
-     for (int j=0; j<=height; j++)
-     {
-     if (mountainridges[i][j]!=0)
-     {
-     short total=0;
-     
-     for (int dir=1; dir<=8; dir++)
-     {
-     if (getridge(mountainridges,i,j,dir)==1)
-     total++;
-     }
-     
-     if (total>3)
-     {
-     int extra=total-3;
-     
-     for (int n=1; n<=extra; n++)
-     {
-     int a=1;
-     int b=8;
-     int c=1;
-     
-     if (random(1,2)==1)
-     {
-     a=8;
-     b=1;
-     c=-1;
-     }
-     
-     for (int dir=a; dir!=b; dir=dir+c)
-     {
-     if (getridge(mountainridges,i,j,dir)==1)
-     deleteridge(world,mountainridges,mountainheights,i,j,dir);
-     }
-     }
-     }
-     }
-     }
-     }
-     */
-    
     
     // Now apply the new mountain heights and ridges to the world.
     

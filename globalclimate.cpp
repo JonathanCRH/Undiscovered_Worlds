@@ -3312,7 +3312,7 @@ void removesubpolarstreaks(planet &world)
                     
                     if (world.mintemp(iminus,j)<=-3 && world.maxtemp(iminus,j)>10 && world.mintemp(iplus,j)<=-3 && world.maxtemp(iplus,j)>10)
                         
-                        if (world.mountainheight(iminus,j)<200 /*&& world.mountainheight(iminus,j)<200*/) // FG: redundant
+                        if (world.mountainheight(iminus,j)<200)
                         {
                             world.setmintemp(i,j,(origmintemp[i][j]+origmintemp[iminus][j]+origmintemp[iplus][j])/3);
                             world.setmaxtemp(i,j,(origmaxtemp[i][j]+origmaxtemp[iminus][j]+origmaxtemp[iplus][j])/3);
@@ -4781,14 +4781,6 @@ void removeparallelrivers(planet &world)
     
     vector<vector<int>> altered(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will show any points that have been involved in a change
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            altered[i][j]=0;
-    }
-    */
-    
     // First, N/S and E/W
     
     for (int i=0; i<width; i++)
@@ -5207,14 +5199,6 @@ void removerivermountains(planet &world)
     int minremoveheight=100; // Only mountains higher than this will be removed.
     
     vector<vector<bool>> toremove(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<ARRAYWIDTH; i++)
-    {
-        for (int j=0; j<ARRAYHEIGHT; j++)
-            toremove[i][j]=0;
-    }
-    */
     
     for (int i=0; i<=width; i++)
     {
@@ -6255,31 +6239,12 @@ void sortlakerivers(planet &world, int leftx, int lefty, int rightx, int righty,
     
     vector<vector<int>> outflow(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            outflow[i][j]=0;
-    }
-    */
-    
     markriver(world,outflowx,outflowy,outflow,0);
     
     // Now go over the lake area. Every river tile that is under or next to the lake should be pointing to the centre of the lake.
     
     vector<vector<int>> checkedriverlaketiles(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            checkedriverlaketiles[i][j]=0;
-            removedrivers[i][j]=0;
-        }
-    }
-    */
     
     int riverno=0;
     
@@ -6423,14 +6388,6 @@ void sortlakerivers(planet &world, int leftx, int lefty, int rightx, int righty,
     // Now we apply the new load to the outflowing river.
     
     vector<vector<bool>> loadadded(ARRAYWIDTH,vector<bool>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<ARRAYWIDTH; i++)
-    {
-        for (int j=0; j<ARRAYHEIGHT; j++)
-            loadadded[i][j]=0;
-    }
-    */
     
     int x=outflowx;
     int y=outflowy;
@@ -8299,17 +8256,6 @@ void createriftlakemap(planet &world, vector<vector<int>> &nolake)
     vector<vector<int>> lakewinterrainmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     vector<vector<int>> lakesummerrainmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            lakewinterrainmap[i][j]=0;
-            lakesummerrainmap[i][j]=0;
-        }
-    }
-    */
-    
     riftlakerain(world,lakewinterrainmap,lakesummerrainmap);
     
     // Now we add new rivers from that extra precipitation.
@@ -8331,17 +8277,6 @@ twointegers createriftlake(planet &world, int startx, int starty, int lakelength
     
     vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     vector<vector<int>> currentriver(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            removedrivers[i][j]=0;
-            currentriver[i][j]=0;
-        }
-    }
-    */
     
     // First we need to work out the surface level of this lake. It will be at the level of the river flowing out of it.
     
@@ -8926,14 +8861,6 @@ void createergs(planet &world, boolshapetemplate smalllake[], boolshapetemplate 
     
     vector<vector<short>> ergprobability(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            ergprobability[i][j]=0;
-    }
-    */
-    
     int clusternumber=50; //30; // Number of possible clusters of erg on the map.
     int minrad=10;
     int maxrad=40; // Possible sizes of the clusters
@@ -8992,14 +8919,6 @@ void createergs(planet &world, boolshapetemplate smalllake[], boolshapetemplate 
     int lakeno=0;
     
     vector<vector<int>> thislake(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            thislake[i][j]=0;
-    }
-    */
     
     for (int i=0; i<=width; i++)
     {
@@ -9074,14 +8993,6 @@ void createsaltpans(planet &world, boolshapetemplate smalllake[], boolshapetempl
     
     vector<vector<int>> thislake(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            thislake[i][j]=0;
-    }
-    */
-    
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -9152,39 +9063,6 @@ void drawspeciallake(planet &world, int shapenumber, int centrex, int centrey, i
     int mindepth=5; // Minimum depth.
     
     int surfaceheight;
-    
-    /*
-     
-     if (special==120) // For ergs, no need to make it particularly low.
-     {
-     origheight=world.map(centrex,centrey);
-     surfaceheight=origheight;
-     }
-     else //We need to find the lowest height at the central point and surrounding pixels.
-     {
-     int smallest=world.maxelevation();
-     
-     for (int i=centrex-1; i<=centrex+1; i++)
-     {
-     int ii=i;
-     
-     if (ii<0 || ii>width)
-     ii=wrap(ii,width);
-     
-     for (int j=centrey-1; j<=centrey+1; j++)
-     {
-     if (j>=0 && j<=height)
-     {
-     if (world.map(ii,j)<smallest)
-     smallest=world.map(ii,j);
-     }
-     }
-     }
-     origheight=smallest;
-     surfaceheight=smallest-riverlandreduce;
-     }
-     
-     */
     
     int imheight=laketemplate[shapenumber].ysize()-1;
     int imwidth=laketemplate[shapenumber].xsize()-1;
@@ -9385,63 +9263,6 @@ void drawspeciallake(planet &world, int shapenumber, int centrex, int centrey, i
         rightx=width;
         righty=height;
     }
-    
-    /*
-     
-     // Now we must alter the terrain height underneath the "lake". Even though it has no real depth, we do this so that it will appear properly on the regional map.
-     
-     int maxdepth=imwidth/8;
-     
-     if (maxdepth<10)
-     maxdepth=10;
-     
-     if (maxdepth>40)
-     maxdepth=40;
-     
-     int depthmult=random(mindepth,maxdepth); // The higher this is, the deeper the lake will be.
-     
-     for (int i=leftx; i<=rightx; i++)
-     {
-     for (int j=lefty; j<=righty; j++)
-     {
-     if (thislake[i][j]==lakeno)
-     {
-     int nom=world.nom(i,j);
-     
-     if (special==120) // If this is an erg, make sure the surrounding cells aren't too high.
-     {
-     for (int k=i-1; k<=i+1; k++)
-     {
-     int kk=k;
-     
-     if (kk<0 || kk>width)
-     kk=wrap(kk,width);
-     
-     for (int l=j-1; l<=j+1; l++)
-     {
-     if (l>=0 && l<=height)
-     {
-     if (world.nom(kk,l)>surfaceheight)
-     world.setnom(kk,l,(world.nom(kk,l)+surfaceheight)/2);
-     }
-     }
-     }
-     }
-     
-     if (nom>surfaceheight)
-     {
-     int difference=nom-surfaceheight;
-     
-     world.setnom(i,j,nom-(difference*depthmult)+1); // Add the 1 just to ensure that it has some depth...
-     }
-     
-     if (world.nom(i,j)>surfaceheight-mindepth)
-     world.setnom(i,j,surfaceheight-mindepth);
-     }
-     }
-     }
-     
-     */
     
     // Now mark a "start point" somewhere on the edge of the "lake", which we will use when it comes to the regional map.
     
@@ -9776,14 +9597,6 @@ void createriverdeltas(planet &world)
     
     vector<vector<int>> deltarivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // Marks all the rivers that have been turned into deltas.
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            deltarivers[i][j]=0;
-    }
-    */
-    
     twointegers frompoint, destpoint;
     
     int margin=10; // Don't do any closer to the east/west edges of the map than this.
@@ -9902,14 +9715,6 @@ void createriverdeltas(planet &world)
     // Now we lower any land that borders flat land.
     
     vector<vector<int>> donethese(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            donethese[i][j]=0;
-    }
-    */
     
     for (int i=0; i<=width; i++)
     {
@@ -10367,14 +10172,6 @@ void placedelta(planet &world, int centrex, int centrey, int upriver, vector<vec
     
     vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<height; j++)
-            removedrivers[i][j]=0;
-    }
-    */
-    
     int janreduce=world.riverjan(targetx,targety)-branchjanflow*4; // Shouldn't really be multiplied, but this is to make it more visible on the map.
     int julreduce=world.riverjul(targetx,targety)-branchjulflow*4;
     
@@ -10435,17 +10232,6 @@ void divertdeltarivers(planet &world, vector<vector<int>> &deltarivers)
     
     vector<vector<int>> removedrivers(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     vector<vector<int>> checked(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            removedrivers[i][j]=0;
-            checked[i][j]=0;
-        }
-    }
-    */
     
     int riverno=0;
     
@@ -11572,14 +11358,6 @@ void createunderseachannels(planet &world, vector<vector<bool>> &shelves)
     vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     vector<vector<int>> sediment(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
     
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            sediment[i][j]=0;
-    }
-    */
-    
     int dropno=1;
     bool goahead=1;
     
@@ -12027,14 +11805,6 @@ void removeparallelchannels(planet &world)
     int removechance=1;
     
     vector<vector<int>> altered(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will show any points that have been involved in a change
-    
-    /*
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-            altered[i][j]=0;
-    }
-    */
     
     // First, N/S and E/W
     

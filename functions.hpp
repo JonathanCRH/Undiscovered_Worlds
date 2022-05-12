@@ -11,7 +11,8 @@
 //  SFML - https://www.sfml-dev.org/
 //  stb_image - https://github.com/nothings/stb
 //
-//  main.cpp contains various utility functions and the functions for drawing the map images (as well as the main loop, of course).
+//  main.cpp contains the functions for drawing the map images (as well as the main loop, of course), and all functions that require external libraries.
+//  misc.cpp contains various utility functions that are used throughout the program.
 //  globalterrain.cpp contains the functions used to generate the global terrain.
 //  globalclimate.cpp contains the functions used to calculate the global precipitation and temperature, as well as rivers, lakes, etc.
 //  regionalmap.cpp contains the functions used to generate the regional terrain.

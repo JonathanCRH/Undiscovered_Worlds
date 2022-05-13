@@ -156,6 +156,7 @@
     <ClCompile Include="..\globalclimate.cpp" />
     <ClCompile Include="..\globalterrain.cpp" />
     <ClCompile Include="..\main.cpp" />
+    <ClCompile Include="..\misc.cpp" />
     <ClCompile Include="..\planet.cpp" />
     <ClCompile Include="..\region.cpp" />
     <ClCompile Include="..\regionalmap.cpp" />

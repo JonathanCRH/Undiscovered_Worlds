@@ -12,21 +12,21 @@
 
 // Multiple value classes
 
-twointegers::twointegers() // constructor
+twointegers::twointegers() : x(0), y(0) // constructor
 {
 }
 twointegers::~twointegers() // destructor
 {
 }
 
-threeintegers::threeintegers() // constructor
+threeintegers::threeintegers() : x(0), y(0), z(0) // constructor
 {
 }
 threeintegers::~threeintegers() // destructor
 {
 }
 
-twofloats::twofloats() // constructor
+twofloats::twofloats() : x(0), y(0) // constructor
 {
 }
 twofloats::~twofloats() // destructor

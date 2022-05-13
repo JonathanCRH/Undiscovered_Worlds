@@ -1685,7 +1685,7 @@ void createprevailinglandrain(planet &world, vector<vector<int>> &inland, int ma
     {
         for (int j=0; j<=height; j++)
         {
-            if (world.sea(i,j)==0 && world.mountainheight(i,j)<maxmountainheight); // FG: what is this supposed to do?
+            //if (world.sea(i,j)==0 && world.mountainheight(i,j)<maxmountainheight); // FG: what is this supposed to do?
             
             short winddir=0; // This is to avoid blurring rain over rain shadows.
             

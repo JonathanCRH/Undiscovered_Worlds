@@ -4946,6 +4946,7 @@ int main(int /* argc */, char ** /* argv */)
                                                   
                                                   if (mapview==elevation)
                                                   {
+                                                      r=regionalelevationimage[index];
                                                       g=regionalelevationimage[index+1];
                                                       b=regionalelevationimage[index+2];
                                                       
@@ -8150,7 +8151,7 @@ void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagec
     int globalimagesize=globalimagewidth*globalimageheight*globalimagechannels;
     int index=0;
     
-    int colour1, colour2, colour3;
+    //int colour1, colour2, colour3;
 
     if (mapview==elevation)
     {
@@ -14087,7 +14088,7 @@ void makeregionalmiscellanies(planet &world, region &region, nanogui::Screen &sc
     
     vector<vector<int>> rotatearray(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
     
-    int coords[4][2];
+    //int coords[4][2];
     
     // Now, wetlands.
     

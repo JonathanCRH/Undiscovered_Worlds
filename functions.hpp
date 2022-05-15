@@ -55,7 +55,7 @@ using namespace std;
 // Define some enums.
 
 enum screenmodeenum{quit,createworld,globalmap,regionalmap};
-enum mapviewenum{elevation,winds,temperature,precipitation,climate,rivers,relief};
+enum mapviewenum{elevation,temperature,precipitation,climate,rivers,relief};
 
 // Declare functions that are in main.cpp
 
@@ -66,7 +66,7 @@ screenmodeenum regionalmapscreen(planet &world, region &region, sf::RenderWindow
 void drawzoommap(region &region, int poix, int poiy, int squaresize, boolshapetemplate &zoommapimage, sf::Texture &zoommaptexture, sf:: Sprite &zoommapsprite);
 void saveimage(stbi_uc source[], int globalimagechannels, int width, int height, string filename);
 sf::Color getclimatecolours(int climate);
-void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagecreated[], stbi_uc globalelevationimage[], stbi_uc globalwindsimage[], stbi_uc globaltemperatureimage[], stbi_uc globalprecipitationimage[], stbi_uc globalclimateimage[], stbi_uc globalriversimage[], stbi_uc globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
+void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagecreated[], stbi_uc globalelevationimage[], stbi_uc globaltemperatureimage[], stbi_uc globalprecipitationimage[], stbi_uc globalclimateimage[], stbi_uc globalriversimage[], stbi_uc globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
 void drawglobalelevationmapimage(planet &world, stbi_uc globalelevationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
 void drawglobaltemperaturemapimage(planet &world, stbi_uc globaltemperatureimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
 void drawglobalprecipitationmapimage(planet &world, stbi_uc globalprecipitationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);

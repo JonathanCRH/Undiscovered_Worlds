@@ -67,6 +67,16 @@ int main(int /* argc */, char ** /* argv */)
 {
     nanogui::init();
     
+    Vector2i globaltexturesize;
+    
+    globaltexturesize.x()=2048;
+    globaltexturesize.y()=1026;
+    
+    Vector2i regionaltexturesize;
+    
+    regionaltexturesize.x()=514;
+    regionaltexturesize.y()=514;
+    
     // Set up the window.
     
     int scwidth=1224; //1024;
@@ -95,13 +105,13 @@ int main(int /* argc */, char ** /* argv */)
     int regionalmapimagewidth=region->regwidthend()-region->regwidthbegin()+1;
     int regionalmapimageheight=region->regheightend()-region->regheightbegin()+1;
     
-    // Now create some empty template images for the global and regional maps, and save them to disk to load back in as stbi_uc objects. (I know this is an inefficient way of setting up the stbi_uc objects but it's the simplest I can think of!)
+    // Now create some empty template images for the global and regional maps, and save them to disk to load back in as stbi_uc objects. (I know this is an inefficient way of setting up the stbi_uc objects but it works!)
     
     sf::Image *globaltemplate=new sf::Image;
     sf::Image *regionaltemplate=new sf::Image;
     
-    globaltemplate->create(2048,1026,sf::Color(0,0,0));
-    regionaltemplate->create(514,514,sf::Color(0,0,0));
+    globaltemplate->create(globaltexturesize.x(),globaltexturesize.y(),sf::Color(0,0,0));
+    regionaltemplate->create(regionaltexturesize.x(),regionaltexturesize.y(),sf::Color(0,0,0));
     
     bool const ret1(globaltemplate->saveToFile("Blankworld.tga"));
     if (!ret1) {cerr << "Error writing Blankworld.tga" << endl;}
@@ -117,15 +127,13 @@ int main(int /* argc */, char ** /* argv */)
     int globalimagewidth, globalimageheight, globalimagechannels;
     
     stbi_uc *globalelevationimage=new stbi_uc;
-    stbi_uc *globalwindsimage=new stbi_uc;
     stbi_uc *globaltemperatureimage=new stbi_uc;
     stbi_uc *globalprecipitationimage=new stbi_uc;
     stbi_uc *globalclimateimage=new stbi_uc;
     stbi_uc *globalriversimage=new stbi_uc;
     stbi_uc *globalreliefimage=new stbi_uc;
     
-    globalelevationimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
-    globalwindsimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
+ globalelevationimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
     globaltemperatureimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
     globalprecipitationimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
     globalclimateimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
@@ -153,6 +161,9 @@ int main(int /* argc */, char ** /* argv */)
     regionalreliefimage=stbi_load("Blankregion.tga",&regionalimagewidth,&regionalimageheight,&regionalimagechannels,STBI_rgb_alpha);
     
     int regionalimagesize=regionalimagewidth*regionalimageheight*regionalimagechannels;
+    
+    remove("Blankworld.tga");
+    remove("Blankregion.tga");
     
     // Now we need to load the template images for various kinds of terrain creation.
     
@@ -188,7 +199,7 @@ int main(int /* argc */, char ** /* argv */)
     vector<vector<float>> riftblob(riftblobsize+2,vector<float>(riftblobsize+2,0));
     
     createriftblob(riftblob,riftblobsize/2);
-
+    
     // Other bits
     
     fast_srand(time(0));
@@ -680,10 +691,17 @@ int main(int /* argc */, char ** /* argv */)
     Widget *mapandfocusbox=new Widget(globalmapwindowmainbox);
     mapandfocusbox->set_layout(new BoxLayout(Orientation::Vertical,Alignment::Middle,0,2));
     
-    Texture *globalmap=new Texture("Blankworld.tga",Texture::InterpolationMode::Trilinear,Texture::InterpolationMode::Nearest);
+    Texture *globalmap = new Texture(
+                               Texture::PixelFormat::RGBA,
+                               Texture::ComponentFormat::UInt8,
+                               globaltexturesize,
+                               Texture::InterpolationMode::Trilinear,
+                               Texture::InterpolationMode::Nearest);
+    
+    globalmap->upload(globalelevationimage);
     
     ImageView *globalmapwidget=new ImageView(mapandfocusbox);
-    
+
     Vector2i size;
     size.x()=width/2+1;
     size.y()=height/2+1;
@@ -769,7 +787,14 @@ int main(int /* argc */, char ** /* argv */)
     Widget *regionalmapandprogressbox=new Widget(regionalmapsbox); // The main regional map and progress bar.
     regionalmapandprogressbox->set_layout(new BoxLayout(Orientation::Vertical,Alignment::Minimum,0,4));
     
-    Texture *regionalmap=new Texture("Blankregion.tga",Texture::InterpolationMode::Trilinear,Texture::InterpolationMode::Nearest);
+    Texture *regionalmap = new Texture(
+                                     Texture::PixelFormat::RGBA,
+                                     Texture::ComponentFormat::UInt8,
+                                     regionaltexturesize,
+                                     Texture::InterpolationMode::Trilinear,
+                                     Texture::InterpolationMode::Nearest);
+    
+    globalmap->upload(regionalelevationimage);
     
     ImageView *regionalmapwidget=new ImageView(regionalmapandprogressbox);
     
@@ -792,7 +817,14 @@ int main(int /* argc */, char ** /* argv */)
     regionalminimapsize.x()=width/4; //2;
     regionalminimapsize.y()=height/4; //2;
     
-    Texture *regionalminimap=new Texture("Blankworld.tga",Texture::InterpolationMode::Trilinear,Texture::InterpolationMode::Nearest);
+    Texture *regionalminimap = new Texture(
+                                     Texture::PixelFormat::RGBA,
+                                     Texture::ComponentFormat::UInt8,
+                                     globaltexturesize,
+                                     Texture::InterpolationMode::Trilinear,
+                                     Texture::InterpolationMode::Nearest);
+    
+    regionalmap->upload(globalelevationimage);
     
     regionalminimapwidget->set_size(regionalminimapsize);
     regionalminimapwidget->set_image(regionalminimap);
@@ -903,9 +935,6 @@ int main(int /* argc */, char ** /* argv */)
     areaexportprogresswindow->center();
     areaexportprogresswindow->set_visible(0);
     
-    remove("Blankworld.tga");
-    remove("Blankregion.tga");
-    
     // Set up the world import widgets.
     
     Window *importwindow=new Window(screen,"Import maps");
@@ -980,7 +1009,7 @@ int main(int /* argc */, char ** /* argv */)
     
     // Set up the callbacks for the create world widgets.
     
-    cancelbutton->set_callback([&world,&screen,&getseedwindow,&brandnew,&globalmapwindow,&focusinfo,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton,&rfocused,&poix,&poiy,&focused,&colourpickerwindow,&colourbutton,&colourwheel,&redbox,&greenbox,&bluebox,&shadinglandslider,&shadinglakesslider,&shadingseaslider,&marblinglandslider,&marblinglakesslider,&marblingseaslider,&riversglobalbox,&riversregionalbox,&shadingdirectionchooser]
+    cancelbutton->set_callback([&world,&screen,&getseedwindow,&brandnew,&globalmapwindow,&focusinfo,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton,&rfocused,&poix,&poiy,&focused,&colourpickerwindow,&colourbutton,&colourwheel,&redbox,&greenbox,&bluebox,&shadinglandslider,&shadinglakesslider,&shadingseaslider,&marblinglandslider,&marblinglakesslider,&marblingseaslider,&riversglobalbox,&riversregionalbox,&shadingdirectionchooser]
                                {
                                    if (brandnew==1) // If this is the first time we've seen this window, this is a load button.
                                    {
@@ -1197,7 +1226,7 @@ int main(int /* argc */, char ** /* argv */)
                                                globalmapimagecreated[n]=0;
                                            
                                            mapview=relief;
-                                           drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                           drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                            
                                            
                                            globalmap->upload(globalreliefimage);
@@ -1221,7 +1250,7 @@ int main(int /* argc */, char ** /* argv */)
                                    }
                                });
     
-    importbutton->set_callback([&importwindow,&getseedwindow,&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    importbutton->set_callback([&importwindow,&getseedwindow,&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                {
                                    int width=world->width();
                                    int height=world->height();
@@ -1255,7 +1284,7 @@ int main(int /* argc */, char ** /* argv */)
                                    
                                    for (int n=0; n<GLOBALMAPTYPES; n++)
                                        globalmapimagecreated[n]=0;
-                                   drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                   drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                    
                                    globalmap->upload(globalreliefimage);
                                    
@@ -1277,7 +1306,7 @@ int main(int /* argc */, char ** /* argv */)
                                    seedinput->set_value(to_string(seed));
                                });
     
-    OKbutton->set_callback([&seed,&seedinput,&screen,&getseedwindow,&world,&landshape,&chainland,&smalllake,&largelake,&mapview,&globalmapimagecreated,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalmapwindow,&worldgenerationwindow,&generationlabel,&worldprogress,&globalmap,&globalmapwidget,&focusinfo,&globalimagewidth,&globalimageheight,&globalimagechannels,&reliefbutton,&elevationbutton,&temperaturebutton,&precipitationbutton,&climatebutton,&riversbutton]
+    OKbutton->set_callback([&seed,&seedinput,&screen,&getseedwindow,&world,&landshape,&chainland,&smalllake,&largelake,&mapview,&globalmapimagecreated,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalmapwindow,&worldgenerationwindow,&generationlabel,&worldprogress,&globalmap,&globalmapwidget,&focusinfo,&globalimagewidth,&globalimageheight,&globalimagechannels,&reliefbutton,&elevationbutton,&temperaturebutton,&precipitationbutton,&climatebutton,&riversbutton]
                            {
                                if (seedinput->value()!="")
                                {
@@ -1333,7 +1362,7 @@ int main(int /* argc */, char ** /* argv */)
                                    
                                    mapview=relief;
                                    
-                                   drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                   drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                    
                                    
                                    globalmap->upload(globalreliefimage);
@@ -1785,7 +1814,7 @@ int main(int /* argc */, char ** /* argv */)
                                       colourpickerwindow->request_focus();
                                   });
     
-    shadinglandslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
+    shadinglandslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
                                           {
                                               world->setlandshading(value);
                                               
@@ -1793,7 +1822,7 @@ int main(int /* argc */, char ** /* argv */)
                                               
                                               for (int n=0; n<GLOBALMAPTYPES; n++)
                                                   globalmapimagecreated[n]=0;
-                                              drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                              drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                               
                                               
                                               globalmap->upload(globalreliefimage);
@@ -1861,7 +1890,7 @@ int main(int /* argc */, char ** /* argv */)
                                               
                                           });
     
-    shadinglakesslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
+    shadinglakesslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
                                            {
                                                world->setlakeshading(value);
                                                
@@ -1869,7 +1898,7 @@ int main(int /* argc */, char ** /* argv */)
                                                
                                                for (int n=0; n<GLOBALMAPTYPES; n++)
                                                    globalmapimagecreated[n]=0;
-                                               drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                               drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                
                                                
                                                globalmap->upload(globalreliefimage);
@@ -1937,7 +1966,7 @@ int main(int /* argc */, char ** /* argv */)
                                                
                                            });
     
-    shadingseaslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
+    shadingseaslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
                                          {
                                              world->setseashading(value);
                                              
@@ -1945,7 +1974,7 @@ int main(int /* argc */, char ** /* argv */)
                                              
                                              for (int n=0; n<GLOBALMAPTYPES; n++)
                                                  globalmapimagecreated[n]=0;
-                                             drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                             drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                              
                                              
                                              globalmap->upload(globalreliefimage);
@@ -2012,7 +2041,7 @@ int main(int /* argc */, char ** /* argv */)
                                              }
                                          });
     
-    shadingdirectionchooser->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](int value)
+    shadingdirectionchooser->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](int value)
                                           {
                                               int oldval=world->shadingdir();
                                               
@@ -2034,7 +2063,7 @@ int main(int /* argc */, char ** /* argv */)
                                                   
                                                   for (int n=0; n<GLOBALMAPTYPES; n++)
                                                       globalmapimagecreated[n]=0;
-                                                  drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                  drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                   
                                                   
                                                   globalmap->upload(globalreliefimage);
@@ -2102,7 +2131,7 @@ int main(int /* argc */, char ** /* argv */)
                                               }
                                           });
     
-    snowchangechooser->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](int value)
+    snowchangechooser->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](int value)
                                     {
                                         int oldval=world->snowchange();
                                         
@@ -2121,7 +2150,7 @@ int main(int /* argc */, char ** /* argv */)
                                             
                                             for (int n=0; n<GLOBALMAPTYPES; n++)
                                                 globalmapimagecreated[n]=0;
-                                            drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                            drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                             
                                             
                                             globalmap->upload(globalreliefimage);
@@ -2190,7 +2219,7 @@ int main(int /* argc */, char ** /* argv */)
                                         }
                                     });
     
-    seaicechooser->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](int value)
+    seaicechooser->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](int value)
                                 {
                                     int oldval=world->seaiceappearance();
                                     
@@ -2209,7 +2238,7 @@ int main(int /* argc */, char ** /* argv */)
                                         
                                         for (int n=0; n<GLOBALMAPTYPES; n++)
                                             globalmapimagecreated[n]=0;
-                                        drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                        drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                         
                                         
                                         globalmap->upload(globalreliefimage);
@@ -2278,7 +2307,7 @@ int main(int /* argc */, char ** /* argv */)
                                     }
                                 });
     
-    marblinglandslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
+    marblinglandslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
                                            {
                                                world->setlandmarbling(value);
                                                
@@ -2286,7 +2315,7 @@ int main(int /* argc */, char ** /* argv */)
                                                
                                                for (int n=0; n<GLOBALMAPTYPES; n++)
                                                    globalmapimagecreated[n]=0;
-                                               drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                               drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                
                                                
                                                globalmap->upload(globalreliefimage);
@@ -2354,7 +2383,7 @@ int main(int /* argc */, char ** /* argv */)
                                                
                                            });
     
-    marblinglakesslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
+    marblinglakesslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
                                             {
                                                 world->setlakemarbling(value);
                                                 
@@ -2362,7 +2391,7 @@ int main(int /* argc */, char ** /* argv */)
                                                 
                                                 for (int n=0; n<GLOBALMAPTYPES; n++)
                                                     globalmapimagecreated[n]=0;
-                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                 
                                                 
                                                 globalmap->upload(globalreliefimage);
@@ -2430,7 +2459,7 @@ int main(int /* argc */, char ** /* argv */)
                                                 
                                             });
     
-    marblingseaslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
+    marblingseaslider->set_final_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused](float value)
                                           {
                                               world->setseamarbling(value);
                                               
@@ -2438,7 +2467,7 @@ int main(int /* argc */, char ** /* argv */)
                                               
                                               for (int n=0; n<GLOBALMAPTYPES; n++)
                                                   globalmapimagecreated[n]=0;
-                                              drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                              drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                               
                                               
                                               globalmap->upload(globalreliefimage);
@@ -2505,7 +2534,7 @@ int main(int /* argc */, char ** /* argv */)
                                               }
                                           });
     
-    riversglobalbox->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused] (const int &v)
+    riversglobalbox->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused] (const int &v)
                                   {
                                       world->setminriverflowglobal(v);
                                       
@@ -2513,7 +2542,7 @@ int main(int /* argc */, char ** /* argv */)
                                       
                                       for (int n=0; n<GLOBALMAPTYPES; n++)
                                           globalmapimagecreated[n]=0;
-                                      drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                      drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                       
                                       
                                       globalmap->upload(globalreliefimage);
@@ -2546,7 +2575,7 @@ int main(int /* argc */, char ** /* argv */)
                                       }
                                   });
     
-    riversregionalbox->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused] (const int &v)
+    riversregionalbox->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused] (const int &v)
                                     {
                                         world->setminriverflowregional(v);
                                         
@@ -2587,7 +2616,7 @@ int main(int /* argc */, char ** /* argv */)
     
     appearanceclosebutton->set_callback([&mapappearancewindow]{mapappearancewindow->set_visible(0);});
     
-    appearancedefaultbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton,&rfocused,&poix,&poiy,&focused,&colourpickerwindow,&colourbutton,&colourwheel,&redbox,&greenbox,&bluebox,&shadinglandslider,&shadinglakesslider,&shadingseaslider,&marblinglandslider,&marblinglakesslider,&marblingseaslider,&riversglobalbox,&riversregionalbox,&shadingdirectionchooser,&snowchangechooser,&seaicechooser]
+    appearancedefaultbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton,&rfocused,&poix,&poiy,&focused,&colourpickerwindow,&colourbutton,&colourwheel,&redbox,&greenbox,&bluebox,&shadinglandslider,&shadinglakesslider,&shadingseaslider,&marblinglandslider,&marblinglakesslider,&marblingseaslider,&riversglobalbox,&riversregionalbox,&shadingdirectionchooser,&snowchangechooser,&seaicechooser]
                                           {
                                               initialisemapcolours(*world);
                                               
@@ -2817,7 +2846,7 @@ int main(int /* argc */, char ** /* argv */)
                                               
                                               for (int n=0; n<GLOBALMAPTYPES; n++)
                                                   globalmapimagecreated[n]=0;
-                                              drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                              drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                               
                                               
                                               globalmap->upload(globalreliefimage);
@@ -2884,7 +2913,7 @@ int main(int /* argc */, char ** /* argv */)
                                               }
                                           });
     
-    appearanceloadbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton,&rfocused,&poix,&poiy,&focused,&colourpickerwindow,&colourbutton,&colourwheel,&redbox,&greenbox,&bluebox,&shadinglandslider,&shadinglakesslider,&shadingseaslider,&marblinglandslider,&marblinglakesslider,&marblingseaslider,&riversglobalbox,&riversregionalbox,&shadingdirectionchooser]
+    appearanceloadbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton,&rfocused,&poix,&poiy,&focused,&colourpickerwindow,&colourbutton,&colourwheel,&redbox,&greenbox,&bluebox,&shadinglandslider,&shadinglakesslider,&shadingseaslider,&marblinglandslider,&marblinglakesslider,&marblingseaslider,&riversglobalbox,&riversregionalbox,&shadingdirectionchooser]
                                        {
                                            bool found=loadsettings(*world);
                                            
@@ -3099,7 +3128,7 @@ int main(int /* argc */, char ** /* argv */)
                                                
                                                for (int n=0; n<GLOBALMAPTYPES; n++)
                                                    globalmapimagecreated[n]=0;
-                                               drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                               drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                
                                                
                                                globalmap->upload(globalreliefimage);
@@ -3270,7 +3299,7 @@ int main(int /* argc */, char ** /* argv */)
                                         colourpickerwindow->set_visible(0);
                                     });
     
-    colourapplybutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused,&colourpickerwindow,&redbox,&greenbox,&bluebox,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton]
+    colourapplybutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&focused,&poix,&poiy,&rfocused,&colourpickerwindow,&redbox,&greenbox,&bluebox,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton]
                                     {
                                         string title=colourpickerwindow->title();
                                         
@@ -3442,7 +3471,7 @@ int main(int /* argc */, char ** /* argv */)
                                         
                                         for (int n=0; n<GLOBALMAPTYPES; n++)
                                             globalmapimagecreated[n]=0;
-                                        drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                        drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                         
                                         
                                         globalmap->upload(globalreliefimage);
@@ -3524,7 +3553,7 @@ int main(int /* argc */, char ** /* argv */)
                                      globalmapwindow->set_visible(0);
                                  });
     
-    loadworldbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton,&rfocused,&poix,&poiy,&focused,&colourpickerwindow,&colourbutton,&colourwheel,&redbox,&greenbox,&bluebox,&shadinglandslider,&shadinglakesslider,&shadingseaslider,&marblinglandslider,&marblinglakesslider,&marblingseaslider,&riversglobalbox,&riversregionalbox,&shadingdirectionchooser,&focusinfo,&globalmapwindow]
+    loadworldbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&globalmapwidget,&region,&regionalminimap,&regionalminimapwidget,&regionalmapwindow,&regionalmapimagecreated,&regionalelevationimage,&regionaltemperatureimage,&regionalprecipitationimage,&regionalclimateimage,&regionalriversimage,&regionalreliefimage,&regionalimagewidth,&regionalimageheight,&regionalimagechannels,&regionalmap,&regionalmapwidget,&oceanbutton,&deepoceanbutton,&basebutton,&grassbutton,&basetempbutton,&highbasebutton,&desertbutton,&highdesertbutton,&colddesertbutton,&eqtundrabutton,&tundrabutton,&coldbutton,&seaicebutton,&glacierbutton,&saltpanbutton,&ergbutton,&wetlandsbutton,&lakebutton,&riverbutton,&highlightbutton,&rfocused,&poix,&poiy,&focused,&colourpickerwindow,&colourbutton,&colourwheel,&redbox,&greenbox,&bluebox,&shadinglandslider,&shadinglakesslider,&shadingseaslider,&marblinglandslider,&marblinglakesslider,&marblingseaslider,&riversglobalbox,&riversregionalbox,&shadingdirectionchooser,&focusinfo,&globalmapwindow]
                                   {
                                       bool found=loadworld(*world);
                                       
@@ -3740,7 +3769,7 @@ int main(int /* argc */, char ** /* argv */)
                                           
                                           mapview=relief;
                                           
-                                          drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                          drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                           
                                           globalmap->upload(globalreliefimage);
                                           globalmapwidget->set_image(globalmap);
@@ -3764,7 +3793,7 @@ int main(int /* argc */, char ** /* argv */)
                                          warningwindow->request_focus();
                                      });
     
-    exportworldmapsbutton->set_callback([&world,&focused,&globalmapimagecreated,&mapview,&globalmap,&globalmapwidget,&focusinfo,&globalmapwindow,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels]
+    exportworldmapsbutton->set_callback([&world,&focused,&globalmapimagecreated,&mapview,&globalmap,&globalmapwidget,&focusinfo,&globalmapwindow,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels]
                                         {
                                             // First, get the save directory.
                                             
@@ -3778,31 +3807,28 @@ int main(int /* argc */, char ** /* argv */)
                                                 
                                                 mapview=relief;
                                                 
-                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                 
                                                 mapview=elevation;
                                                 
-                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                 
-                                                mapview=winds;
-                                                
-                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                 
                                                 mapview=temperature;
                                                 
-                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                 
                                                 mapview=precipitation;
                                                 
-                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                 
                                                 mapview=climate;
                                                 
-                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                 
                                                 mapview=rivers;
                                                 
-                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                 
                                                 // Now we need to convert these into actual images that we can save.
                                                 
@@ -3814,8 +3840,6 @@ int main(int /* argc */, char ** /* argv */)
                                                 saveimage(globalreliefimage,globalimagechannels,width,height,filename+" Relief.png");
                                                 
                                                 saveimage(globalelevationimage,globalimagechannels,width,height,filename+" Elevation.png");
-                                                
-                                                saveimage(globalwindsimage,globalimagechannels,width,height,filename+"Winds.png");
                                                 
                                                 saveimage(globaltemperatureimage,globalimagechannels,width,height,filename+"Temperature.png");
                                                 
@@ -3879,13 +3903,13 @@ int main(int /* argc */, char ** /* argv */)
                                    }
                                });
     
-    elevationbutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
+    elevationbutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
                                   {
                                       mapview=elevation;
                                       
                                       int r,g,b;
                                       
-                                      drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                      drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                       
                                       if (focused==1) // If there's a focus, copy the colour at that point on the map.
                                       {
@@ -3913,13 +3937,13 @@ int main(int /* argc */, char ** /* argv */)
                                       }
                                   });
     
-    temperaturebutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
+    temperaturebutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
                                     {
                                         mapview=temperature;
                                         
                                         int r,g,b;
                                         
-                                        drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                        drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                         
                                         if (focused==1) // If there's a focus, copy the colour at that point on the map.
                                         {
@@ -3947,13 +3971,13 @@ int main(int /* argc */, char ** /* argv */)
                                         }
                                     });
     
-    precipitationbutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
+    precipitationbutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
                                       {
                                           mapview=precipitation;
                                           
                                           int r,g,b;
                                           
-                                          drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                          drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                           
                                           if (focused==1) // If there's a focus, copy the colour at that point on the map.
                                           {
@@ -3981,13 +4005,13 @@ int main(int /* argc */, char ** /* argv */)
                                           }
                                       });
     
-    climatebutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
+    climatebutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
                                 {
                                     mapview=climate;
                                     
                                     int r,g,b;
                                     
-                                    drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                    drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                     
                                     if (focused==1) // If there's a focus, copy the colour at that point on the map.
                                     {
@@ -4016,13 +4040,13 @@ int main(int /* argc */, char ** /* argv */)
                                     }
                                 });
     
-    riversbutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
+    riversbutton->set_callback([&globalmapwidget,&globalmap,&mapview,&world,&globalmapimagecreated,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&focused,&poix,&poiy]
                                {
                                    mapview=rivers;
                                    
                                    int r,g,b;
                                    
-                                   drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                   drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                    
                                    if (focused==1) // If there's a focus, copy the colour at that point on the map.
                                    {
@@ -4058,7 +4082,7 @@ int main(int /* argc */, char ** /* argv */)
                                      
                                  });
     
-    focusbutton->set_callback([&world,&focused,&poix,&poiy,&screen,&globalmapwindow,&globalmapwindowmainbox,&mapandfocusbox,&globalmap,&globalmapwidget,&focusinfo,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&mapview,&globalimagewidth,&globalimagechannels]
+    focusbutton->set_callback([&world,&focused,&poix,&poiy,&screen,&globalmapwindow,&globalmapwindowmainbox,&mapandfocusbox,&globalmap,&globalmapwidget,&focusinfo,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&mapview,&globalimagewidth,&globalimagechannels]
                               {
                                   Vector2i mousepos=screen->mouse_pos();
                                   sf::Vector2i sfmousestartpos=sf::Mouse::getPosition(); // The nanogui mouse detection will only pick up where the mouse is when the button is initially clicked, so we need to use the sf mouse detection too to supplement it.
@@ -4295,8 +4319,6 @@ int main(int /* argc */, char ** /* argv */)
                                                   infotext=infotext+"Submarine volcano.\n";
                                           }
                                           
-                                          //infotext=infotext+"Test: "+to_string(world->test(poix,poiy))+". Mountain height: "+to_string(world->mountainheight(poix,poiy))+".\n";
-                                          
                                           infotext=infotext+"January temperature: "+to_string(world->jantemp(poix,poiy))+"°. July temperature: "+to_string(world->jultemp(poix,poiy))+"°. ";
                                           infotext=infotext+"January rainfall: "+to_string(world->janrain(poix,poiy))+" mm/month. July rainfall: "+to_string(world->julrain(poix,poiy))+" mm/month.\n";
                                           
@@ -4372,10 +4394,6 @@ int main(int /* argc */, char ** /* argv */)
                                       {
                                           case elevation:
                                               globalmap->upload(globalelevationimage);
-                                              break;
-                                              
-                                          case winds:
-                                              globalmap->upload(globalwindsimage);
                                               break;
                                               
                                           case temperature:
@@ -4534,7 +4552,7 @@ int main(int /* argc */, char ** /* argv */)
     
     // Set up the warning window callbacks.
     
-    warningOKbutton->set_callback([&warningwindow,&globalmapwindow,&importwindow,&world,&mapview,&globalmapimagecreated,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    warningOKbutton->set_callback([&warningwindow,&globalmapwindow,&importwindow,&world,&mapview,&globalmapimagecreated,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                   {
                                       warningwindow->set_visible(0);
                                       globalmapwindow->set_visible(0);
@@ -4556,7 +4574,7 @@ int main(int /* argc */, char ** /* argv */)
                                       
                                       for (int n=0; n<GLOBALMAPTYPES; n++)
                                           globalmapimagecreated[n]=0;
-                                      drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                      drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                       
                                       globalmap->upload(globalreliefimage);
                                       
@@ -5184,9 +5202,6 @@ int main(int /* argc */, char ** /* argv */)
                                               {
                                                   case elevation:
                                                       regionalmap->upload(regionalelevationimage);
-                                                      break;
-                                                      
-                                                  case winds:
                                                       break;
                                                       
                                                   case temperature:
@@ -7021,7 +7036,7 @@ int main(int /* argc */, char ** /* argv */)
                                          getseedwindow->request_focus();
                                      });
     
-    importlandmapbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    importlandmapbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                       {
                                           int width=world->width();
                                           int height=world->height();
@@ -7060,7 +7075,7 @@ int main(int /* argc */, char ** /* argv */)
                                                   
                                                   for (int n=0; n<GLOBALMAPTYPES; n++)
                                                       globalmapimagecreated[n]=0;
-                                                  drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                  drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                   
                                                   globalmap->upload(globalreliefimage);
                                                   
@@ -7069,7 +7084,7 @@ int main(int /* argc */, char ** /* argv */)
                                           }
                                       });
     
-    importseamapbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    importseamapbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                      {
                                          int width=world->width();
                                          int height=world->height();
@@ -7111,7 +7126,7 @@ int main(int /* argc */, char ** /* argv */)
                                                  
                                                  for (int n=0; n<GLOBALMAPTYPES; n++)
                                                      globalmapimagecreated[n]=0;
-                                                 drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                 drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                  
                                                  globalmap->upload(globalreliefimage);
                                                  
@@ -7120,7 +7135,7 @@ int main(int /* argc */, char ** /* argv */)
                                          }
                                      });
     
-    importmountainsbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    importmountainsbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                         {
                                             int width=world->width();
                                             int height=world->height();
@@ -7168,7 +7183,7 @@ int main(int /* argc */, char ** /* argv */)
                                                     
                                                     for (int n=0; n<GLOBALMAPTYPES; n++)
                                                         globalmapimagecreated[n]=0;
-                                                    drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                    drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                     
                                                     globalmap->upload(globalreliefimage);
                                                     
@@ -7177,7 +7192,7 @@ int main(int /* argc */, char ** /* argv */)
                                             }
                                         });
     
-    importvolcanoesbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    importvolcanoesbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                         {
                                             int width=world->width();
                                             int height=world->height();
@@ -7229,7 +7244,7 @@ int main(int /* argc */, char ** /* argv */)
                                                     
                                                     for (int n=0; n<GLOBALMAPTYPES; n++)
                                                         globalmapimagecreated[n]=0;
-                                                    drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                                    drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                     
                                                     globalmap->upload(globalreliefimage);
                                                     
@@ -7238,7 +7253,7 @@ int main(int /* argc */, char ** /* argv */)
                                             }
                                         });
     
-    importgenshelvesbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    importgenshelvesbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                          {
                                              int width=world->width();
                                              int height=world->height();
@@ -7274,14 +7289,14 @@ int main(int /* argc */, char ** /* argv */)
                                              
                                              for (int n=0; n<GLOBALMAPTYPES; n++)
                                                  globalmapimagecreated[n]=0;
-                                             drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                             drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                              
                                              globalmap->upload(globalreliefimage);
                                              
                                              importmapwidget->set_image(globalmap);
                                          });
     
-    importgenridgesbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    importgenridgesbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                         {
                                             int width=world->width();
                                             int height=world->height();
@@ -7305,14 +7320,14 @@ int main(int /* argc */, char ** /* argv */)
                                             
                                             for (int n=0; n<GLOBALMAPTYPES; n++)
                                                 globalmapimagecreated[n]=0;
-                                            drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                            drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                             
                                             globalmap->upload(globalreliefimage);
                                             
                                             importmapwidget->set_image(globalmap);
                                         });
     
-    importgenlandbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    importgenlandbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                       {
                                           int width=world->width();
                                           int height=world->height();
@@ -7354,14 +7369,14 @@ int main(int /* argc */, char ** /* argv */)
                                           
                                           for (int n=0; n<GLOBALMAPTYPES; n++)
                                               globalmapimagecreated[n]=0;
-                                          drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                          drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                           
                                           globalmap->upload(globalreliefimage);
                                           
                                           importmapwidget->set_image(globalmap);
                                       });
     
-    importgenseabedbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
+    importgenseabedbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget]
                                         {
                                             int width=world->width();
                                             int height=world->height();
@@ -7434,14 +7449,14 @@ int main(int /* argc */, char ** /* argv */)
                                             
                                             for (int n=0; n<GLOBALMAPTYPES; n++)
                                                 globalmapimagecreated[n]=0;
-                                            drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                            drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                             
                                             globalmap->upload(globalreliefimage);
                                             
                                             importmapwidget->set_image(globalmap);
                                         });
     
-    importgenmountainsbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget,&landshape,&chainland]
+    importgenmountainsbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget,&landshape,&chainland]
                                            {
                                                int width=world->width();
                                                int height=world->height();
@@ -7482,14 +7497,14 @@ int main(int /* argc */, char ** /* argv */)
                                                
                                                for (int n=0; n<GLOBALMAPTYPES; n++)
                                                    globalmapimagecreated[n]=0;
-                                               drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                               drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                                
                                                globalmap->upload(globalreliefimage);
                                                
                                                importmapwidget->set_image(globalmap);
                                            });
     
-    importgenhillsbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget,&landshape,&chainland]
+    importgenhillsbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget,&landshape,&chainland]
                                        {
                                            int width=world->width();
                                            int height=world->height();
@@ -7530,14 +7545,14 @@ int main(int /* argc */, char ** /* argv */)
                                            
                                            for (int n=0; n<GLOBALMAPTYPES; n++)
                                                globalmapimagecreated[n]=0;
-                                           drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                           drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                            
                                            globalmap->upload(globalreliefimage);
                                            
                                            importmapwidget->set_image(globalmap);
                                        });
     
-    importgencoastsbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget,&landshape]
+    importgencoastsbutton->set_callback([&world,&globalmapimagecreated,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels,&globalmap,&importmapwidget,&landshape]
                                         {
                                             removestraights(*world);
                                             
@@ -7547,14 +7562,14 @@ int main(int /* argc */, char ** /* argv */)
                                                 globalmapimagecreated[n]=0;
                                             
                                             mapview=relief;
-                                            drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                            drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                             
                                             globalmap->upload(globalreliefimage);
                                             
                                             importmapwidget->set_image(globalmap);
                                         });
     
-    importgenclimatebutton->set_callback([&screen,&importwindow,&globalmapwindow,&globalmapwidget,&globalmap,&globalmapimagecreated,&worldgenerationwindow,&worldprogress,&generationlabel,&world,&smalllake,&largelake,&landshape,&mapview,&globalelevationimage,&globalwindsimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels]
+    importgenclimatebutton->set_callback([&screen,&importwindow,&globalmapwindow,&globalmapwidget,&globalmap,&globalmapimagecreated,&worldgenerationwindow,&worldprogress,&generationlabel,&world,&smalllake,&largelake,&landshape,&mapview,&globalelevationimage,&globaltemperatureimage,&globalprecipitationimage,&globalclimateimage,&globalriversimage,&globalreliefimage,&globalimagewidth,&globalimageheight,&globalimagechannels]
                                          {
                                              globalmapwindow->set_position(importwindow->position());
                                              
@@ -7642,7 +7657,7 @@ int main(int /* argc */, char ** /* argv */)
                                              
                                              for (int n=0; n<GLOBALMAPTYPES; n++)
                                                  globalmapimagecreated[n]=0;
-                                             drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globalwindsimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
+                                             drawglobalmapimage(mapview,*world,globalmapimagecreated,globalelevationimage,globaltemperatureimage,globalprecipitationimage,globalclimateimage,globalriversimage,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
                                              
                                              globalmap->upload(globalreliefimage);
                                              
@@ -8141,7 +8156,7 @@ sf::Color getclimatecolours(string climate)
 
 // This function draws a global map image (ready to be applied to a texture).
 
-void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagecreated[], stbi_uc globalelevationimage[], stbi_uc globalwindsimage[], stbi_uc globaltemperatureimage[], stbi_uc globalprecipitationimage[], stbi_uc globalclimateimage[], stbi_uc globalriversimage[], stbi_uc globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
+void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagecreated[], stbi_uc globalelevationimage[], stbi_uc globaltemperatureimage[], stbi_uc globalprecipitationimage[], stbi_uc globalclimateimage[], stbi_uc globalriversimage[], stbi_uc globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
 {
     // mapview tells us which of these we're actually drawing.
     
@@ -8152,7 +8167,7 @@ void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagec
     int index=0;
     
     //int colour1, colour2, colour3;
-
+    
     if (mapview==elevation)
     {
         if (globalmapimagecreated[0]==1)
@@ -8275,7 +8290,7 @@ void drawglobaltemperaturemapimage(planet &world, stbi_uc globaltemperatureimage
     
     int div=world.maxelevation()/255;
     int base=world.maxelevation()/4;
-
+    
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -9263,7 +9278,7 @@ void drawregionalelevationmapimage(planet &world, region &region, stbi_uc region
     int regionalimagesize=regionalimagewidth*regionalimageheight*regionalimagechannels;
     
     int colour1, colour2, colour3, index;
-
+    
     int div=world.maxelevation()/255;
     int base=world.maxelevation()/4;
     
@@ -10901,8 +10916,6 @@ void generateglobalterraintype1(planet &world, nanogui::Screen &screen, nanogui:
                         peakheight=random(1000,2000);
                 }
                 
-                //world.settest(i,j,1);
-                
                 createisolatedvolcano(world,i,j,shelves,volcanodirection,peakheight,strato);
             }
         }
@@ -11399,8 +11412,6 @@ void generateglobalterraintype2(planet &world, nanogui::Screen &screen, nanogui:
                         peakheight=random(1000,2000);
                 }
                 
-                //world.settest(i,j,1);
-                
                 createisolatedvolcano(world,i,j,shelves,volcanodirection,peakheight,strato);
             }
         }
@@ -11697,7 +11708,6 @@ void largecontinents(planet &world, nanogui::Screen &screen, nanogui::Window &wo
                     if (continent[imap+leftx][jmap+lefty]==1)
                     {
                         world.setnom(ii,jj,conheight);
-                        //world.settest(ii,jj,1);
                         
                         if (continentnos[ii][jj]!=0)
                         {
@@ -12575,21 +12585,21 @@ void generateregionalmap(planet &world, region &region, nanogui::Screen &screen,
     vector<vector<bool>> riverinlets(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
     
     // Counter-intuitively, we do the lakes and rivers first. Rivers are drawn at a somewhat lower elevation than the rest of the tile will be. After that, we draw in the rest of the elevation around them. This creates the effect of rivers carving out valleys in the landscape, when in fact the landscape is built around the rivers.
-
+    
     makeregionalwater(world,region,screen,regionprogress,progressstep,safesaltlakes,disruptpoints,rriverscarved,fakesourcex,fakesourcey,smalllake,island,riftblob,riftblobsize,xleft,xright,ytop,ybottom);
     
     // Only now, surprisingly, do we do basic elevation.
     
     makeregionalterrain(world,region,screen,regionprogress,progressstep,disruptpoints,riverinlets,rriverscarved,fakesourcex,fakesourcey,smalllake,peaks,smallsmudge,xleft,xright,ytop,ybottom);
-
+    
     // Now do the undersea terrain.
-
+    
     makeregionalunderseaterrain(world,region,screen,regionprogress,progressstep,peaks,smudge,smallsmudge,xleft,xright,ytop,ybottom);
     
     // Now do various miscellaneous bits.
     
     makeregionalmiscellanies(world,region,screen,regionprogress,progressstep,safesaltlakes,riverinlets,smalllake,smallsmudge,xleft,xright,ytop,ybottom);
-
+    
     // Now we do the climates.
     
     makeregionalclimates(world,region,screen,regionprogress,progressstep,safesaltlakes,smalllake,xleft,xright,ytop,ybottom);
@@ -13783,7 +13793,7 @@ void makeregionalunderseaterrain(planet &world, region &region, nanogui::Screen 
     vector<vector<bool>> undersearidgelines(RARRAYWIDTH,vector<bool>(RARRAYHEIGHT,0));
     vector<vector<int>> undersearidges(RARRAYWIDTH,vector<int>(RARRAYHEIGHT,0));
     vector<vector<int>> underseaspikes(RARRAYWIDTH*4,vector<int>(RARRAYHEIGHT*4,0));
-
+    
     int coords[4][2];
     
     // Do submarine elevation.
@@ -13889,7 +13899,7 @@ void makeregionalunderseaterrain(planet &world, region &region, nanogui::Screen 
                 region.setmap(i,j,underseamap[i+extra*16][j+extra*16]);
         }
     }
-
+    
     
     // Now we find the paths of the submarine ridges.
     

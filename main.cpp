@@ -698,7 +698,7 @@ int main(int /* argc */, char ** /* argv */)
                                Texture::InterpolationMode::Trilinear,
                                Texture::InterpolationMode::Nearest);
     
-    globalmap->upload(globalelevationimage);
+    //globalmap->upload(globalelevationimage);
     
     ImageView *globalmapwidget=new ImageView(mapandfocusbox);
 
@@ -794,7 +794,7 @@ int main(int /* argc */, char ** /* argv */)
                                      Texture::InterpolationMode::Trilinear,
                                      Texture::InterpolationMode::Nearest);
     
-    globalmap->upload(regionalelevationimage);
+    //regionalmap->upload(regionalelevationimage);
     
     ImageView *regionalmapwidget=new ImageView(regionalmapandprogressbox);
     
@@ -824,7 +824,7 @@ int main(int /* argc */, char ** /* argv */)
                                      Texture::InterpolationMode::Trilinear,
                                      Texture::InterpolationMode::Nearest);
     
-    regionalmap->upload(globalelevationimage);
+    //regionalmap->upload(globalelevationimage);
     
     regionalminimapwidget->set_size(regionalminimapsize);
     regionalminimapwidget->set_image(regionalminimap);

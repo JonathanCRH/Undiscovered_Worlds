@@ -17,9 +17,11 @@
 #include <chrono>
 #include <thread>
 #include <queue>
+#include <stdint.h>
 #include <SFML/Graphics.hpp>
 #include <GLFW/glfw3.h>
 #include <nanogui/nanogui.h>
+
 
 #define STB_IMAGE_IMPLEMENTATION
 //#include "stb_image.h"
@@ -105,65 +107,56 @@ int main(int /* argc */, char ** /* argv */)
     int regionalmapimagewidth=region->regwidthend()-region->regwidthbegin()+1;
     int regionalmapimageheight=region->regheightend()-region->regheightbegin()+1;
     
-    // Now create some empty template images for the global and regional maps, and save them to disk to load back in as stbi_uc objects. (I know this is an inefficient way of setting up the stbi_uc objects but it works!)
-    
-    sf::Image *globaltemplate=new sf::Image;
-    sf::Image *regionaltemplate=new sf::Image;
-    
-    globaltemplate->create(globaltexturesize.x(),globaltexturesize.y(),sf::Color(0,0,0));
-    regionaltemplate->create(regionaltexturesize.x(),regionaltexturesize.y(),sf::Color(0,0,0));
-    
-    bool const ret1(globaltemplate->saveToFile("Blankworld.tga"));
-    if (!ret1) {cerr << "Error writing Blankworld.tga" << endl;}
-    bool const ret2(regionaltemplate->saveToFile("Blankregion.tga"));
-    if (!ret2) {cerr << "Error writing Blankregion.tga" << endl;}
-    
-    delete globaltemplate;
-    delete regionaltemplate;
-    
     // Now we must create the images for the different global maps.
-    // These are simple, one-dimensional arrays, with four elements per pixel.
+    // These are simple, one-dimensional arrays, with four elements per pixel (RGBA).
     
-    int globalimagewidth, globalimageheight, globalimagechannels;
-    
-    stbi_uc *globalelevationimage=new stbi_uc;
-    stbi_uc *globaltemperatureimage=new stbi_uc;
-    stbi_uc *globalprecipitationimage=new stbi_uc;
-    stbi_uc *globalclimateimage=new stbi_uc;
-    stbi_uc *globalriversimage=new stbi_uc;
-    stbi_uc *globalreliefimage=new stbi_uc;
-    
- globalelevationimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
-    globaltemperatureimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
-    globalprecipitationimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
-    globalclimateimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
-    globalriversimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
-    globalreliefimage=stbi_load("Blankworld.tga",&globalimagewidth,&globalimageheight,&globalimagechannels,STBI_rgb_alpha);
+    int globalimagewidth=globaltexturesize.x();
+    int globalimageheight=globaltexturesize.y();
+    int globalimagechannels=4;
     
     int globalimagesize=globalimagewidth*globalimageheight*globalimagechannels;
     
+    uint8_t *globalelevationimage=new uint8_t[globalimagesize];
+    uint8_t *globaltemperatureimage=new uint8_t[globalimagesize];
+    uint8_t *globalprecipitationimage=new uint8_t[globalimagesize];
+    uint8_t *globalclimateimage=new uint8_t[globalimagesize];
+    uint8_t *globalriversimage=new uint8_t[globalimagesize];
+    uint8_t *globalreliefimage=new uint8_t[globalimagesize];
+    
+    for (int i=0; i<globalimagesize; i++)
+    {
+        globalelevationimage[i]=255;
+        globaltemperatureimage[i]=255;
+        globalprecipitationimage[i]=255;
+        globalclimateimage[i]=255;
+        globalriversimage[i]=255;
+        globalreliefimage[i]=255;
+    }
+    
     // Now we must create the images for the different regional maps. Same thing again.
     
-    int regionalimagewidth, regionalimageheight, regionalimagechannels;
-    
-    stbi_uc *regionalelevationimage=new stbi_uc;
-    stbi_uc *regionaltemperatureimage=new stbi_uc;
-    stbi_uc *regionalprecipitationimage=new stbi_uc;
-    stbi_uc *regionalclimateimage=new stbi_uc;
-    stbi_uc *regionalriversimage=new stbi_uc;
-    stbi_uc *regionalreliefimage=new stbi_uc;
-    
-    regionalelevationimage=stbi_load("Blankregion.tga",&regionalimagewidth,&regionalimageheight,&regionalimagechannels,STBI_rgb_alpha);
-    regionaltemperatureimage=stbi_load("Blankregion.tga",&regionalimagewidth,&regionalimageheight,&regionalimagechannels,STBI_rgb_alpha);
-    regionalprecipitationimage=stbi_load("Blankregion.tga",&regionalimagewidth,&regionalimageheight,&regionalimagechannels,STBI_rgb_alpha);
-    regionalclimateimage=stbi_load("Blankregion.tga",&regionalimagewidth,&regionalimageheight,&regionalimagechannels,STBI_rgb_alpha);
-    regionalriversimage=stbi_load("Blankregion.tga",&regionalimagewidth,&regionalimageheight,&regionalimagechannels,STBI_rgb_alpha);
-    regionalreliefimage=stbi_load("Blankregion.tga",&regionalimagewidth,&regionalimageheight,&regionalimagechannels,STBI_rgb_alpha);
+    int regionalimagewidth=regionaltexturesize.x();
+    int regionalimageheight=regionaltexturesize.y();
+    int regionalimagechannels=4;
     
     int regionalimagesize=regionalimagewidth*regionalimageheight*regionalimagechannels;
     
-    remove("Blankworld.tga");
-    remove("Blankregion.tga");
+    uint8_t *regionalelevationimage=new uint8_t[regionalimagesize];
+    uint8_t *regionaltemperatureimage=new uint8_t[regionalimagesize];
+    uint8_t *regionalprecipitationimage=new uint8_t[regionalimagesize];
+    uint8_t *regionalclimateimage=new uint8_t[regionalimagesize];
+    uint8_t *regionalriversimage=new uint8_t[regionalimagesize];
+    uint8_t *regionalreliefimage=new uint8_t[regionalimagesize];
+    
+    for (int i=0; i<regionalimagesize; i++)
+    {
+        regionalelevationimage[i]=255;
+        regionaltemperatureimage[i]=255;
+        regionalprecipitationimage[i]=255;
+        regionalclimateimage[i]=255;
+        regionalriversimage[i]=255;
+        regionalreliefimage[i]=255;
+    }
     
     // Now we need to load the template images for various kinds of terrain creation.
     
@@ -698,7 +691,7 @@ int main(int /* argc */, char ** /* argv */)
                                Texture::InterpolationMode::Trilinear,
                                Texture::InterpolationMode::Nearest);
     
-    //globalmap->upload(globalelevationimage);
+    globalmap->upload(globalelevationimage);
     
     ImageView *globalmapwidget=new ImageView(mapandfocusbox);
 
@@ -794,7 +787,7 @@ int main(int /* argc */, char ** /* argv */)
                                      Texture::InterpolationMode::Trilinear,
                                      Texture::InterpolationMode::Nearest);
     
-    //regionalmap->upload(regionalelevationimage);
+    regionalmap->upload(regionalelevationimage);
     
     ImageView *regionalmapwidget=new ImageView(regionalmapandprogressbox);
     
@@ -824,7 +817,7 @@ int main(int /* argc */, char ** /* argv */)
                                      Texture::InterpolationMode::Trilinear,
                                      Texture::InterpolationMode::Nearest);
     
-    //regionalmap->upload(globalelevationimage);
+    regionalmap->upload(globalelevationimage);
     
     regionalminimapwidget->set_size(regionalminimapsize);
     regionalminimapwidget->set_image(regionalminimap);
@@ -6524,37 +6517,37 @@ int main(int /* argc */, char ** /* argv */)
                                                      // Create some dummy arrays to hold copies of the lines we'll be drawing over.
                                                      
 #if 1
-                                                     vector<stbi_uc> northsider(areawidth);
-                                                     vector<stbi_uc> northsideg(areawidth);
-                                                     vector<stbi_uc> northsideb(areawidth);
+                                                     vector<uint8_t> northsider(areawidth);
+                                                     vector<uint8_t> northsideg(areawidth);
+                                                     vector<uint8_t> northsideb(areawidth);
                                                      
-                                                     vector<stbi_uc> southsider(areawidth);
-                                                     vector<stbi_uc> southsideg(areawidth);
-                                                     vector<stbi_uc> southsideb(areawidth);
+                                                     vector<uint8_t> southsider(areawidth);
+                                                     vector<uint8_t> southsideg(areawidth);
+                                                     vector<uint8_t> southsideb(areawidth);
                                                      
-                                                     vector<stbi_uc> eastsider(areawidth);
-                                                     vector<stbi_uc> eastsideg(areawidth);
-                                                     vector<stbi_uc> eastsideb(areawidth);
+                                                     vector<uint8_t> eastsider(areawidth);
+                                                     vector<uint8_t> eastsideg(areawidth);
+                                                     vector<uint8_t> eastsideb(areawidth);
                                                      
-                                                     vector<stbi_uc> westsider(areawidth);
-                                                     vector<stbi_uc> westsideg(areawidth);
-                                                     vector<stbi_uc> westsideb(areawidth);
+                                                     vector<uint8_t> westsider(areawidth);
+                                                     vector<uint8_t> westsideg(areawidth);
+                                                     vector<uint8_t> westsideb(areawidth);
 #else
-                                                     stbi_uc northsider[areawidth];
-                                                     stbi_uc northsideg[areawidth];
-                                                     stbi_uc northsideb[areawidth];
+                                                     uint8_t northsider[areawidth];
+                                                     uint8_t northsideg[areawidth];
+                                                     uint8_t northsideb[areawidth];
                                                      
-                                                     stbi_uc southsider[areawidth];
-                                                     stbi_uc southsideg[areawidth];
-                                                     stbi_uc southsideb[areawidth];
+                                                     uint8_t southsider[areawidth];
+                                                     uint8_t southsideg[areawidth];
+                                                     uint8_t southsideb[areawidth];
                                                      
-                                                     stbi_uc eastsider[areaheight];
-                                                     stbi_uc eastsideg[areaheight];
-                                                     stbi_uc eastsideb[areaheight];
+                                                     uint8_t eastsider[areaheight];
+                                                     uint8_t eastsideg[areaheight];
+                                                     uint8_t eastsideb[areaheight];
                                                      
-                                                     stbi_uc westsider[areaheight];
-                                                     stbi_uc westsideg[areaheight];
-                                                     stbi_uc westsideb[areaheight];
+                                                     uint8_t westsider[areaheight];
+                                                     uint8_t westsideg[areaheight];
+                                                     uint8_t westsideb[areaheight];
 #endif
                                                      
                                                      // Now, draw our marker, copying all altered pixels onto the copy of the image.
@@ -7688,7 +7681,7 @@ int main(int /* argc */, char ** /* argv */)
 
 // This function prepares the minimap in the regional map screen.
 
-void setregionalminimap(planet &world, region &region, stbi_uc globalreliefimage[], nanogui::Texture &regionalminimap, int globalimagewidth, int globalimageheight, int globalimagechannels)
+void setregionalminimap(planet &world, region &region, uint8_t globalreliefimage[], nanogui::Texture &regionalminimap, int globalimagewidth, int globalimageheight, int globalimagechannels)
 {
     int width=world.width();
     
@@ -7712,37 +7705,37 @@ void setregionalminimap(planet &world, region &region, stbi_uc globalreliefimage
     
     // Create some dummy arrays to hold copies of the lines we'll be drawing over.
 #if 1
-    vector<stbi_uc> northsider(patchwidth);
-    vector<stbi_uc> northsideg(patchwidth);
-    vector<stbi_uc> northsideb(patchwidth);
+    vector<uint8_t> northsider(patchwidth);
+    vector<uint8_t> northsideg(patchwidth);
+    vector<uint8_t> northsideb(patchwidth);
     
-    vector<stbi_uc> southsider(patchwidth);
-    vector<stbi_uc> southsideg(patchwidth);
-    vector<stbi_uc> southsideb(patchwidth);
+    vector<uint8_t> southsider(patchwidth);
+    vector<uint8_t> southsideg(patchwidth);
+    vector<uint8_t> southsideb(patchwidth);
     
-    vector<stbi_uc> eastsider(patchwidth);
-    vector<stbi_uc> eastsideg(patchwidth);
-    vector<stbi_uc> eastsideb(patchwidth);
+    vector<uint8_t> eastsider(patchwidth);
+    vector<uint8_t> eastsideg(patchwidth);
+    vector<uint8_t> eastsideb(patchwidth);
     
-    vector<stbi_uc> westsider(patchwidth);
-    vector<stbi_uc> westsideg(patchwidth);
-    vector<stbi_uc> westsideb(patchwidth);
+    vector<uint8_t> westsider(patchwidth);
+    vector<uint8_t> westsideg(patchwidth);
+    vector<uint8_t> westsideb(patchwidth);
 #else
-    stbi_uc northsider[patchwidth];
-    stbi_uc northsideg[patchwidth];
-    stbi_uc northsideb[patchwidth];
+    uint8_t northsider[patchwidth];
+    uint8_t northsideg[patchwidth];
+    uint8_t northsideb[patchwidth];
     
-    stbi_uc southsider[patchwidth];
-    stbi_uc southsideg[patchwidth];
-    stbi_uc southsideb[patchwidth];
+    uint8_t southsider[patchwidth];
+    uint8_t southsideg[patchwidth];
+    uint8_t southsideb[patchwidth];
     
-    stbi_uc eastsider[patchheight];
-    stbi_uc eastsideg[patchheight];
-    stbi_uc eastsideb[patchheight];
+    uint8_t eastsider[patchheight];
+    uint8_t eastsideg[patchheight];
+    uint8_t eastsideb[patchheight];
     
-    stbi_uc westsider[patchheight];
-    stbi_uc westsideg[patchheight];
-    stbi_uc westsideb[patchheight];
+    uint8_t westsider[patchheight];
+    uint8_t westsideg[patchheight];
+    uint8_t westsideb[patchheight];
 #endif
     
     // Now, draw our marker, copying all altered pixels onto the copy of the image.
@@ -7900,7 +7893,7 @@ void setregionalminimap(planet &world, region &region, stbi_uc globalreliefimage
 
 // This function saves an image.
 
-void saveimage(stbi_uc source[], int globalimagechannels, int width, int height, string filename)
+void saveimage(uint8_t source[], int globalimagechannels, int width, int height, string filename)
 {
     sf::Image mapimage;
     
@@ -8156,7 +8149,7 @@ sf::Color getclimatecolours(string climate)
 
 // This function draws a global map image (ready to be applied to a texture).
 
-void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagecreated[], stbi_uc globalelevationimage[], stbi_uc globaltemperatureimage[], stbi_uc globalprecipitationimage[], stbi_uc globalclimateimage[], stbi_uc globalriversimage[], stbi_uc globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
+void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagecreated[], uint8_t globalelevationimage[], uint8_t globaltemperatureimage[], uint8_t globalprecipitationimage[], uint8_t globalclimateimage[], uint8_t globalriversimage[], uint8_t globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
 {
     // mapview tells us which of these we're actually drawing.
     
@@ -8222,7 +8215,7 @@ void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagec
     {
         if (globalmapimagecreated[6]==1)
             return;
-        
+
         drawglobalreliefmapimage(world,globalreliefimage,globalimagewidth,globalimageheight,globalimagechannels);
         
         globalmapimagecreated[6]=1;
@@ -8231,7 +8224,7 @@ void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagec
 
 // This function draws a global elevation map image.
 
-void drawglobalelevationmapimage(planet &world, stbi_uc globalelevationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
+void drawglobalelevationmapimage(planet &world, uint8_t globalelevationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
 {
     int width=world.width();
     int height=world.height();
@@ -8275,7 +8268,7 @@ void drawglobalelevationmapimage(planet &world, stbi_uc globalelevationimage[], 
 
 // This function draws a global temperature map image.
 
-void drawglobaltemperaturemapimage(planet &world, stbi_uc globaltemperatureimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
+void drawglobaltemperaturemapimage(planet &world, uint8_t globaltemperatureimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
 {
     int width=world.width();
     int height=world.height();
@@ -8343,7 +8336,7 @@ void drawglobaltemperaturemapimage(planet &world, stbi_uc globaltemperatureimage
 
 // This function draws a global precipitation map image.
 
-void drawglobalprecipitationmapimage(planet &world, stbi_uc globalprecipitationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
+void drawglobalprecipitationmapimage(planet &world, uint8_t globalprecipitationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
 {
     int width=world.width();
     int height=world.height();
@@ -8400,7 +8393,7 @@ void drawglobalprecipitationmapimage(planet &world, stbi_uc globalprecipitationi
 
 // This function draws a global climate map image.
 
-void drawglobalclimatemapimage(planet &world, stbi_uc globalclimateimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
+void drawglobalclimatemapimage(planet &world, uint8_t globalclimateimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
 {
     int width=world.width();
     int height=world.height();
@@ -8472,7 +8465,7 @@ void drawglobalclimatemapimage(planet &world, stbi_uc globalclimateimage[], int 
 
 // This function draws a global rivers map image.
 
-void drawglobalriversmapimage(planet &world, stbi_uc globalriversimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
+void drawglobalriversmapimage(planet &world, uint8_t globalriversimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
 {
     int width=world.width();
     int height=world.height();
@@ -8594,7 +8587,7 @@ void drawglobalriversmapimage(planet &world, stbi_uc globalriversimage[], int gl
 
 // This function draws a global relief map image.
 
-void drawglobalreliefmapimage(planet &world, stbi_uc globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
+void drawglobalreliefmapimage(planet &world, uint8_t globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels)
 {
     int width=world.width();
     int height=world.height();
@@ -9198,7 +9191,7 @@ void drawglobalreliefmapimage(planet &world, stbi_uc globalreliefimage[], int gl
 
 // This function draws a regional map image (ready to be applied to a texture).
 
-void drawregionalmapimage(mapviewenum mapview, planet &world, region &region, bool regionalmapimagecreated[], stbi_uc regionalelevationimage[], stbi_uc regionaltemperatureimage[], stbi_uc regionalprecipitationimage[],  stbi_uc regionalclimateimage[], stbi_uc regionalriversimage[], stbi_uc regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
+void drawregionalmapimage(mapviewenum mapview, planet &world, region &region, bool regionalmapimagecreated[], uint8_t regionalelevationimage[], uint8_t regionaltemperatureimage[], uint8_t regionalprecipitationimage[],  uint8_t regionalclimateimage[], uint8_t regionalriversimage[], uint8_t regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
 {
     if (mapview==elevation)
     {
@@ -9263,7 +9256,7 @@ void drawregionalmapimage(mapviewenum mapview, planet &world, region &region, bo
 
 // This function draws a regional elevation map image.
 
-void drawregionalelevationmapimage(planet &world, region &region, stbi_uc regionalelevationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
+void drawregionalelevationmapimage(planet &world, region &region, uint8_t regionalelevationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
 {
     int origregwidthbegin=region.regwidthbegin();
     int origregwidthend=region.regwidthend();
@@ -9308,7 +9301,7 @@ void drawregionalelevationmapimage(planet &world, region &region, stbi_uc region
     }
 }
 
-void drawregionaltemperaturemapimage(planet &world, region &region, stbi_uc regionaltemperatureimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
+void drawregionaltemperaturemapimage(planet &world, region &region, uint8_t regionaltemperatureimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
 {
     int origregwidthbegin=region.regwidthbegin();
     int origregwidthend=region.regwidthend();
@@ -9377,7 +9370,7 @@ void drawregionaltemperaturemapimage(planet &world, region &region, stbi_uc regi
     }
 }
 
-void drawregionalprecipitationmapimage(planet &world, region &region, stbi_uc regionalprecipitationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
+void drawregionalprecipitationmapimage(planet &world, region &region, uint8_t regionalprecipitationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
 {
     int origregwidthbegin=region.regwidthbegin();
     int origregwidthend=region.regwidthend();
@@ -9432,7 +9425,7 @@ void drawregionalprecipitationmapimage(planet &world, region &region, stbi_uc re
     }
 }
 
-void drawregionalclimatemapimage(planet &world, region &region, stbi_uc regionalclimateimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
+void drawregionalclimatemapimage(planet &world, region &region, uint8_t regionalclimateimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
 {
     int origregwidthbegin=region.regwidthbegin();
     int origregwidthend=region.regwidthend();
@@ -9503,7 +9496,7 @@ void drawregionalclimatemapimage(planet &world, region &region, stbi_uc regional
     }
 }
 
-void drawregionalriversmapimage(planet &world, region &region, stbi_uc regionalriversimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
+void drawregionalriversmapimage(planet &world, region &region, uint8_t regionalriversimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
 {
     int origregwidthbegin=region.regwidthbegin();
     int origregwidthend=region.regwidthend();
@@ -9595,7 +9588,7 @@ void drawregionalriversmapimage(planet &world, region &region, stbi_uc regionalr
     }
 }
 
-void drawregionalreliefmapimage(planet &world, region &region, stbi_uc regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
+void drawregionalreliefmapimage(planet &world, region &region, uint8_t regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
 {
     int origregwidthbegin=region.regwidthbegin();
     int origregwidthend=region.regwidthend();
@@ -10401,7 +10394,7 @@ void drawregionalreliefmapimage(planet &world, region &region, stbi_uc regionalr
 
 // This function clears the regional relief map image (ready to be applied to a texture).
 
-void blankregionalreliefimage(region &region, stbi_uc regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
+void blankregionalreliefimage(region &region, uint8_t regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels)
 {
     int origregwidthbegin=region.regwidthbegin();
     int origregwidthend=region.regwidthend();
@@ -10505,7 +10498,7 @@ void shiftregionalmapimage(region &region, sf::Image &image, int shifting)
 
 // Utility function to display template images.
 
-void displaytemplates(planet &world, stbi_uc globalreliefimage[], int globalimagewidth, int globalimagechannels, boolshapetemplate shape[])
+void displaytemplates(planet &world, uint8_t globalreliefimage[], int globalimagewidth, int globalimagechannels, boolshapetemplate shape[])
 {
     int width=world.width();
     int height=world.height();

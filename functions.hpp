@@ -28,6 +28,7 @@
 #define functions_hpp
 
 #include <stdio.h>
+#include <stdint.h>
 #include <SFML/Graphics.hpp>
 #include <nanogui/nanogui.h>
 
@@ -61,29 +62,29 @@ enum mapviewenum{elevation,temperature,precipitation,climate,rivers,relief};
 
 void fast_srand(long seed);
 int fast_rand(void);
-void setregionalminimap(planet &world, region &region, stbi_uc globalreliefimage[], nanogui::Texture &regionalminimap, int globalimagewidth, int globalimageheight, int globalimagechannels);
+void setregionalminimap(planet &world, region &region, uint8_t globalreliefimage[], nanogui::Texture &regionalminimap, int globalimagewidth, int globalimageheight, int globalimagechannels);
 screenmodeenum regionalmapscreen(planet &world, region &region, sf::RenderWindow &window, sf::Font &font, boolshapetemplate &globalreliefimage, vector<string> climatename, boolshapetemplate &regionalelevationimage, boolshapetemplate &regionaltemperatureimage, boolshapetemplate &regionalprecipitationimage, boolshapetemplate &regionalclimateimage, boolshapetemplate &regionalriversimage, boolshapetemplate &regionalreliefimage, boolshapetemplate smalllake[], boolshapetemplate island[], peaktemplate peaks, vector<vector<float>> &riftblob, int riftblobsize);
 void drawzoommap(region &region, int poix, int poiy, int squaresize, boolshapetemplate &zoommapimage, sf::Texture &zoommaptexture, sf:: Sprite &zoommapsprite);
-void saveimage(stbi_uc source[], int globalimagechannels, int width, int height, string filename);
+void saveimage(uint8_t source[], int globalimagechannels, int width, int height, string filename);
 sf::Color getclimatecolours(int climate);
-void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagecreated[], stbi_uc globalelevationimage[], stbi_uc globaltemperatureimage[], stbi_uc globalprecipitationimage[], stbi_uc globalclimateimage[], stbi_uc globalriversimage[], stbi_uc globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalelevationmapimage(planet &world, stbi_uc globalelevationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobaltemperaturemapimage(planet &world, stbi_uc globaltemperatureimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalprecipitationmapimage(planet &world, stbi_uc globalprecipitationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalclimatemapimage(planet &world, stbi_uc globalclimateimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalriversmapimage(planet &world, stbi_uc globalriversimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalreliefmapimage(planet &world, stbi_uc globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawregionalmapimage(mapviewenum mapview, planet &world, region &region, bool regionalmapimagecreated[], stbi_uc regionalelevationimage[], stbi_uc regionaltemperatureimage[], stbi_uc regionalprecipitationimage[],  stbi_uc regionalclimateimage[], stbi_uc regionalriversimage[], stbi_uc regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalelevationmapimage(planet &world, region &region, stbi_uc regionalelevationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionaltemperaturemapimage(planet &world, region &region, stbi_uc regionaltemperatureimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalprecipitationmapimage(planet &world, region &region, stbi_uc regionalprecipitationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalclimatemapimage(planet &world, region &region, stbi_uc regionalclimateimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalriversmapimage(planet &world, region &region, stbi_uc regionalriversimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalreliefmapimage(planet &world, region &region, stbi_uc regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void blankregionalreliefimage(region &region, stbi_uc regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
+void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagecreated[], uint8_t globalelevationimage[], uint8_t globaltemperatureimage[], uint8_t globalprecipitationimage[], uint8_t globalclimateimage[], uint8_t globalriversimage[], uint8_t globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
+void drawglobalelevationmapimage(planet &world, uint8_t globalelevationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
+void drawglobaltemperaturemapimage(planet &world, uint8_t globaltemperatureimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
+void drawglobalprecipitationmapimage(planet &world, uint8_t globalprecipitationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
+void drawglobalclimatemapimage(planet &world, uint8_t globalclimateimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
+void drawglobalriversmapimage(planet &world, uint8_t globalriversimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
+void drawglobalreliefmapimage(planet &world, uint8_t globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
+void drawregionalmapimage(mapviewenum mapview, planet &world, region &region, bool regionalmapimagecreated[], uint8_t regionalelevationimage[], uint8_t regionaltemperatureimage[], uint8_t regionalprecipitationimage[],  uint8_t regionalclimateimage[], uint8_t regionalriversimage[], uint8_t regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
+void drawregionalelevationmapimage(planet &world, region &region, uint8_t regionalelevationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
+void drawregionaltemperaturemapimage(planet &world, region &region, uint8_t regionaltemperatureimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
+void drawregionalprecipitationmapimage(planet &world, region &region, uint8_t regionalprecipitationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
+void drawregionalclimatemapimage(planet &world, region &region, uint8_t regionalclimateimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
+void drawregionalriversmapimage(planet &world, region &region, uint8_t regionalriversimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
+void drawregionalreliefmapimage(planet &world, region &region, uint8_t regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
+void blankregionalreliefimage(region &region, uint8_t regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
 void addgridlines(boolshapetemplate &mapimage);
 void shiftregionalmapimage(region &region, boolshapetemplate &image, int shifting);
-void displaytemplates(planet &world, stbi_uc globalreliefimage[], int globalimagewidth, int globalimagechannels, boolshapetemplate shape[]);
+void displaytemplates(planet &world, uint8_t globalreliefimage[], int globalimagewidth, int globalimagechannels, boolshapetemplate shape[]);
 void generateglobalterrain(planet &world, short terraintype, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves);
 void generateglobalterraintype1(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate landshape[], vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves, boolshapetemplate chainland[]);
 void generateglobalterraintype2(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate landshape[], vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves, boolshapetemplate chainland[]);

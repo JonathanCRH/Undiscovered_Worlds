@@ -6,3 +6,5 @@ main.o
 planet.o
 regionalmap.o
 region.o
+misc.o
+

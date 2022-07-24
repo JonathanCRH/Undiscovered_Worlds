@@ -10,10 +10,7 @@
 #include <cmath>
 #include <fstream>
 #include <stdio.h>
-//#include <unistd.h>
 #include <queue>
-//#include <SFML/Graphics.hpp>
-//#include <nanogui/nanogui.h>
 
 #include "classes.hpp"
 #include "planet.hpp"
@@ -21,6 +18,1415 @@
 #include "functions.hpp"
 
 using namespace std;
+
+void generateglobalterrain(planet& world, short terraintype, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves)
+{
+    switch (terraintype)
+    {
+    case 1:
+        generateglobalterraintype1(world, landshape, mountaindrainage, shelves, chainland);
+        break;
+
+    case 2:
+        generateglobalterraintype2(world, landshape, mountaindrainage, shelves, chainland);
+        break;
+    }
+}
+
+// This creates type 1 terrain. This type gives a fairly chaotic looking map with small continents and lots of islands.
+
+void generateglobalterraintype1(planet& world, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[])
+{
+    // First get our key variables and clear the world.
+
+    long seed = world.seed();
+    fast_srand(seed);
+
+    int width = world.width();
+    int height = world.height();
+    int maxelev = world.maxelevation();
+    int sealevel = world.sealevel();
+    int baseheight = sealevel - 4500; //1250;
+    if (baseheight < 1)
+        baseheight = 1;
+    int conheight = sealevel + 50;
+
+    vector<vector<int>> plateaumap(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<int>> seafractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<bool>> removedland(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0)); // This will show where land has been removed.
+    vector<vector<int>> volcanodensity(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0)); // How many submarine volcanoes.
+    vector<vector<int>> volcanodirection(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0)); // Direction of extinct volcanoes leading away from active ones.
+
+    world.clear(); // Clears all of the maps in this world.
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            world.setnom(i, j, 0);
+            plateaumap[i][j] = 0;
+            mountaindrainage[i][j] = 0;
+            shelves[i][j] = 0;
+            seafractal[i][j] = 0;
+            removedland[i][j] = 0;
+            volcanodensity[i][j] = 0;
+            volcanodirection[i][j] = 0;
+        }
+    }
+
+    // Now start the generating.
+
+    updatereport("Creating fractal map");
+
+    // First make a fractal for noise (used only at regional map level).
+
+    int grain = 8; // Level of detail on this fractal map.
+    float valuemod = 0.2;
+    int v = random(3, 6);
+    float valuemod2 = v;
+
+    vector<vector<int>> fractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    createfractal(fractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            world.setnoisemap(i, j, fractal[i][j]);
+    }
+
+    // Now make a new one that we'll actually use for global terrain creation.
+
+    createfractal(fractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    updatereport("Creating continental map");
+
+    smallcontinents(world, baseheight, conheight, fractal, plateaumap, landshape, chainland);
+
+    flip(fractal, width, height, 1, 1);
+
+    // Merge the maps.
+
+    updatereport("Merging maps");
+
+    fractalmerge(world, fractal);
+
+    // Make continental shelves.
+
+    updatereport("Making continental shelves");
+
+    makecontinentalshelves(world, shelves, 20); // Wider shelves than with the other terrain generator, because this one will produce lots of little bits of land
+
+    // Now we add some island chains.
+
+    twointegers focuspoints[4]; // These will be points where island chains will start close to.
+
+    int focustotal = random(2, 4); // The number of actual focus points.
+
+    for (int n = 0; n < focustotal; n++)
+    {
+        focuspoints[n].x = random(0, width);
+        focuspoints[n].y = random(0, height);
+    }
+
+    int focaldistance = height / 2; // Maximum distance a chain can start from the focuspoint.
+    createchains(world, baseheight, conheight, fractal, plateaumap, landshape, chainland, focuspoints, focustotal, focaldistance, 3);
+
+    updatereport("Shifting fractal");
+
+    shift(fractal, width, height, width / 2); // Shift the fractal to make it different for the mountains - we will use the fractal to adjust peak height.
+
+    updatereport("Smoothing map");
+
+    world.smoothnom(1);
+
+    // We also need to remove the trench down the left-hand side.
+
+    removeseam(world, 0);
+
+    // Now remove inland seas.
+
+    updatereport("Removing inland seas");
+
+    removeseas(world, conheight);
+
+    // Now widen any channels and lower the coasts.
+
+    updatereport("Tidying up oceans");
+
+    widenchannels(world);
+    loweroceans(world);
+
+    // Now try to remove straight coastlines.
+
+    updatereport("Improving coastlines");
+
+    removestraights(world);
+
+    // Now make sure the southern edge is correct.
+
+    updatereport("Checking poles");
+
+    checkpoles(world);
+
+    // Now sort out the sea depths.
+
+    updatereport("Adjusting ocean depths");
+
+    grain = 8; // Level of detail on this fractal map.
+    valuemod = 0.2;
+    v = random(3, 6);
+    valuemod2 = v;
+
+    createfractal(seafractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    float coastalvarreduce = maxelev / 500; //3000;
+    float oceanvarreduce = maxelev / 1000;
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            if (world.sea(i, j) == 1)
+            {
+                if (shelves[i][j] == 1)
+                {
+                    float var = seafractal[i][j] - maxelev / 2;
+                    var = var / coastalvarreduce;
+
+                    int newval = sealevel - 200 + var;
+
+                    if (newval > sealevel - 10)
+                        newval = sealevel - 10;
+
+                    if (newval < 1)
+                        newval = 1;
+
+                    world.setnom(i, j, newval);
+                }
+                else
+                {
+                    int ii = i + width / 2;
+
+                    if (ii > width)
+                        ii = ii - width;
+
+                    float var = seafractal[ii][j] - maxelev / 2;
+                    var = var / oceanvarreduce;
+
+                    int newval = sealevel - 5000 + var;
+
+                    if (newval > sealevel - 3000)
+                        newval = sealevel - 3000;
+
+                    if (newval < 1)
+                        newval = 1;
+
+                    world.setnom(i, j, newval);
+                }
+            }
+        }
+    }
+
+    // Now we create mid-ocean ridges.
+
+    updatereport("Generating mid-ocean ridges");
+
+    createoceanridges(world, shelves);
+
+    // Now we create deep-sea trenches.
+
+    updatereport("Generating deep-sea trenches");
+
+    createoceantrenches(world, shelves);
+
+    // Now random volcanoes.
+
+    updatereport("Generating volcanoes");
+
+    grain = 8; // Level of detail on this fractal map.
+    valuemod = 0.2;
+    v = random(3, 6);
+    valuemod2 = v;
+
+    createfractal(volcanodensity, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    grain = 4; // Level of detail on this fractal map.
+    valuemod = 0.02;
+    v = 1; //random(3,6);
+    valuemod2 = 0.2;
+
+    createfractal(volcanodirection, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            bool goahead = 0;
+
+            if (world.sea(i, j) == 1)
+            {
+                int frac = volcanodensity[i][j];
+
+                int ii = i + width / 2;
+                if (ii > width)
+                    ii = ii - width;
+
+                int frac2 = volcanodensity[ii][j];
+
+                if (frac2 < frac)
+                    frac = frac2;
+
+                int jj = j + height / 2;
+                if (jj > height)
+                    jj = jj - height;
+
+                int frac3 = volcanodensity[i][jj];
+
+                if (frac3 < frac)
+                    frac = frac3;
+
+                int rand = 5000;
+
+                if (frac > maxelev / 2)
+                    rand = 80;
+
+                if (frac > (maxelev / 4) * 3)
+                    rand = 40;
+
+                if (random(1, rand) == 1)
+                    goahead = 1;
+            }
+            else
+            {
+                if (random(1, 15000) == 1)
+                    goahead = 1;
+            }
+
+            if (goahead == 1)
+            {
+                bool strato = 1;
+
+                if (random(1, 10) == 1) // Shield volcanoes - much rarer.
+                    strato = 0;
+
+                if (world.sea(i, j) == 1)
+                    strato = 1;
+
+                int peakheight;
+
+                if (world.sea(i, j) == 1)
+                {
+                    if (random(1, 10) == 1) // It could make a chain of volcanic islands.
+                        peakheight = sealevel - world.nom(i, j) + random(500, 3000);
+                    else
+                        peakheight = sealevel - world.nom(i, j) - random(100, 200);
+
+                    if (peakheight < 10)
+                        peakheight = 10;
+
+                    peakheight = random(peakheight / 2, peakheight);
+                }
+                else
+                {
+                    if (strato == 1)
+                        peakheight = random(2000, 6000);
+                    else
+                        peakheight = random(1000, 2000);
+                }
+
+                createisolatedvolcano(world, i, j, shelves, volcanodirection, peakheight, strato);
+            }
+        }
+    }
+
+    // Now we shift the map so there is sea at the edges, if possible.
+
+    updatereport("Shifting for best position");
+
+    removeseam(world, 0);
+
+    adjustforsea(world);
+
+    // Now we add smaller mountain chains that cannot form peninsulas.
+
+    updatereport("Adding smaller mountain ranges");
+
+    twointegers dummy[1];
+
+    createchains(world, baseheight, conheight, fractal, plateaumap, landshape, chainland, dummy, 0, 0, 2);
+
+    // Now we alter the fractal again, and use it to add more height variation.
+
+    updatereport("Merging fractal into land");
+
+    flip(fractal, width, height, 1, 1);
+    int offset = random(1, width);
+    shift(fractal, width, height, offset);
+
+    fractalmergeland(world, fractal, conheight);
+
+    // Now remove any mountains that are over sea.
+
+    updatereport("Removing floating mountains");
+
+    removefloatingmountains(world);
+    cleanmountainridges(world);
+
+    // Now we raise the mountain bases.
+
+    updatereport("Raising mountain bases");
+
+    raisemountainbases(world, mountaindrainage);
+
+    // Now we add plateaux.
+
+    updatereport("Adding plateaux");
+
+    erodeplateaux(world, plateaumap);
+    smooth(plateaumap, width, height, maxelev, 1, 1);
+    addplateaux(world, plateaumap, conheight);
+
+    // Now we smooth again, without changing the coastlines.
+
+    updatereport("Smoothing map, preserving coastlines");
+
+    smoothland(world, 2);
+
+    // Now we create extra elevation over the land to create canyons.
+
+    updatereport("Elevating land near canyons");
+
+    createextraelev(world);
+
+    // Now we remove depressions.
+
+    updatereport("Filling depressions");
+
+    depressionfill(world);
+
+    addlandnoise(world); // Add a bit of noise, then do remove depressions again. This is to add variety to the river courses.
+
+    depressionfill(world);
+
+    // Now we adjust the land around coastlines.
+
+    updatereport("Adjusting coastlines");
+
+    for (int n = 1; n <= 2; n++)
+        normalisecoasts(world, 13, 11, 4);
+
+    clamp(world);
+
+    // Now we note down one-tile islands.
+
+    updatereport("Checking islands");
+
+    checkislands(world);
+
+    // Now we create a roughness map.
+
+    updatereport("Creating roughness map");
+
+    vector<vector<int>> roughness(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    grain = 8; // Level of detail on this fractal map.
+    valuemod = 0.2;
+    valuemod2 = 0.6;
+
+    createfractal(roughness, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    vector<vector<int>> roughness2(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    createfractal(roughness2, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    for (int i = 0; i <= width; i++) // Do two, so that it's rare to get areas that are very smooth.
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            if (roughness[i][j] < roughness2[i][j])
+                roughness[i][j] = roughness2[i][j];
+        }
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            world.setroughness(i, j, roughness[i][j]);
+    }
+
+}
+
+// This creates type 2 terrain. This type gives a more earthlike map with large continents.
+
+void generateglobalterraintype2(planet& world, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[])
+{
+    // First get our key variables and clear the world.
+
+    long seed = world.seed();
+    fast_srand(seed);
+
+    int width = world.width();
+    int height = world.height();
+    int maxelev = world.maxelevation();
+    int sealevel = world.sealevel();
+    int baseheight = sealevel - 4500; //1250;
+    if (baseheight < 1)
+        baseheight = 1;
+    int conheight = sealevel + 50;
+
+    int maxmountainheight = maxelev - sealevel;
+
+    vector<vector<int>> plateaumap(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<int>> seafractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<bool>> removedland(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0)); // This will show where land has been removed.
+    vector<vector<int>> volcanodensity(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0)); // How many submarine volcanoes.
+    vector<vector<int>> volcanodirection(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0)); // Direction of extinct volcanoes leading away from active ones.
+
+    world.clear(); // Clears all of the maps in this world.
+
+    // Now start the generating.
+
+    updatereport("Creating fractal map");
+
+    // First make a fractal for noise (used only at regional map level).
+
+    int grain = 8; // Level of detail on this fractal map.
+    float valuemod = 0.2;
+    int v = random(3, 6);
+    float valuemod2 = v;
+
+    vector<vector<int>> fractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    createfractal(fractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            world.setnoisemap(i, j, fractal[i][j]);
+    }
+
+    // Now make a new one that we'll actually use for global terrain creation.
+
+    createfractal(fractal, width, height, grain, valuemod, valuemod2, 1, 12750, 0, 0);
+
+    int fractaladd = sealevel - 2500;
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            fractal[i][j] = fractal[i][j] + fractaladd;
+    }
+
+    updatereport("Creating continental map");
+
+    largecontinents(world, baseheight, conheight, fractal, plateaumap, shelves, landshape, chainland);
+
+    flip(fractal, width, height, 1, 1);
+
+    // Now merge the maps.
+
+    updatereport("Merging maps");
+
+    fractalmergemodified(world, fractal, plateaumap, removedland);
+
+    updatereport("Shifting fractal");
+
+    shift(fractal, width, height, width / 2); // Shift the fractal to make it different for the mountains - we will use the fractal to adjust peak height.
+
+    updatereport("Smoothing map");
+
+    world.smoothnom(1);
+
+    // We also need to remove the trench down the left-hand side.
+
+    removeseam(world, 0);
+
+    // Now remove inland seas.
+
+    updatereport("Removing inland seas");
+
+    removeseas(world, conheight);
+
+    // Now make sure the southern edge is correct.
+
+    updatereport("Checking poles");
+
+    checkpoles(world);
+
+    // Now add Aegean-style islands
+
+    updatereport("Adding archipelagos");
+
+    makearchipelagos(world, removedland, landshape);
+
+    // Now widen any channels and lower the coasts.
+
+    updatereport("Tidying up oceans");
+
+    widenchannels(world);
+    loweroceans(world);
+
+    // Now try to remove straight coastlines.
+
+    updatereport("Improving coastlines");
+
+    removestraights(world);
+
+    // Now sort out the sea depths.
+
+    updatereport("Adjusting ocean depths");
+
+    grain = 8; // Level of detail on this fractal map.
+    valuemod = 0.2;
+    v = random(3, 6);
+    valuemod2 = v;
+
+    createfractal(seafractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    float coastalvarreduce = maxelev / 500; //3000;
+    float oceanvarreduce = maxelev / 1000;
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            if (world.sea(i, j) == 1)
+            {
+                if (shelves[i][j] == 1)
+                {
+                    float var = seafractal[i][j] - maxelev / 2;
+                    var = var / coastalvarreduce;
+
+                    int newval = sealevel - 200 + var;
+
+                    if (newval > sealevel - 10)
+                        newval = sealevel - 10;
+
+                    if (newval < 1)
+                        newval = 1;
+
+                    world.setnom(i, j, newval);
+                }
+                else
+                {
+                    int ii = i + width / 2;
+
+                    if (ii > width)
+                        ii = ii - width;
+
+                    float var = seafractal[ii][j] - maxelev / 2;
+                    var = var / oceanvarreduce;
+
+                    int newval = sealevel - 5000 + var;
+
+                    if (newval > sealevel - 3000)
+                        newval = sealevel - 3000;
+
+                    if (newval < 1)
+                        newval = 1;
+
+                    world.setnom(i, j, newval);
+                }
+            }
+        }
+    }
+
+    // Now we create mid-ocean ridges.
+
+    updatereport("Generating mid-ocean ridges");
+
+    createoceanridges(world, shelves);
+
+    // Now we create deep-sea trenches.
+
+    updatereport("Generating deep-sea trenches");
+
+    createoceantrenches(world, shelves);
+
+    // Now random volcanoes.
+
+    updatereport("Generating volcanoes");
+
+    grain = 8; // Level of detail on this fractal map.
+    valuemod = 0.2;
+    v = random(3, 6);
+    valuemod2 = v;
+
+    createfractal(volcanodensity, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    grain = 4; // Level of detail on this fractal map.
+    valuemod = 0.02;
+    v = 1; //random(3,6);
+    valuemod2 = 0.2;
+
+    createfractal(volcanodirection, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            bool goahead = 0;
+
+            if (world.sea(i, j) == 1)
+            {
+                int frac = volcanodensity[i][j];
+
+                int ii = i + width / 2;
+                if (ii > width)
+                    ii = ii - width;
+
+                int frac2 = volcanodensity[ii][j];
+
+                if (frac2 < frac)
+                    frac = frac2;
+
+                int jj = j + height / 2;
+                if (jj > height)
+                    jj = jj - height;
+
+                int frac3 = volcanodensity[i][jj];
+
+                if (frac3 < frac)
+                    frac = frac3;
+
+                int rand = 5000;
+
+                if (frac > maxelev / 2)
+                    rand = 80;
+
+                if (frac > (maxelev / 4) * 3)
+                    rand = 40;
+
+                if (random(1, rand) == 1)
+                    goahead = 1;
+            }
+            else
+            {
+                if (random(1, 15000) == 1)
+                    goahead = 1;
+            }
+
+            if (goahead == 1)
+            {
+                bool strato = 1;
+
+                if (random(1, 10) == 1) // Shield volcanoes - much rarer.
+                    strato = 0;
+
+                if (world.sea(i, j) == 1)
+                    strato = 1;
+
+                int peakheight;
+
+                if (world.sea(i, j) == 1)
+                {
+                    if (random(1, 10) == 1) // It could make a chain of volcanic islands.
+                        peakheight = sealevel - world.nom(i, j) + random(500, 3000);
+                    else
+                        peakheight = sealevel - world.nom(i, j) - random(100, 200);
+
+                    if (peakheight < 10)
+                        peakheight = 10;
+
+                    peakheight = random(peakheight / 2, peakheight);
+                }
+                else
+                {
+                    if (strato == 1)
+                        peakheight = random(2000, 6000);
+                    else
+                        peakheight = random(1000, 2000);
+                }
+
+                createisolatedvolcano(world, i, j, shelves, volcanodirection, peakheight, strato);
+            }
+        }
+    }
+
+    // Now we shift the map so there is sea at the edges, if possible.
+
+    updatereport("Shifting for best position");
+
+    removeseam(world, 0);
+
+    adjustforsea(world);
+
+    // Now we add smaller mountain chains that cannot form peninsulas.
+
+    updatereport("Adding smaller mountain ranges");
+
+    twointegers dummy[1];
+
+    createchains(world, baseheight, conheight, fractal, plateaumap, landshape, chainland, dummy, 0, 0, 2);
+
+    // Now we alter the fractal again, and use it to add more height variation.
+
+    updatereport("Merging fractal into land");
+
+    flip(fractal, width, height, 1, 1);
+    int offset = random(1, width);
+    shift(fractal, width, height, offset);
+
+    fractalmergeland(world, fractal, conheight);
+
+    // Now remove any mountains that are over sea.
+
+    updatereport("Removing floating mountains");
+
+    removefloatingmountains(world);
+    cleanmountainridges(world);
+
+    // Now we raise the mountain bases.
+
+    updatereport("Raising mountain bases");
+
+    raisemountainbases(world, mountaindrainage);
+
+    // Now we smooth again, without changing the coastlines.
+
+    updatereport("Smoothing map, preserving coastlines");
+
+    smoothland(world, 2);
+
+    vector<vector<int>> slopes(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    getseaslopes(world, slopes); // Note down all the biggest slopes we currently have. This is so that we don't mark any non-shading areas over these slopes later.
+
+    // Now we create extra elevation over the land to create canyons.
+
+    updatereport("Elevating land near canyons");
+
+    createextraelev(world);
+
+    // Now we remove depressions.
+
+    updatereport("Filling depressions");
+
+    depressionfill(world);
+
+    addlandnoise(world); // Add a bit of noise, then do remove depressions again. This is to add variety to the river courses.
+
+    depressionfill(world);
+
+    // Now we adjust the land around coastlines.
+
+    updatereport("Adjusting coastlines");
+
+    normalisecoasts(world, 13, 11, 4);
+
+    normalisecoasts(world, 13, 11, 4);
+
+    //clamp(world);
+
+    // Now we note down one-tile islands.
+
+    updatereport("Checking islands");
+
+    checkislands(world);
+
+    extendnoshade(world);
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            if (slopes[i][j] > 30)
+                world.setnoshade(i, j, 0);
+        }
+    }
+
+    // Now we remove odd undersea bumps.
+
+    //updatereport("Flattening sea beds");
+
+    //removeunderseabumps(world);
+
+    // Now we create a roughness map.
+
+    updatereport("Creating roughness map");
+
+    vector<vector<int>> roughness(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    grain = 8; // Level of detail on this fractal map.
+    valuemod = 0.2;
+    valuemod2 = 0.6;
+
+    createfractal(roughness, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            world.setroughness(i, j, roughness[i][j]);
+    }
+}
+
+// This function makes the continents in a larger style.
+
+void largecontinents(planet& world, int baseheight, int conheight, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& shelves, boolshapetemplate landshape[], boolshapetemplate chainland[])
+{
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+    int maxelev = world.maxelevation();
+
+    int movein = 300; // Maximum amount to move neighbouring continents towards the central one.
+    int origmountainschance = 1; //2; // The higher this is, the less often central continents will have mountains down one side.
+    int mountainschance = 4; // The higher this is, the less often other continents will have mountains down one side.
+
+    updatereport("Preparing Voronoi map");
+
+    vector<vector<short>> voronoi(width + 1, vector<short>(height + 1, 0));
+    int points = 200; // Number of points in the voronoi map
+
+    makevoronoi(voronoi, width, height, points);
+
+    vector<vector<bool>> continent(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
+    vector<vector<short>> continentnos(ARRAYWIDTH, vector<short>(ARRAYHEIGHT, 0));
+    vector<vector<short>> overlaps(ARRAYWIDTH, vector<short>(ARRAYHEIGHT, 0));
+
+    updatereport("Making continents");
+
+    twointegers focuspoints[4]; // These will be points where continents etc will start close to.
+
+    int focustotal;
+
+    if (random(1, 10) == 1)
+        focustotal = 1;
+    else
+        focustotal = 2;
+
+    if (random(1, 3) != 1)
+        focustotal = 3;
+
+    focuspoints[0].x = width / 4;
+    focuspoints[0].y = random(height / 6, height - height / 6);
+
+    focuspoints[1].x = width - width / 4 + randomsign(random(0, width / 4));
+    focuspoints[1].y = random(height / 6, height - height / 6);
+
+    focuspoints[2].x = random(1, width);
+    focuspoints[2].y = random(height / 6, height - height / 6);
+
+    // First, make the whole map our seabed baseheight.
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            world.setnom(i, j, baseheight);
+    }
+
+    // Now we draw the basic shapes of the continents, and paste them onto the map.
+
+    int leftx = 0;
+    int rightx = 0;
+    int lefty = 0;
+    int righty = 0; // Define the size and shape of the current continent.
+
+    short thiscontinent = 0;
+
+    for (int thispoint = 0; thispoint < focustotal; thispoint++) // Go through the focus points one by one.
+    {
+        // First, put the central continent for this grouping onto the map.
+
+        thiscontinent++;
+
+        makecontinent(world, continent, voronoi, points, width, height, leftx, rightx, lefty, righty);
+
+        int origcontwidth = rightx - leftx;
+        int origcontheight = righty - lefty;
+
+        int origstartpointx = focuspoints[thispoint].x - origcontwidth / 2 - (width - origcontwidth) / 2;
+        int origstartpointy = focuspoints[thispoint].y - origcontheight / 2 - (height - origcontheight) / 2; // Coordinates of the top left-hand corner of this continent.
+
+        int thisleft = -1;
+        int thisright = -1;
+        int thisup = -1;
+        int thisdown = -1;
+
+        bool wrapped = 0;
+
+        bool leftr = random(0, 1); // If it's 1 then we reverse it left-right
+        bool downr = random(0, 1); // If it's 1 then we reverse it top-bottom
+
+        int istart = leftx, desti = rightx, istep = 1;
+        int jstart = lefty, destj = righty, jstep = 1;
+
+        if (leftr == 1)
+        {
+            istart = rightx;
+            desti = leftx;
+            istep = -1;
+        }
+
+        if (downr == 1)
+        {
+            jstart = righty;
+            destj = lefty;
+            jstep = -1;
+        }
+
+        int imap = -1;
+        int jmap = -1;
+
+        for (int i = istart; i != desti; i = i + istep)
+        {
+            imap++;
+            jmap = -1;
+
+            int ii = origstartpointx + i;
+
+            if (ii<0 || ii>width)
+            {
+                ii = wrap(ii, width);
+                wrapped = 1;
+            }
+
+            for (int j = jstart; j != destj; j = j + jstep)
+            {
+                jmap++;
+
+                int jj = origstartpointy + j;
+
+                if (jj >= 0 && jj <= height)
+                {
+                    if (continent[imap + leftx][jmap + lefty] == 1)
+                    {
+                        world.setnom(ii, jj, conheight);
+
+                        if (continentnos[ii][jj] != 0)
+                        {
+                            short overlap = continentnos[ii][jj] * 100 + thiscontinent;
+                            overlaps[ii][jj] = overlap;
+                        }
+
+                        continentnos[ii][jj] = thiscontinent;
+
+                        if (ii < thisleft || thisleft == -1)
+                            thisleft = ii;
+
+                        if (ii > thisright || thisright == -1)
+                            thisright = ii;
+
+                        if (jj < thisup || thisup == -1)
+                            thisup = jj;
+
+                        if (jj > thisdown || thisdown == -1)
+                            thisdown = jj;
+
+                    }
+                }
+            }
+        }
+
+        origstartpointx = thisleft;
+        origstartpointy = thisup;
+
+        origcontwidth = thisright - thisleft;
+        origcontheight = thisdown - thisup;
+
+        if (origcontwidth < 2 || origcontheight < 2)
+            wrapped = 1;
+
+        bool origcontmountains = 0;
+
+        if (random(1, origmountainschance) == 1) // Whether or not this continent has mountains along one edge.
+            origcontmountains = 1;
+
+        short origcontdir = 0;
+
+        int startnearx = -1;
+        int startneary = -1;
+
+        int origmountainstartpointx = -1;
+        int origmountainstartpointy = -1;
+
+        short origstartpoint = 0;
+
+        if (wrapped == 0)
+        {
+            origstartpoint = random(1, 8);
+
+            switch (origstartpoint)
+            {
+            case 1:
+                startnearx = thisleft + random(1, origcontwidth);
+                startneary = thisup;
+                origcontdir = random(4, 6);
+                break;
+
+            case 2:
+                startnearx = thisright;
+                startneary = thisup;
+                origcontdir = random(5, 7);
+                break;
+
+            case 3:
+                startnearx = thisright;
+                startneary = thisup + random(1, origcontheight);
+                origcontdir = random(6, 8);
+                break;
+
+            case 4:
+                startnearx = thisright;
+                startneary = thisdown;
+                origcontdir = random(7, 9);
+                if (origcontdir == 9)
+                    origcontdir = 1;
+                break;
+
+            case 5:
+                startnearx = thisleft + random(1, origcontwidth);
+                startneary = thisdown;
+                origcontdir = random(1, 3) - 1;
+                if (origcontdir == 0)
+                    origcontdir = 8;
+                break;
+
+            case 6:
+                startnearx = thisleft;
+                startneary = thisdown;
+                origcontdir = random(1, 3);
+                break;
+
+            case 7:
+                startnearx = thisleft;
+                startneary = thisup + random(1, origcontheight);
+                origcontdir = random(2, 4);
+                break;
+
+            case 8:
+                startnearx = thisleft;
+                startneary = thisup;
+                origcontdir = random(3, 5);
+                break;
+            }
+
+            if (startnearx<0 || startnearx>width)
+                startnearx = wrap(startnearx, width);
+
+            if (startneary < 0)
+                startneary = 0;
+
+            if (startneary > height)
+                startneary = height;
+
+            if (origcontmountains == 1)
+                makecontinentedgemountains(world, thiscontinent, continentnos, overlaps, baseheight, conheight, fractal, landshape, chainland, origstartpointx, origstartpointy, origcontwidth, origcontheight, startnearx, startneary, origcontdir, origmountainstartpointx, origmountainstartpointy);
+
+        }
+
+        // Now put other continents around it.
+
+        bool fringeconts[3][3];
+
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+                fringeconts[i][j] = 0;
+        }
+
+        short extracont = random(1, 9) - 1; // Number of extra continents.
+
+        for (int n = 1; n <= extracont; n++)
+        {
+            thiscontinent++;
+
+            makecontinent(world, continent, voronoi, points, width, height, leftx, rightx, lefty, righty);
+
+            int thiscontwidth = rightx - leftx;
+            int thiscontheight = righty - lefty;
+
+            int dir = random(1, 8); // Direction from the central continent.
+
+            bool keepgoing = 1;
+
+            switch (dir)
+            {
+            case 1:
+                if (fringeconts[1][0] == 1)
+                    keepgoing = 0;
+                break;
+
+            case 2:
+                if (fringeconts[2][0] == 1)
+                    keepgoing = 0;
+                break;
+
+            case 3:
+                if (fringeconts[2][1] == 1)
+                    keepgoing = 0;
+                break;
+
+            case 4:
+                if (fringeconts[2][2] == 1)
+                    keepgoing = 0;
+                break;
+
+            case 5:
+                if (fringeconts[1][2] == 1)
+                    keepgoing = 0;
+                break;
+
+            case 6:
+                if (fringeconts[0][2] == 1)
+                    keepgoing = 0;
+                break;
+
+            case 7:
+                if (fringeconts[0][1] == 1)
+                    keepgoing = 0;
+                break;
+
+            case 8:
+                if (fringeconts[0][0] == 1)
+                    keepgoing = 0;
+                break;
+            }
+
+            if (keepgoing)
+            {
+                int thisstartpointx = -1;
+                int thisstartpointy = -1; // Coordinates of the top left-hand corner of this continent.
+
+                switch (dir)
+                {
+                case 1: // north
+                    thisstartpointx = origstartpointx + randomsign(random(0, origcontwidth / 2));
+                    thisstartpointy = focuspoints[thispoint].y - thiscontheight / 2 - (height - thiscontheight) / 2 - thiscontheight + random(0, movein);
+                    fringeconts[1][0] = 1;
+                    break;
+
+                case 2: // northeast
+                    thisstartpointx = focuspoints[thispoint].x - thiscontwidth / 2 - (width - thiscontwidth) / 2 + origcontwidth - random(0, movein);
+                    thisstartpointy = focuspoints[thispoint].y - thiscontheight / 2 - (height - thiscontheight) / 2 - thiscontheight + random(0, movein);
+                    fringeconts[2][0] = 1;
+                    break;
+
+                case 3: // east
+                    thisstartpointx = focuspoints[thispoint].x - thiscontwidth / 2 - (width - thiscontwidth) / 2 + origcontwidth - random(0, movein);
+                    thisstartpointy = origstartpointy + randomsign(random(0, origcontheight / 2));
+                    fringeconts[2][1] = 1;
+                    break;
+
+                case 4: // southeast
+                    thisstartpointx = focuspoints[thispoint].x - thiscontwidth / 2 - (width - thiscontwidth) / 2 + origcontwidth - random(0, movein);
+                    thisstartpointy = focuspoints[thispoint].y - thiscontheight / 2 - (height - thiscontheight) / 2 + thiscontheight - random(0, movein);
+                    fringeconts[2][2] = 1;
+                    break;
+
+                case 5: // south
+                    thisstartpointx = origstartpointx + randomsign(random(0, origcontwidth / 2));
+                    thisstartpointy = focuspoints[thispoint].y - thiscontheight / 2 - (height - thiscontheight) / 2 + thiscontheight - random(0, movein);
+                    fringeconts[1][2] = 1;
+                    break;
+
+                case 6: // southwest
+                    thisstartpointx = focuspoints[thispoint].x - thiscontwidth / 2 - (width - thiscontwidth) / 2 - thiscontwidth + random(0, movein);
+                    thisstartpointy = focuspoints[thispoint].y - thiscontheight / 2 - (height - thiscontheight) / 2 + thiscontheight - random(0, movein);
+                    fringeconts[0][2] = 1;
+                    break;
+
+                case 7: // west
+                    thisstartpointx = focuspoints[thispoint].x - thiscontwidth / 2 - (width - thiscontwidth) / 2 - thiscontwidth + random(0, movein);
+                    thisstartpointy = origstartpointy + randomsign(random(0, origcontheight / 2));
+                    fringeconts[0][1] = 1;
+                    break;
+
+                case 8: // northwest
+                    thisstartpointx = focuspoints[thispoint].x - thiscontwidth / 2 - (width - thiscontwidth) / 2 - thiscontwidth + random(0, movein);
+                    thisstartpointy = focuspoints[thispoint].y - thiscontheight / 2 - (height - thiscontheight) / 2 - thiscontheight + random(0, movein);
+                    fringeconts[0][0] = 1;
+                    break;
+                }
+
+                bool leftr = random(0, 1); // If it's 1 then we reverse it left-right
+                bool downr = random(0, 1); // If it's 1 then we reverse it top-bottom
+
+                int istart = leftx, desti = rightx, istep = 1;
+                int jstart = lefty, destj = righty, jstep = 1;
+
+                if (leftr == 1)
+                {
+                    istart = rightx;
+                    desti = leftx;
+                    istep = -1;
+                }
+
+                if (downr == 1)
+                {
+                    jstart = righty;
+                    destj = lefty;
+                    jstep = -1;
+                }
+
+                int imap = -1;
+                int jmap = -1;
+
+                for (int i = istart; i != desti; i = i + istep)
+                {
+                    imap++;
+                    jmap = -1;
+
+                    int ii = thisstartpointx + i;
+
+                    if (ii<0 || ii>width)
+                        ii = wrap(ii, width);
+
+                    for (int j = jstart; j != destj; j = j + jstep)
+                    {
+                        jmap++;
+
+                        int jj = thisstartpointy + j;
+
+                        if (jj >= 0 && jj <= height)
+                        {
+                            if (continent[imap + leftx][jmap + lefty] == 1)
+                            {
+                                world.setnom(ii, jj, conheight);
+
+                                if (continentnos[ii][jj] != 0)
+                                {
+                                    short overlap = continentnos[ii][jj] * 100 + thiscontinent;
+                                    overlaps[ii][jj] = overlap;
+                                }
+
+                                continentnos[ii][jj] = thiscontinent;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Now remove inland seas.
+
+    updatereport("Removing inland seas");
+
+    removeseas(world, conheight);
+
+    updatereport("Adding continental mountain ranges");
+
+    // Now we add mountain ranges where continents overlap.
+
+    int doneoverlaps[50]; // This will note down all the ones we've done.
+
+    for (int n = 0; n < 50; n++)
+        doneoverlaps[n] = 0;
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            if (overlaps[i][j] != 0)
+            {
+                int thisoverlap = overlaps[i][j];
+
+                bool donethisone = 0;
+
+                for (int n = 0; n < 50; n++)
+                {
+                    if (doneoverlaps[n] == thisoverlap)
+                    {
+                        donethisone = 1;
+                        n = 50;
+                    }
+                }
+
+                if (donethisone == 0)
+                {
+                    if (world.outline(i, j) == 1)
+                    {
+                        for (int n = 0; n < 50; n++)
+                        {
+                            if (doneoverlaps[n] == 0)
+                            {
+                                doneoverlaps[n] = thisoverlap;
+                                n = 50;
+                            }
+                        }
+
+                        int furthestx = -1;
+                        int furthesty = -1;
+                        int dist = 0;
+
+                        for (int k = 0; k <= width; k++) // Find the furthest point that's in the same overlap.
+                        {
+                            for (int l = 0; l <= height; l++)
+                            {
+                                if (overlaps[k][l] == thisoverlap)
+                                {
+                                    int xdist = i - k;
+                                    int ydist = j - l;
+
+                                    int thisdist = xdist * xdist + ydist + ydist;
+
+                                    if (thisdist > dist)
+                                    {
+                                        dist = thisdist;
+                                        furthestx = k;
+                                        furthesty = l;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (dist != 0)
+                        {
+                            vector <twointegers> dummy1(2);
+
+                            vector<vector<bool>> dummy2(2, vector<bool>(2, 0));
+
+                            createdirectedchain(world, baseheight, conheight, 1, continentnos, fractal, landshape, chainland, i, j, furthestx, furthesty, 0, dummy1, dummy2, 200);
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    twointegers mountainfocuspoints[4]; // These will be points where mountains and islands will start close to.
+
+    int mountainfocustotal = random(2, 4); // The number of actual focus points.
+
+    for (int n = 0; n < mountainfocustotal; n++)
+    {
+        mountainfocuspoints[n].x = random(0, width);
+        mountainfocuspoints[n].y = random(0, height);
+    }
+
+    int mountainfocaldistance = height / 2;
+
+    // Now we add smaller mountain chains that might form peninsulas.
+
+    createchains(world, baseheight, conheight, fractal, plateaumap, landshape, chainland, mountainfocuspoints, mountainfocustotal, mountainfocaldistance, 1);
+
+    // Now we do the continental shelves.
+
+    updatereport("Making continental shelves");
+
+    makecontinentalshelves(world, shelves, 4);
+
+    // Now we add some island chains.
+
+    int islandgroups = random(0, 6); // Number of general groups of islands.
+
+    for (int n = 1; n <= islandgroups; n++)
+    {
+        mountainfocustotal = 1; // The number of actual focus points.
+
+        for (int n = 0; n < mountainfocustotal; n++)
+        {
+            mountainfocuspoints[n].x = random(0, width);
+            mountainfocuspoints[n].y = random(0, height);
+        }
+
+        mountainfocaldistance = random(height / 8, height / 4);
+        createchains(world, baseheight, conheight, fractal, plateaumap, landshape, chainland, mountainfocuspoints, mountainfocustotal, mountainfocaldistance, 3);
+    }
+}
 
 // This function creates a new fractal map.
 
@@ -5143,7 +6549,13 @@ void createextraelev(planet &world)
             }
         }
     }
-    
+
+    // That gives us a *lot* of extra elevation across the map. We want to apply it a bit more judiciously.
+    // So we use a second fractal to mask the first, so that fewer areas get extra elevation.
+
+    float multfactor=random(1,10);
+    multfactor = multfactor / 10 + 1.f; // Different worlds will have different amounts of extra elevation.
+
     for (int i=0; i<=width; i++)
     {
         for (int j=0; j<=height; j++)
@@ -5153,6 +6565,8 @@ void createextraelev(planet &world)
                 float e=tempelev[i][j];
                 e=e/div;
                 e=e-maxextra;
+
+                e = e * multfactor; // The higher this is, the more widespread the extra elevation will be.
                 
                 tempelev[i][j]=e;
                 
@@ -5459,7 +6873,7 @@ void depressionfill(planet &world)
     
     for (int i=0; i<=width; i++)
     {
-        for (int j=0; j<=width; j++)
+        for (int j=0; j<=height; j++)
             noise[i][j]=random(0,5);
     }
     
@@ -5683,7 +7097,7 @@ void seadepressionfill(planet &world, vector<vector<bool>> &shelves)
     
     for (int i=0; i<=width; i++)
     {
-        for (int j=0; j<=width; j++)
+        for (int j=0; j<=height; j++)
             noise[i][j]=random(0,5);
     }
     
@@ -6439,7 +7853,7 @@ void extendnoshade(planet &world)
                     
                     for (int l=j-1; l<=j+1; l++)
                     {
-                        if (l>=0 && l<=height && world.sea(kk,l)==1)
+                        if (l >= 0 && l <= height && l>=0 && l<=height && world.sea(kk,l)==1)
                             extra[kk][l]=1;
                     }
                 }
@@ -6449,7 +7863,7 @@ void extendnoshade(planet &world)
     
     for (int i=0; i<=width; i++)
     {
-        for (int j=0; j<=width; j++)
+        for (int j=0; j<=height; j++)
         {
             if (extra[i][j]==1)
                 world.setnoshade(i,j,1);
@@ -6640,7 +8054,7 @@ void makecontinentalshelves(planet &world, vector<vector<bool>> &shelves, int po
     
     for (int i=0; i<=width; i++)
     {
-        for (int j=0; j<=width; j++)
+        for (int j=0; j<=height; j++)
         {
             if (world.outline(i,j)==1)
             {

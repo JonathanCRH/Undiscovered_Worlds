@@ -10,7 +10,6 @@
 #include <cmath>
 #include <fstream>
 #include <stdio.h>
-//#include <unistd.h>
 
 #include "planet.hpp"
 #include "functions.hpp"
@@ -61,7 +60,7 @@ bool planet::outline(int x, int y) const
 
 bool planet::coast(int x, int y) const
 {
-    if (y<1||y>itsheight-1)
+    if (y<1||y>itsheight-1 || x<0 || x>itswidth)
         return 0;
     
     if (sea(x,y)==1)
@@ -84,6 +83,9 @@ bool planet::coast(int x, int y) const
 
 int planet::latitude(int x, int y) const
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
     float yy=y;
     
     float equator=itsheight/2;
@@ -737,8 +739,6 @@ void planet::clear()
             deltamapdir[i][j]=0;
             deltamapjan[i][j]=0;
             deltamapjul[i][j]=0;
-            subchanneldirs[i][j]=0;
-            subchanneldepths[i][j]=0;
             oceanridgemap[i][j]=0;
             oceanridgeheightmap[i][j]=0;
             oceanriftmap[i][j]=0;

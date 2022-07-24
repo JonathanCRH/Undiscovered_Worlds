@@ -12,9 +12,13 @@ For more information, and to complain about bugs, please visit the blog: https:/
 Please note that this code requires the following libraries to work:
 
 SFML - https://www.sfml-dev.org/
+
 Dear ImGui - https://github.com/ocornut/imgui
+
 ImGui-SFML - https://github.com/eliasdaler/imgui-sfml
+
 ImGuiFileDialog - https://github.com/aiekick/ImGuiFileDialog
+
 
 The code is offered under the GNU General Public Licence - https://choosealicense.com/licenses/gpl-3.0/. Feel free to make whatever use of it you like, but please credit me if you repurpose any of it!
 

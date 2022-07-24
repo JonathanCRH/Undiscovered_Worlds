@@ -8,64 +8,56 @@
 #include <cmath>
 #include <fstream>
 #include <stdio.h>
-//#include <unistd.h>
 #include <queue>
-//#include <SFML/Graphics.hpp>
-//#include <nanogui/nanogui.h>
 
 #include "classes.hpp"
 #include "planet.hpp"
 #include "region.hpp"
 #include "functions.hpp"
 
+// This converts strings into bools.
+
+bool stob(string instring)
+{
+    if (instring == "1")
+        return 1;
+
+    return 0;
+}
+
 // This function is for saving the world.
 
-void saveworld(planet &world)
+void saveworld(planet& world, string filename)
 {
-    string filename=nanogui::file_dialog({{"udw", "World file"}},1);
-    
-    if (filename=="")
-        return;
-    
     ofstream outfile;
     outfile.open(filename, ios::out);
-    
+
     outfile.write((char*)&world,sizeof(world));
-    
+
     outfile.close();
 }
 
 // This function is for loading the world.
 
-bool loadworld(planet &world)
+bool loadworld(planet& world, string filename)
 {
-    string filename=nanogui::file_dialog({{"udw", "World file"}},0);
-    
-    if (filename=="")
-        return 0;
-    
     ifstream infile;
     infile.open(filename, ios::in);
-    
-    infile.read((char*)&world,sizeof(world));
-    
+
+    infile.read((char*)&world, sizeof(world));
+
     infile.close();
-    
+
     return 1;
 }
 
 // This function saves settings.
 
-void savesettings(planet &world)
+void savesettings(planet& world, string filename)
 {
-    string filename=nanogui::file_dialog({{"uws", "Settings file"}},1);
-    
-    if (filename=="")
-        return;
-    
     ofstream outfile;
     outfile.open(filename, ios::out);
-    
+
     outfile << world.landshading() << endl;
     outfile << world.lakeshading() << endl;
     outfile << world.seashading() << endl;
@@ -137,312 +129,307 @@ void savesettings(planet &world)
     outfile << world.highlight1() << endl;
     outfile << world.highlight2() << endl;
     outfile << world.highlight3() << endl;
-    
+
     outfile.close();
 }
 
 // This function loads settings.
 
-bool loadsettings(planet &world)
+bool loadsettings(planet& world, string filename)
 {
-    string filename=nanogui::file_dialog({{"uws", "Settings file"}},0);
-    
-    if (filename=="")
-        return 0;
-    
     ifstream infile;
     infile.open(filename, ios::in);
-    
+
     string line;
     int val;
     float fval;
-    
+
     getline(infile,line);
     fval=stof(line);
     world.setlandshading(fval);
-    
+
     getline(infile,line);
     fval=stof(line);
     world.setlakeshading(fval);
-    
+
     getline(infile,line);
     fval=stof(line);
     world.setseashading(fval);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setshadingdir(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setsnowchange(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setseaiceappearance(val);
-    
+
     getline(infile,line);
     fval=stof(line);
     world.setlandmarbling(fval);
-    
+
     getline(infile,line);
     fval=stof(line);
     world.setlakemarbling(fval);
-    
+
     getline(infile,line);
     fval=stof(line);
     world.setseamarbling(fval);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setminriverflowglobal(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setminriverflowregional(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setseaice1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setseaice2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setseaice3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setocean1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setocean2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setocean3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setdeepocean1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setdeepocean2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setdeepocean3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setbase1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setbase2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setbase3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setbasetemp1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setbasetemp2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setbasetemp3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.sethighbase1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.sethighbase2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.sethighbase3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setdesert1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setdesert2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setdesert3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.sethighdesert1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.sethighdesert2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.sethighdesert3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setcolddesert1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setcolddesert2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setcolddesert3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setgrass1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setgrass2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setgrass3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setcold1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setcold2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setcold3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.settundra1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.settundra2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.settundra3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.seteqtundra1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.seteqtundra2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.seteqtundra3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setsaltpan1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setsaltpan2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setsaltpan3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.seterg1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.seterg2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.seterg3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setwetlands1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setwetlands2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setwetlands3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setlake1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setlake2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setlake3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setriver1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setriver2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setriver3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setglacier1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setglacier2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.setglacier3(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.sethighlight1(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.sethighlight2(val);
-    
+
     getline(infile,line);
     val=stoi(line);
     world.sethighlight3(val);
-    
+
     infile.close();
-    
+
     return 1;
 }
 
@@ -3006,8 +2993,10 @@ int countinflows(region &region, int x, int y)
 
 void initialiseworld(planet &world)
 {
-    int width=2047; //1023; //1024;
-    int height=1024; //512;
+    world.clear();
+    
+    int width=2047;
+    int height=1024;
     bool rotation=1;            // 1 to rotate like Earth, 0 for the other way
     float riverfactor=15.0;     // for calculating flow in cubic metres/second
     int riverlandreduce=20;     // how much rivers lower the land

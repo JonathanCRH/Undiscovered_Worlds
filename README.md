@@ -11,11 +11,14 @@ For more information, and to complain about bugs, please visit the blog: https:/
 
 Please note that this code requires the following libraries to work:
 
-NanoGUI - https://github.com/mitsuba-renderer/nanogui
-
 SFML - https://www.sfml-dev.org/
 
-stb_image - https://github.com/nothings/stb
+Dear ImGui - https://github.com/ocornut/imgui
+
+ImGui-SFML - https://github.com/eliasdaler/imgui-sfml
+
+ImGuiFileDialog - https://github.com/aiekick/ImGuiFileDialog
+
 
 The code is offered under the GNU General Public Licence - https://choosealicense.com/licenses/gpl-3.0/. Feel free to make whatever use of it you like, but please credit me if you repurpose any of it!
 
@@ -31,7 +34,7 @@ When the world is ready, you will see the global map screen.
 
 * The global map screen
 
-This screen displays a map of your world, shown at a scale of approximately 1 pixel to 16km. You can use the mouse to move the map around or zoom in and out. The buttons to the left perform several functions:
+This screen displays a map of your world. You can click on any point to see information about it. The buttons to the left perform several functions:
 
 "World controls" - these buttons let you create a new world, load in a different one, save the current one, or import your own maps (see below).
 
@@ -39,19 +42,13 @@ This screen displays a map of your world, shown at a scale of approximately 1 pi
 
 "Display map type" - these allow you to display different kinds of information on the map.
 
-The four icons in the bottom left have the following functions:
+"Appearance" - open the settings to change the map appearance (see below).
 
-Ruler (top left) - recentre and resize the map.
-
-Palette (bottom left) - open the settings to change the map appearance (see below).
-
-Pin (top right) - select a point on the map. Information about this point will appear below the map.
-
-Zoom (bottom right) - open up the regional map screen for the selected point.
+"Zoom" - open up the regional map screen for the selected point.
 
 * The regional map screen
 
-This screen displays a map of a small area of your world, shown at a scale of approximately 1 pixel to 1 km. As with the global map screen, you can use the mouse to move the map around or zoom in and out. The buttons to the left perform several functions:
+This screen displays a map of a small area of your world, shown at a scale of approximately 1 pixel to 1 km. As with the global map screen, you can click on the map to get information about that point. The buttons to the left perform several functions:
 
 "World controls" - the button here lets you return to the global map screen.
 
@@ -59,35 +56,33 @@ This screen displays a map of a small area of your world, shown at a scale of ap
 
 "Display map type" - these allow you to display different kinds of information on the map.
 
-The three icons in the bottom left have the same functions as on the global map (note that there is no zoom button on the regional map screen).
+"Appearance" - open the settings to change the map appearance (see below).
 
-To the top right of the screen is a minimap showing the current region on a world map. You can scroll this map around and zoom in. Use the ruler icon underneath it to reset the size and position. You can also use the pin icon under it to select a new region.
-
-Under the minimap are four arrow icons, which you can also use to move to a new region adjacent to the current one.
+To the top right of the screen is a minimap showing the current region on a world map. You can click on this map to go directly to another region.
 
 * The map appearance settings
 
 This window allows you to change the appearance of the relief maps. Note that any changes here will be applied to both global and regional maps. These changes are purely aesthetic - nothing about the world itself is changed here, and none of these changes affects the other maps such as elevation, temperature, etc.
 
-Also, note that if you type new values into the boxes that allow it, you must press Enter for them to take effect - don't just click out of the box.
-
-You can click on the colour boxes to bring up a colour picker. The program mixes these colours to create the relief maps - try changing them to see what sort of effect it has. You can also try making some colours identical to produce simpler maps - e.g. if you want the sea to be a single colour throughout, set "shallow ocean" and "deep ocean" to the same colour and turn off both shading and marbling on sea.
+You can click on the colour boxes to bring up a colour picker. The program mixes these colours to create the relief maps - try changing them to see what sort of effect it has. You can also try making some colours identical to produce simpler maps - e.g. if you want the sea to be a single colour throughout, set "shallow ocean" and "deep ocean" to the same colour and turn off both shading and marbling on sea. Note that you can type new values directly into the boxes by clicking on them while holding down the control key.
 
 Underneath the colour boxes are several sliders:
 
-"Shading" - this controls the pseudo-3D shading effect. The sliders allow you to change its intensity on land, on lakes, and on sea. The "light source" box to the right allows you to change the apparent direction of the lighting.
+"Shading" - this controls the pseudo-3D shading effect. The sliders allow you to change its intensity on land, on lakes, and on sea.
 
-"Marbling" - this controls the marbling effect, which adds variety to the appearance of the maps. You can, again, change its intensity on land, on lakes, and on sea. The "snow transition" box to the right allows you to change the way the map displays the transition between snowy and non-snowy regions on the map.
+"Marbling" - this controls the marbling effect, which adds variety to the appearance of the maps. You can, again, change its intensity on land, on lakes, and on sea.
 
-"Rivers" - this controls how many rivers are shown on the map. Only rivers with flow greater than the given number are shown, so the lower the number, the more rivers you will see. You can set different values for the global and regional maps. The "sea ice" button to the right allows you to set whether sea ice is shown.
+"Rivers" - this controls how many rivers are shown on the map. Only rivers with flow greater than the given number are shown, so the lower the number, the more rivers you will see. You can set different values for the global and regional maps.
 
-The buttons on the left of the map appearance settings window allow you to close the window, load or save settings, and restore the defaults. Note that if you save the world from the global map screen, its appearance settings are saved with it and will be restored if you reload it. So you don't need to save the settings separately unless you plan to load them into other worlds.
+There are also some other controls to the right. The "light" box allows you to change the apparent direction of the lighting. The "snow" box under it allows you to change the way the map displays the transition between snowy and non-snowy regions on the map. Finally, the "sea ice" button allows you to set whether sea ice is shown.
+
+The buttons at the bottom right allow you to save or load settings, restore the defaults, and close the panel. Note that if you save the world from the global map screen, its appearance settings are saved with it and will be restored if you reload it. So you don't need to save the settings separately unless you plan to load them into other worlds.
 
 * The custom area export screen
 
 This window allows you to export maps from a custom-defined area of the world. These maps are at the same scale as the regional map - 1 pixel to 1km - but they can be of larger areas.
 
-Click the "select point" button to the left, and then click a point on the map. Do this again to select a second point, defining a rectangle. You can continue to use the "select point" button to choose new points, to re-define the area. When you have the area you want, click on "export maps".
+Click a point on the map to select a point. Do this again to select a second point, defining a rectangle. You can continue to click or drag te points to re-define the area. When you have the area you want, click on "export maps". There are also buttons to clear your selected area and to return to the global map screen.
 
 * The import maps screen
 
@@ -113,4 +108,4 @@ Also, the land map doesn't have to be very detailed. If you want, you could simp
 
 "Generate" - once you have imported your own maps, you can use these buttons to add features to your world.
 
-When you have finished, click the large icon in the bottom left-hand corner. This finalises the terrain and then calculates rainfall, temperature, rivers, lakes, etc. When it is finished, the custom world will be displayed in the global map screen as usual, and you can view or save it like any other.
+When you have finished, click the "done" button. This finalises the terrain and then calculates rainfall, temperature, rivers, lakes, etc. When it is finished, the custom world will be displayed in the global map screen as usual, and you can view or save it like any other.

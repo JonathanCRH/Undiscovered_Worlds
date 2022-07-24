@@ -10,10 +10,7 @@
 #include <cmath>
 #include <fstream>
 #include <stdio.h>
-//#include <unistd.h>
 #include <queue>
-//#include <SFML/Graphics.hpp>
-//#include <nanogui/nanogui.h>
 
 #include "classes.hpp"
 #include "planet.hpp"
@@ -22,6 +19,2103 @@
 
 #define REGIONALTILEWIDTH 32 // Height and width of the regional map measured in tiles
 #define REGIONALTILEHEIGHT 32
+
+// This function creates the region.
+
+void generateregionalmap(planet& world, region& region, boolshapetemplate smalllake[], boolshapetemplate island[], peaktemplate& peaks, vector<vector<float>>& riftblob, int riftblobsize, int partial, byteshapetemplate smudge[], byteshapetemplate smallsmudge[])
+{
+    int xleft = 0;
+    int xright = 35;
+    int ytop = 0;
+    int ybottom = 35;
+
+    if (partial == 7)
+        xright = 2 + STRIPWIDTH;
+
+    int xstart = xleft * 16;
+    int xend = xright * 16 + 16;
+    int ystart = ytop * 16;
+    int yend = ybottom * 16 + 16; // These define the actual area of the regional map that we're creating (with some margin).
+
+    int leftx = region.leftx();
+    int lefty = region.lefty(); // These mark the upper left corner of the part of the global map we're expanding on.
+
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+    int maxelev = world.maxelevation();
+
+    int rwidth = region.rwidth();
+    int rheight = region.rheight();
+
+    if (leftx<0 || leftx>width)
+    {
+        leftx = wrap(leftx, width);
+        region.setleftx(leftx);
+    }
+
+    if (partial == 0)
+        region.clear();
+
+    vector<vector<bool>> safesaltlakes(RARRAYWIDTH, vector<bool>(RARRAYHEIGHT, 0));
+    vector<vector<bool>> disruptpoints(RARRAYWIDTH, vector<bool>(RARRAYHEIGHT, 0));
+    vector<vector<int>> rriverscarved(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<int>> fakesourcex(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<int>> fakesourcey(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<bool>> riverinlets(RARRAYWIDTH, vector<bool>(RARRAYHEIGHT, 0));
+
+    // Counter-intuitively, we do the lakes and rivers first. Rivers are drawn at a somewhat lower elevation than the rest of the tile will be. After that, we draw in the rest of the elevation around them. This creates the effect of rivers carving out valleys in the landscape, when in fact the landscape is built around the rivers.
+
+    makeregionalwater(world, region, safesaltlakes, disruptpoints, rriverscarved, fakesourcex, fakesourcey, smalllake, island, riftblob, riftblobsize, xleft, xright, ytop, ybottom);
+
+    // Only now, surprisingly, do we do basic elevation.
+
+    makeregionalterrain(world, region, disruptpoints, riverinlets, rriverscarved, fakesourcex, fakesourcey, smalllake, peaks, smallsmudge, xleft, xright, ytop, ybottom);
+
+    // Now do the undersea terrain.
+
+    makeregionalunderseaterrain(world, region, peaks, smudge, smallsmudge, xleft, xright, ytop, ybottom);
+
+    // Now do various miscellaneous bits.
+
+    makeregionalmiscellanies(world, region, safesaltlakes, riverinlets, smalllake, smallsmudge, xleft, xright, ytop, ybottom);
+
+    // Now we do the climates.
+
+    makeregionalclimates(world, region, safesaltlakes, smalllake, xleft, xright, ytop, ybottom);
+}
+
+// This does the regional rivers and lakes.
+
+void makeregionalwater(planet& world, region& region, vector<vector<bool>>& safesaltlakes, vector<vector<bool>>& disruptpoints, vector<vector<int>>& rriverscarved, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, boolshapetemplate smalllake[], boolshapetemplate island[], vector<vector<float>>& riftblob, int riftblobsize, int xleft, int xright, int ytop, int ybottom)
+{
+    int xstart = xleft * 16;
+    int xend = xright * 16 + 16;
+    int ystart = ytop * 16;
+    int yend = ybottom * 16 + 16; // These define the actual area of the regional map that we're creating (with some margin).
+
+    int leftx = region.leftx();
+    int lefty = region.lefty(); // These mark the upper left corner of the part of the global map we're expanding on.
+
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+    int maxelev = world.maxelevation();
+
+    int rwidth = region.rwidth();
+    int rheight = region.rheight();
+
+    if (leftx<0 || leftx>width)
+    {
+        leftx = wrap(leftx, width);
+        region.setleftx(leftx);
+    }
+
+    vector<vector<int>> source(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<int>> destination(RARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<bool>> lakemap(RARRAYWIDTH * 4, vector<bool>(RARRAYHEIGHT * 4, 0));
+    vector<vector<bool>> lakeislands(RARRAYWIDTH, vector<bool>(RARRAYHEIGHT, 0));
+    vector<vector<bool>> rivercurves(RARRAYWIDTH, vector<bool>(RARRAYHEIGHT, 0));
+    vector<vector<bool>> riftlakemap(RARRAYWIDTH * 2, vector<bool>(RARRAYHEIGHT * 2, 0));
+
+    int coords[4][2];
+
+    // First, sort out the roughness.
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            source[i][j] = world.roughness(i, j) * 12000;
+    }
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop + 1; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            float valuemod = 0.1;
+
+            makegenerictile(world, x * 16, y * 16, xx, yy, valuemod, coords, source, destination, 100000, 0, 0);
+        }
+    }
+
+    for (int i = xstart; i <= xend; i++)
+    {
+        for (int j = ystart; j <= yend; j++)
+        {
+            float roughness = destination[i][j];
+            roughness = roughness / 15000; // 10000 originally. I changed it because it was sometimes just too rough.
+
+            if (roughness < 0.2) // Because perfect smoothness looks a bit unnatural.
+                roughness = 0.2;
+
+            region.setroughness(i, j, roughness);
+        }
+    }
+
+    // Now large lakes.
+
+    int extra = 25; // For these, we will create a *bigger* map than the actual regional area. This is so that we can work out the whole coastline of lakes even if only a part of them appears on the regional map. extra is the amount of additional margin to put around the regional map for this, measured in tiles.
+
+    // Start by marking the edges of the lake tiles on this map.
+
+    for (int x = xleft - extra; x <= xright + extra; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra; y <= ybottom + extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.lakesurface(xx, yy) != 0)
+                marklakeedges(world, region, x * 16, y * 16, xx, yy, extra, lakemap);
+        }
+    }
+
+    // Now, turn those edges into borders.
+
+    for (int x = xleft - extra; x <= xright + extra; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra; y <= ybottom + extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.lakestart(xx, yy) != 0 && world.riftlakesurface(xx, yy) == 0)
+                makelaketemplates(world, region, x * 16, y * 16, xx, yy, extra, lakemap);
+        }
+    }
+
+    // Now, actually create the lakes.
+
+    for (int x = xleft - extra; x <= xright + extra; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra; y <= ybottom + extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            int surfacelevel = nearlake(world, xx, yy, 1, 0);
+
+            if (surfacelevel != 0)
+                makelaketile(world, region, x * 16, y * 16, xx, yy, extra, lakemap, surfacelevel, coords, source, destination, safesaltlakes, smalllake);
+        }
+    }
+
+    // Check for any diagonal sections in the lake coastlines.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            findlakecoastdiagonals(world, region, x * 16, y * 16, xx, yy, disruptpoints);
+        }
+    }
+
+    // Now remove them.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removelakecoastdiagonals(world, region, x * 16, y * 16, xx, yy, disruptpoints, smalllake);
+        }
+    }
+
+    for (int i = 0; i < RARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < RARRAYHEIGHT; j++)
+            disruptpoints[i][j] = 0;
+    }
+
+    // Now put islands in those lakes.
+
+    for (int x = xleft - extra; x <= xright + extra; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra; y <= ybottom + extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            int surfacelevel = nearlake(world, xx, yy, 1, 0);
+
+            if (surfacelevel != 0)
+                makelakeislands(world, region, x * 16, y * 16, xx, yy, surfacelevel, island, lakeislands);
+        }
+    }
+
+    // Now salt pans around salt lakes.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            makesaltpantile(world, region, x * 16, y * 16, xx, yy, smalllake);
+        }
+    }
+
+    // Now, rivers.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            makerivertile(world, region, x * 16, y * 16, xx, yy, rriverscarved, smalllake, rivercurves);
+        }
+    }
+
+    // Now, fill in any missing sections of river.
+
+    fixrivers(world, region, xstart, ystart, xend, yend);
+
+    // Now rift lakes.
+
+    extra = 10; // For these, we will create a *bigger* map than the actual regional area. This is so that we can work out the whole coastline of lakes even if only a part of them appears on the regional map. extra is the amount of additional margin to put around the regional map for this.
+
+    for (int x = xleft - extra; x <= xright + extra; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra; y <= ybottom + extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.lakestart(xx, yy) != 0 && world.riftlakesurface(xx, yy) != 0)
+                makeriftlaketemplates(world, region, x * 16, y * 16, xx, yy, extra, riftlakemap);
+        }
+    }
+
+    // We've got the templates for the rift lakes. Now go through the map again and create the lakes from the templates.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            makeriftlaketile(world, region, x * 16, y * 16, xx, yy, extra, riftlakemap, riftblob, riftblobsize);
+        }
+    }
+
+    // If any rivers inexplicably stop, extend them until they hit sea, lake, or another river.
+
+    finishrivers(world, region, xstart, ystart, xend, yend);
+
+    // Remove any sections of rivers that flow out of lakes and then back into the same lakes.
+
+    for (int x = xleft + 1; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop + 1; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removeriverlakeloops(world, region, x * 16, y * 16, xx, yy, smalllake);
+        }
+    }
+
+    // Now, expand those rivers to their proper widths.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            expandrivers(world, region, x * 16, y * 16, xx, yy, 0, fakesourcex, fakesourcey);
+        }
+    }
+
+    // Remove weird river elevations.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removeweirdelevations(world, region, x * 16, y * 16, xx, yy);
+        }
+    }
+}
+
+// This does the regional physical terrain.
+
+void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& disruptpoints, vector<vector<bool>>& riverinlets, vector<vector<int>>& rriverscarved, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, boolshapetemplate smalllake[], peaktemplate& peaks, byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom)
+{
+    int xstart = xleft * 16;
+    int xend = xright * 16 + 16;
+    int ystart = ytop * 16;
+    int yend = ybottom * 16 + 16; // These define the actual area of the regional map that we're creating (with some margin).
+
+    int leftx = region.leftx();
+    int lefty = region.lefty(); // These mark the upper left corner of the part of the global map we're expanding on.
+
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+    int maxelev = world.maxelevation();
+
+    int rwidth = region.rwidth();
+    int rheight = region.rheight();
+
+    if (leftx<0 || leftx>width)
+    {
+        leftx = wrap(leftx, width);
+        region.setleftx(leftx);
+    }
+
+    vector<vector<int>> rotatearray(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<int>> rmountainmap(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<int>> ridgeids(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<int>> nearestridgepointdist(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<int>> nearestridgepointx(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<int>> nearestridgepointy(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<bool>> mountainedges(RARRAYWIDTH, vector<bool>(RARRAYHEIGHT, 0));
+    vector<vector<bool>> buttresspoints(RARRAYWIDTH, vector<bool>(RARRAYHEIGHT, 0));
+    vector<vector<int>> pathchecked(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+
+    int coords[4][2];
+
+    // Do basic elevation.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            makeelevationtile(world, region, x * 16, y * 16, xx, yy, coords, smalllake);
+        }
+    }
+
+    // Make coastlines on single-tile islands more interesting.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.island(xx, yy) == 1)
+
+                complicatecoastlines(world, region, x * 16, y * 16, xx, yy, smalllake, 8);
+        }
+    }
+
+    // Check for any diagonal sections in the coastlines.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            findcoastdiagonals(world, region, x * 16, y * 16, xx, yy, disruptpoints);
+        }
+    }
+
+    // Now remove them.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removecoastdiagonals(world, region, x * 16, y * 16, xx, yy, disruptpoints, smalllake);
+        }
+    }
+
+    // Ensure that delta regions are above sea level.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removedeltasea(world, region, x * 16, y * 16, xx, yy);
+        }
+    }
+
+    // Perform rotations on the edges of the tiles, to break up any grid-like artefacts. (This creates the nicely granular texture to many maps, especially in wetter climates.)
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            rotatetileedges(world, region, x * 16, y * 16, xx, yy, rotatearray, 0);
+        }
+    }
+
+    // Remove awkward straight lines on the elevation map. (Note: This is the function that adds the pretty but probably unrealistic terrace-like texturing to many maps, especially around mountains and deserts.)
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            addterraces(world, region, x * 16, y * 16, xx, yy, smalllake, smallsmudge);
+        }
+    }
+
+    // Now ensure that there are no lakes bordering the sea.
+
+    removesealakes(world, region, xstart, ystart, xend, yend);
+
+    // Now, delta branches.
+
+    for (int x = xleft + 1; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop + 1; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            makedeltatile(world, region, x * 16, y * 16, xx, yy, rriverscarved);
+        }
+    }
+
+    // Now, expand those branches to their proper widths.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            expandrivers(world, region, x * 16, y * 16, xx, yy, 1, fakesourcex, fakesourcey);
+        }
+    }
+
+    // Now add the delta branches to the normal river map.
+
+    adddeltamap(world, region, xstart, ystart, xend, yend);
+
+    // Now remove any sinks from the land. (Currently turned off because it had strange effects.)
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            //removesinks(world,region,x*16,y*16,xx,yy);
+        }
+    }
+
+    // Now we make the main mountain ridges.
+
+    int maxridgedist = 10;
+    int maxmaxridgedist = maxridgedist * maxridgedist + maxridgedist * maxridgedist;
+    int buttressspacing = 14;
+    short markgap = 6;
+
+    for (int x = xleft; x <= xright; x++) // Wider
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            makemountaintile(world, region, x * 16, y * 16, xx, yy, peaks, rmountainmap, ridgeids, markgap);
+        }
+    }
+
+    // Add in shield volcanoes.
+
+    for (int x = xleft; x <= xright; x++) // Wider
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.sea(xx, yy) == 0 && world.volcano(xx, yy) != 0 && world.strato(xx, yy) == 0)
+            {
+                int templateno = random(1, 2);
+
+                makevolcano(world, region, x * 16, y * 16, xx, yy, peaks, rmountainmap, ridgeids, templateno);
+            }
+        }
+    }
+
+    // Now we find cells that are close to those ridges.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            assignridgeregions(world, region, x * 16, y * 16, xx, yy, rmountainmap, ridgeids, nearestridgepointdist, nearestridgepointx, nearestridgepointy, maxridgedist, maxmaxridgedist);
+        }
+    }
+
+    // Now we find the edges of the mountain ranges.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            findmountainedges(world, region, x * 16, y * 16, xx, yy, nearestridgepointdist, nearestridgepointx, nearestridgepointy, mountainedges);
+        }
+    }
+
+    // Now we identify the points where buttresses will end.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            int thisbuttressspacing = buttressspacing;
+
+            if (world.sea(xx, yy) == 1)
+                thisbuttressspacing = thisbuttressspacing * 2;
+
+            findbuttresspoints(world, region, x * 16, y * 16, xx, yy, ridgeids, nearestridgepointdist, nearestridgepointx, nearestridgepointy, mountainedges, buttresspoints, maxmaxridgedist, thisbuttressspacing);
+        }
+    }
+
+    // Now we actually do the buttresses.
+
+    for (int i = 0; i <= rwidth; i++)
+    {
+        for (int j = 0; j <= rheight; j++)
+            ridgeids[i][j] = 0;
+    }
+
+    markgap = 4; // This is for marking where we want the mini-buttresses to go to.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            //if (world.sea(xx,yy)==0)
+            makebuttresses(world, region, x * 16, y * 16, xx, yy, rmountainmap, peaks, nearestridgepointx, nearestridgepointy, nearestridgepointdist, maxridgedist, buttresspoints, ridgeids, markgap, 0);
+        }
+    }
+
+    // Now do all that again for mini-buttresses!
+
+    for (int i = 0; i <= rwidth; i++)
+    {
+        for (int j = 0; j <= rheight; j++)
+        {
+            nearestridgepointx[i][j] = 0;
+            nearestridgepointy[i][j] = 0;
+            nearestridgepointdist[i][j] = 0;
+            mountainedges[i][j] = 0;
+            buttresspoints[i][j] = 0;
+        }
+    }
+
+    maxridgedist = 5;
+    maxmaxridgedist = maxridgedist * maxridgedist + maxridgedist * maxridgedist;
+    buttressspacing = 3;
+
+    // Find cells that are close to those buttresses.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            assignridgeregions(world, region, x * 16, y * 16, xx, yy, rmountainmap, ridgeids, nearestridgepointdist, nearestridgepointx, nearestridgepointy, maxridgedist, maxmaxridgedist);
+        }
+    }
+
+    // Now we find the edges of the mountain ranges.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            findmountainedges(world, region, x * 16, y * 16, xx, yy, nearestridgepointdist, nearestridgepointx, nearestridgepointy, mountainedges);
+        }
+    }
+
+    // Now we identify the points where mini-buttresses will end.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            findbuttresspoints(world, region, x * 16, y * 16, xx, yy, ridgeids, nearestridgepointdist, nearestridgepointx, nearestridgepointy, mountainedges, buttresspoints, maxmaxridgedist, buttressspacing);
+        }
+    }
+
+    // Now we actually do the mini-buttresses.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.sea(xx, yy) == 0)
+                makebuttresses(world, region, x * 16, y * 16, xx, yy, rmountainmap, peaks, nearestridgepointx, nearestridgepointy, nearestridgepointdist, maxridgedist, buttresspoints, ridgeids, markgap, 1);
+        }
+    }
+
+    for (int i = xstart; i <= xend; i++) // Now put those mountains onto the regional map.
+    {
+        for (int j = ystart; j <= yend; j++)
+        {
+            if (region.map(i, j) < rmountainmap[i][j] && region.lakesurface(i, j) == 0 && region.riverdir(i, j) == 0)
+            {
+                region.setmap(i, j, rmountainmap[i][j]);
+            }
+        }
+    }
+
+    // Now do stratovolcanoes.
+
+    for (int i = xstart; i <= xend; i++) // Now put those mountains onto the regional map.
+    {
+        for (int j = ystart; j <= yend; j++)
+            rmountainmap[i][j] = 0;
+    }
+
+    for (int x = xleft; x <= xright; x++) // Wider
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.sea(xx, yy) == 0 && world.strato(xx, yy) == 1)
+            {
+                int templateno = 1;
+
+                makevolcano(world, region, x * 16, y * 16, xx, yy, peaks, rmountainmap, ridgeids, templateno);
+            }
+        }
+    }
+
+    for (int i = xstart; i <= xend; i++) // Now put those onto the regional map.
+    {
+        for (int j = ystart; j <= yend; j++)
+        {
+            if (region.map(i, j) < rmountainmap[i][j] && region.lakesurface(i, j) == 0 && region.riverdir(i, j) == 0)
+            {
+                region.setmap(i, j, rmountainmap[i][j]);
+            }
+        }
+    }
+
+    // Now, remove extra land around mountain islands.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.mountainisland(xx, yy) == 1)
+                trimmountainislands(world, region, x * 16, y * 16, xx, yy, rmountainmap);
+        }
+    }
+
+    // Now we widen any diagonal waterways.
+
+    removediagonalwater(region, xstart, ystart, xend, yend, sealevel);
+
+    /*
+     // Now remove pools. (Turned off for now as it creates weird artefacts, and the turnpoolstolakes routine pretty much catches them all anyway.)
+
+     regionprogress.set_value(regionprogress.value()+progressstep);
+     screen.redraw();
+     screen.draw_all();
+
+     int checkno=0;
+
+     for (int x=xleft+1; x<xright; x++) // Note that we don't do the ones on the edges of the regional map.
+     {
+     int xx=leftx+x;
+
+     if (xx<0 || xx>width)
+     xx=wrap(xx,width);
+
+     for (int y=ytop+1; y<ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+     {
+     int yy=lefty+y;
+
+     removepools(world,region,x*16,y*16,xx,yy,pathchecked,checkno);
+     }
+     }
+     */
+
+     // Remove straight edges on the coastlines again.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removestraights(world, region, x * 16, y * 16, xx, yy, smalllake);
+        }
+    }
+
+    // Now turn any pools that may be left into lakes.
+
+    int checkno = 0;
+
+    for (int i = 0; i < RARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < RARRAYHEIGHT; j++)
+
+            pathchecked[i][j] = 0;
+    }
+
+    for (int x = xleft + 1; x < xright; x++) // Note that we don't do the ones on the edges of the regional map.
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop + 1; y < ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            turnpoolstolakes(world, region, x * 16, y * 16, xx, yy, pathchecked, checkno);
+        }
+    }
+
+    // Remove bits of lakes that touch the sea. (Turned off as it sometimes had the unfortunate effect of turning the entire sea into lake.)
+
+    // //removelakesbysea(region,rstart,rstart,rwidth,rheight,sealevel);
+
+    // Now, remove weird bits of rivers from inside seas.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removeextrasearivers(world, region, x * 16, y * 16, xx, yy);
+        }
+    }
+
+    // Now remove rivers that emerge from the sea onto land.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removeriverscomingfromsea(world, region, x * 16, y * 16, xx, yy, fakesourcex, fakesourcey);
+        }
+    }
+
+    // Now, add inlets to rivers.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            addinlets(world, region, x * 16, y * 16, xx, yy, riverinlets);
+        }
+    }
+
+    // Now, remove extraneous islands from the sea.
+
+    for (int x = xleft; x <= xright; x = x + 2)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y = y + 2) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removesmallislands(world, region, x * 16, y * 16, xx, yy);
+        }
+    }
+
+}
+
+// This does the regional undersea terrain.
+
+void makeregionalunderseaterrain(planet& world, region& region, peaktemplate& peaks, byteshapetemplate smudge[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom)
+{
+    int xstart = xleft * 16;
+    int xend = xright * 16 + 16;
+    int ystart = ytop * 16;
+    int yend = ybottom * 16 + 16; // These define the actual area of the regional map that we're creating (with some margin).
+
+    int leftx = region.leftx();
+    int lefty = region.lefty(); // These mark the upper left corner of the part of the global map we're expanding on.
+
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+    int maxelev = world.maxelevation();
+
+    int rwidth = region.rwidth();
+    int rheight = region.rheight();
+
+    if (leftx<0 || leftx>width)
+    {
+        leftx = wrap(leftx, width);
+        region.setleftx(leftx);
+    }
+
+    vector<vector<int>> underseamap(RARRAYWIDTH * 4, vector<int>(RARRAYHEIGHT * 4, 0));
+    vector<vector<bool>> undersearidgelines(RARRAYWIDTH, vector<bool>(RARRAYHEIGHT, 0));
+    vector<vector<int>> undersearidges(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+    vector<vector<int>> underseaspikes(RARRAYWIDTH * 4, vector<int>(RARRAYHEIGHT * 4, 0));
+
+    int coords[4][2];
+
+    // Do submarine elevation.
+
+    int extra = 20; // For these again, we will create a *bigger* map than the actual regional area. This is because the templates that we're going to use to disrupt this terrain are quite big, so we need to have a big margin around the visible area to ensure that every tile looks the same no matter where the regional map is centred.
+
+    for (int x = xleft - extra; x <= xright + extra; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra; y <= ybottom + extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            makesubmarineelevationtile(world, region, x * 16, y * 16, xx, yy, underseamap, coords, extra);
+        }
+    }
+
+    // Now disrupt that elevation a bit.
+
+    // The sweep over the whole region needs to be staggered to keep the disruption evenly distributed.
+
+    for (int x = xleft - extra; x <= xright + extra; x = x + 2)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra; y <= ybottom + extra; y = y + 2) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.sea(xx, yy) == 1)
+                disruptsubmarineelevationtile(world, region, x * 16, y * 16, xx, yy, underseamap, smudge, extra);
+        }
+    }
+
+    for (int x = xright + extra - 1; x >= xleft - extra; x = x - 2)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ybottom + extra; y >= ytop - extra; y = y - 2) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.sea(xx, yy) == 1)
+                disruptsubmarineelevationtile(world, region, x * 16, y * 16, xx, yy, underseamap, smudge, extra);
+        }
+    }
+
+    for (int x = xleft - extra; x <= xright + extra; x = x + 2)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra + 1; y <= ybottom + extra; y = y + 2) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.sea(xx, yy) == 1)
+                disruptsubmarineelevationtile(world, region, x * 16, y * 16, xx, yy, underseamap, smudge, extra);
+        }
+    }
+
+    for (int x = xright + extra - 1; x >= xleft - extra; x = x - 2)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ybottom + extra - 1; y >= ytop - extra; y = y - 2) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.sea(xx, yy) == 1)
+                disruptsubmarineelevationtile(world, region, x * 16, y * 16, xx, yy, underseamap, smudge, extra);
+        }
+    }
+
+    for (int i = 0; i <= rwidth; i++)
+    {
+        for (int j = 0; j <= rheight; j++)
+        {
+            if (region.sea(i, j))
+                region.setmap(i, j, underseamap[i + extra * 16][j + extra * 16]);
+        }
+    }
+
+
+    // Now we find the paths of the submarine ridges.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.oceanridges(xx, yy) != 0)
+                makesubmarineridgelines(world, region, x * 16, y * 16, xx, yy, undersearidgelines);
+        }
+    }
+
+    // Now we draw the ridges onto the ridge map.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.sea(xx, yy) == 1)
+                drawsubmarineridges(world, region, x * 16, y * 16, xx, yy, undersearidgelines, peaks, undersearidges);
+        }
+    }
+
+    // Now we add the central mountains to the ridges.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.oceanrifts(xx, yy) != 0)
+                makesubmarineriftmountains(world, region, x * 16, y * 16, xx, yy, undersearidges, peaks);
+        }
+    }
+
+    // Now we carve out the central rift valley.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.oceanrifts(xx, yy) != 0)
+                makesubmarinerift(world, region, x * 16, y * 16, xx, yy, undersearidges, smallsmudge);
+        }
+    }
+
+    // Now we add the spikes radiating away from the rifts.
+
+    extra = 20; // This one has to be done with a wide margin around the visible map, as there could be spikes coming in from outside.
+
+    for (int x = xleft - extra; x <= xright + extra; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra; y <= ybottom + extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.oceanrifts(xx, yy) != 0)
+                makesubmarineriftradiations(world, region, x * 16, y * 16, xx, yy, underseaspikes, peaks, extra);
+        }
+    }
+
+    // Apply the spikes map to the ridges map.
+
+    int dextra = extra * 16;
+
+    for (int i = 0; i <= rwidth; i++)
+    {
+        for (int j = 0; j <= rheight; j++)
+        {
+            if (region.sea(i, j))
+            {
+                if (underseaspikes[i + dextra][j + dextra] < 0)
+                {
+                    undersearidges[i][j] = undersearidges[i][j] + underseaspikes[i + dextra][j + dextra];
+
+                    if (undersearidges[i][j] < 0)
+                        undersearidges[i][j] = 0;
+                }
+                else
+                {
+                    if (undersearidges[i][j] < underseaspikes[i + dextra][j + dextra])
+                        undersearidges[i][j] = underseaspikes[i + dextra][j + dextra];
+                }
+            }
+        }
+    }
+
+    // Now, add submarine volcanoes (seamounts).
+
+    for (int x = xleft - extra; x <= xright + extra; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop - extra; y <= ybottom + extra; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.sea(xx, yy) == 1 && world.volcano(xx, yy) != 0)
+                makesubmarinevolcano(world, region, x * 16, y * 16, xx, yy, peaks, undersearidges);
+        }
+    }
+
+    // Apply the ridges to the map.
+
+    for (int i = 0; i <= rwidth; i++)
+    {
+        for (int j = 0; j <= rheight; j++)
+            region.setmap(i, j, region.map(i, j) + undersearidges[i][j]);
+    }
+}
+
+// This does some miscellaneous stuff to the regional map.
+
+void makeregionalmiscellanies(planet& world, region& region, vector<vector<bool>>& safesaltlakes, vector<vector<bool>>& riverinlets, boolshapetemplate smalllake[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom)
+{
+    int xstart = xleft * 16;
+    int xend = xright * 16 + 16;
+    int ystart = ytop * 16;
+    int yend = ybottom * 16 + 16; // These define the actual area of the regional map that we're creating (with some margin).
+
+    int leftx = region.leftx();
+    int lefty = region.lefty(); // These mark the upper left corner of the part of the global map we're expanding on.
+
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+    int maxelev = world.maxelevation();
+
+    int rwidth = region.rwidth();
+    int rheight = region.rheight();
+
+    if (leftx<0 || leftx>width)
+    {
+        leftx = wrap(leftx, width);
+        region.setleftx(leftx);
+    }
+
+    vector<vector<int>> rotatearray(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+
+    //int coords[4][2];
+
+    // Make wetlands.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            makewetlandtile(world, region, x * 16, y * 16, xx, yy, smalllake);
+        }
+    }
+
+    // Make sure special "lakes" are correctly identified.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            convertlakestospecials(world, region, x * 16, y * 16, xx, yy, safesaltlakes);
+        }
+    }
+
+    // Now we do barrier islands.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            addbarrierislands(world, region, x * 16, y * 16, xx, yy, riverinlets);
+        }
+    }
+
+    // Now, remove odd little parallel lines of islands that sometimes get created by the barrier islands routine.
+
+    removeparallelislands(region, xstart, ystart, xend, yend, sealevel);
+
+    // Check for any impossibly low areas of elevation.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removetoolow(world, region, x * 16, y * 16, xx, yy);
+        }
+    }
+
+    // Now remove any bits of sea that are next to lakes.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removelakeseas(world, region, x * 16, y * 16, xx, yy);
+        }
+    }
+
+    // Now smooth lake beds.
+
+    smoothlakebeds(region);
+
+    // Now do rotations on the lake beds to make the terrain look more natural.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            rotatetileedges(world, region, x * 16, y * 16, xx, yy, rotatearray, 1);
+        }
+    }
+
+    // Now remove any weirdly high elevation.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            removetoohighelevations(world, region, x * 16, y * 16, xx, yy);
+        }
+    }
+
+    // Now disrupt lake beds again.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            addlaketerraces(world, region, x * 16, y * 16, xx, yy, smalllake, smallsmudge);
+        }
+    }
+
+    // Now we do glaciers.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            addregionalglaciers(world, region, x * 16, y * 16, xx, yy);
+        }
+    }
+}
+
+// This does the regional climates.
+
+void makeregionalclimates(planet& world, region& region, vector<vector<bool>>& safesaltlakes, boolshapetemplate smalllake[], int xleft, int xright, int ytop, int ybottom)
+{
+    int xstart = xleft * 16;
+    int xend = xright * 16 + 16;
+    int ystart = ytop * 16;
+    int yend = ybottom * 16 + 16; // These define the actual area of the regional map that we're creating (with some margin).
+
+    int leftx = region.leftx();
+    int lefty = region.lefty(); // These mark the upper left corner of the part of the global map we're expanding on.
+
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+    int maxelev = world.maxelevation();
+
+    int rwidth = region.rwidth();
+    int rheight = region.rheight();
+
+    if (leftx<0 || leftx>width)
+    {
+        leftx = wrap(leftx, width);
+        region.setleftx(leftx);
+    }
+
+    vector<vector<int>> source(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<int>> destination(RARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<int>> rotatearray(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
+
+    int coords[4][2];
+
+    // First we do the precipitation maps.
+
+    // First, winter precipitation.
+
+    for (int i = 0; i < RARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < RARRAYHEIGHT; j++)
+        {
+            destination[i][j] = -5000;
+            rotatearray[i][j] = 0;
+        }
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            if (world.wintermountainraindir(i, j) == 0)
+                source[i][j] = world.winterrain(i, j);
+            else
+                source[i][j] = world.wintermountainrain(i, j);
+        }
+    }
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            float valuemod = 0.04; //0.02;
+
+            makegenerictile(world, x * 16, y * 16, xx, yy, valuemod, coords, source, destination, 100000, 0, 1);
+
+            if (yy == height) // If this is the very bottom of the global map, ensure there's no weirdness.
+            {
+                int maxval = world.winterrain(xx, yy);
+
+                for (int i = x * 16; i <= x * 16 + 16; i++)
+                {
+                    for (int j = y * 16; j <= y * 16 + 16; j++)
+                    {
+                        if (destination[i][j] > maxval)
+                            destination[i][j] = maxval;
+                    }
+                }
+            }
+        }
+    }
+
+    // Now add rotations to that precipitation map, to improve the look.
+
+    for (int x = xleft + 2; x < xright - 1; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop + 2; y < ybottom - 1; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            rotatetileedgesarray(world, region, x * 16, y * 16, xx, yy, destination, rotatearray, -5000);
+        }
+    }
+
+    for (int i = xstart; i <= xend; i++)
+    {
+        for (int j = ystart; j <= yend; j++)
+            region.setwinterrain(i, j, destination[i][j]);
+    }
+
+    // Now, summer precipitation.
+
+    for (int i = 0; i < RARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < RARRAYHEIGHT; j++)
+        {
+            destination[i][j] = -5000;
+            rotatearray[i][j] = 0;
+        }
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            if (world.summermountainraindir(i, j) == 0)
+                source[i][j] = world.summerrain(i, j);
+            else
+                source[i][j] = world.summermountainrain(i, j);
+        }
+    }
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            float valuemod = 0.04; //0.02;
+
+            makegenerictile(world, x * 16, y * 16, xx, yy, valuemod, coords, source, destination, 100000, 0, 1);
+
+            if (yy == height) // If this is the very bottom of the global map, ensure there's no weirdness.
+            {
+                int maxval = world.summerrain(xx, yy);
+
+                for (int i = x * 16; i <= x * 16 + 16; i++)
+                {
+                    for (int j = y * 16; j <= y * 16 + 16; j++)
+                    {
+                        if (destination[i][j] > maxval)
+                            destination[i][j] = maxval;
+                    }
+                }
+            }
+        }
+    }
+
+    // Now add rotations to that precipitation map, to improve the look.
+
+    for (int x = xleft + 2; x < xright - 1; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop + 2; y < ybottom - 1; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            rotatetileedgesarray(world, region, x * 16, y * 16, xx, yy, destination, rotatearray, -5000);
+        }
+    }
+
+    for (int i = xstart; i <= xend; i++)
+    {
+        for (int j = ystart; j <= yend; j++)
+            region.setsummerrain(i, j, destination[i][j]);
+    }
+
+    smoothprecipitation(region, xstart, ystart, xend, yend, 2);
+
+    // Now add extra precipitation to mountains, where appropriate.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (world.wintermountainraindir(xx, yy) != 0)
+                addregionalmountainprecipitation(world, region, x * 16, y * 16, xx, yy, 0);
+
+            if (world.summermountainraindir(xx, yy) != 0)
+                addregionalmountainprecipitation(world, region, x * 16, y * 16, xx, yy, 1);
+        }
+    }
+
+    // Now remove any salt pans from areas that have too much precipitation.
+
+    removewetsaltpans(region, xstart, ystart, xend, yend);
+
+    // Now we do the temperature maps.
+
+    // First, maximum temperature.
+
+    for (int i = 0; i < RARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < RARRAYHEIGHT; j++)
+        {
+            destination[i][j] = -5000;
+            rotatearray[i][j] = 0;
+        }
+    }
+
+    // Note that we remove the elevation element of temperatures (because that is determined by the elevation of the regional map, not of the global map). Also we multiply temperatures by 100 temporarily, to ensure smoother fractals.
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            source[i][j] = tempelevremove(world, world.maxtemp(i, j), i, j) * 100;
+    }
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            float valuemod = 0.01;
+
+            makegenerictile(world, x * 16, y * 16, xx, yy, valuemod, coords, source, destination, 5000, -5000, 0);
+        }
+    }
+
+    // Now add rotations to that temperature map, to improve the look.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            rotatetileedgesarray(world, region, x * 16, y * 16, xx, yy, destination, rotatearray, -5000);
+        }
+    }
+
+    // Now add the elevation element back in.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            for (int i = x * 16; i <= x * 16 + 15; i++) // Divide by 100 and add the elevation element back in.
+            {
+                for (int j = y * 16; j <= y * 16 + 15; j++)
+                {
+                    int amount = tempelevadd(region, destination[i][j], i, j) - destination[i][j];
+
+                    region.setextramaxtemp(i, j, destination[i][j] + amount * 100);
+
+                    region.setmaxtemp(i, j, tempelevadd(region, destination[i][j] / 100, i, j));
+                }
+            }
+        }
+    }
+
+    // Now, minimum temperature.
+
+    for (int i = 0; i < RARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < RARRAYHEIGHT; j++)
+        {
+            destination[i][j] = -5000;
+            rotatearray[i][j] = 0;
+        }
+    }
+
+    // Note that we remove the elevation element of temperatures (because that is determined by the elevation of the regional map, not of the global map). Also we multiply temperatures by 100 temporarily, to ensure smoother fractals.
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            source[i][j] = tempelevremove(world, world.mintemp(i, j), i, j) * 100;
+    }
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            float valuemod = 0.01;
+
+            makegenerictile(world, x * 16, y * 16, xx, yy, valuemod, coords, source, destination, 5000, -5000, 0);
+
+            if (yy == height) // If this is the very bottom of the global map, ensure there's no weirdness.
+            {
+                int maxval = world.mintemp(xx, yy);
+
+                for (int i = x * 16; i <= x * 16 + 16; i++)
+                {
+                    for (int j = y * 16; j <= y * 16 + 16; j++)
+                    {
+                        if (destination[i][j] > maxval)
+                            destination[i][j] = maxval;
+                    }
+                }
+            }
+        }
+    }
+
+    // Now add rotations to that temperature map, to improve the look.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            rotatetileedgesarray(world, region, x * 16, y * 16, xx, yy, destination, rotatearray, -5000);
+        }
+    }
+
+    // Now add the elevation element back in.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            for (int i = x * 16; i <= x * 16 + 15; i++) // Divide by 100 and add the elevation element back in.
+            {
+                for (int j = y * 16; j <= y * 16 + 15; j++)
+                {
+                    int amount = tempelevadd(region, destination[i][j], i, j) - destination[i][j];
+
+                    region.setextramintemp(i, j, destination[i][j] + amount * 100);
+
+                    region.setmintemp(i, j, tempelevadd(region, destination[i][j] / 100, i, j));
+                }
+            }
+        }
+    }
+
+    // Now sort out any problems with the temperatures at the very bottom of the map.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ybottom - 2; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            if (yy > height - 10)
+            {
+                int maxmaxtemp = world.maxtemp(xx, yy);
+                int maxmintemp = world.mintemp(xx, yy);
+
+                for (int i = x * 16; i <= x * 16 + 15; i++)
+                {
+                    for (int j = y * 16; j <= y * 16 + 15; j++)
+                    {
+                        if (region.maxtemp(i, j) > maxmaxtemp)
+                            region.setmaxtemp(i, j, maxmaxtemp);
+
+                        if (region.mintemp(i, j) > maxmintemp)
+                            region.setmintemp(i, j, maxmintemp);
+                    }
+                }
+            }
+        }
+    }
+
+    // Now the sea ice map.
+    // Here again we have to fiddle with the values, as it only has three values and that's not much use for the diamond-square function to get to work on.
+
+    int icediv = 20;
+
+    for (int i = 0; i < RARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < RARRAYHEIGHT; j++)
+            destination[i][j] = -5000;
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            switch (world.seaice(i, j))
+            {
+            case 0:
+                source[i][j] = icediv / 2;
+                break;
+
+            case 1:
+                source[i][j] = icediv / 2 + icediv;
+                break;
+
+            case 2:
+                source[i][j] = icediv / 2 + icediv * 2;
+                break;
+            }
+        }
+    }
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            int surroundingice = getsurroundingice(world, xx, yy);
+
+            if (surroundingice != -1) // If this isn't a mixed tile
+            {
+                for (int i = x * 16; i <= x * 16 + 15; i++)
+                {
+                    for (int j = y * 16; j <= y * 16 + 15; j++)
+                        region.setseaice(i, j, world.seaice(xx, yy));
+                }
+            }
+            else
+            {
+                float valuemod = 0.015;
+
+                makegenerictile(world, x * 16, y * 16, xx, yy, valuemod, coords, source, destination, icediv * 3, 0, 0);
+
+                for (int i = x * 16; i <= x * 16 + 15; i++) // Translate the values back to sea ice values.
+                {
+                    for (int j = y * 16; j <= y * 16 + 15; j++)
+                    {
+                        if (destination[i][j] <= icediv)
+                        {
+                            bool openseaok = 1;
+
+                            for (int k = xx - 1; k <= xx + 1; k++)
+                            {
+                                int kk = k;
+
+                                if (kk<0 || kk>width)
+                                    kk = wrap(kk, width);
+
+                                for (int l = yy - 1; l <= yy + 1; l++)
+                                {
+                                    if (l >= 0 && l <= height)
+                                    {
+                                        if (world.seaice(kk, l) == 2)
+                                        {
+                                            openseaok = 0;
+                                            k = xx + 1;
+                                            l = yy + 1;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (openseaok == 1)
+                                region.setseaice(i, j, 0);
+                            else
+                                region.setseaice(i, j, 1);
+
+                        }
+                        else
+                        {
+                            if (destination[i][j] > icediv && destination[i][j] <= icediv * 2)
+                                region.setseaice(i, j, 1);
+                            else
+                            {
+                                bool permiceok = 1;
+
+                                for (int k = xx - 1; k <= xx + 1; k++)
+                                {
+                                    int kk = k;
+
+                                    if (kk<0 || kk>width)
+                                        kk = wrap(kk, width);
+
+                                    for (int l = yy - 1; l <= yy + 1; l++)
+                                    {
+                                        if (l >= 0 && l <= height)
+                                        {
+                                            if (world.seaice(kk, l) == 0)
+                                            {
+                                                permiceok = 0;
+                                                k = xx + 1;
+                                                l = yy + 1;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (permiceok == 1)
+                                    region.setseaice(i, j, 2);
+                                else
+                                    region.setseaice(i, j, 1);
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Now remove glitches in the sea ice map.
+
+    removeseaiceglitches(region);
+
+    // Now we do the climate map.
+
+    for (int i = xstart; i <= xend; i++)
+    {
+        for (int j = ystart; j <= yend; j++)
+        {
+            string climate = getclimate(region, i, j);
+            region.setclimate(i, j, climate);
+        }
+    }
+
+    // Now create small salt pans.
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            makesmallsaltpans(world, region, x * 16, y * 16, xx, yy, safesaltlakes, smalllake);
+        }
+    }
+
+    // Now just check that all the lake beds make sense.
+
+    checklakebeds(region, xstart, ystart, xend, yend);
+}
 
 // This returns the global coordinate of the tile that a regional coordinate is in.
 
@@ -15375,9 +17469,9 @@ void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, 
     
     // North-south, looking east.
     
-    for (int i=dx; i<=dx+16; i++)
+    for (int i=dx+1; i<=dx+15; i++)
     {
-        for (int j=dy; j<=dy+16; j++)
+        for (int j=dy+1; j<=dy+15; j++)
         {
             if (region.riverdir(i+1,j)==0 && region.fakedir(i+1,j)==0 && region.map(i,j)>region.map(i+1,j)+threshold)
             {
@@ -15394,7 +17488,7 @@ void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, 
                     else
                         keepgoing=0;
                     
-                    if (jj>=dy+16)
+                    if (jj>=dy+15)
                         keepgoing=0;
                     
                 } while (keepgoing==1);
@@ -15409,9 +17503,9 @@ void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, 
     
     // North-south, looking west.
     
-    for (int i=dx; i<=dx+16; i++)
+    for (int i=dx+1; i<=dx+15; i++)
     {
-        for (int j=dy; j<=dy+16; j++)
+        for (int j=dy+1; j<=dy+15; j++)
         {
             if (region.riverdir(i-1,j)==0 && region.fakedir(i-1,j)==0 && region.map(i,j)>region.map(i-1,j)+threshold)
             {
@@ -15428,7 +17522,7 @@ void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, 
                     else
                         keepgoing=0;
                     
-                    if (jj>=dy+16)
+                    if (jj>=dy+15)
                         keepgoing=0;
                     
                 } while (keepgoing==1);
@@ -15443,9 +17537,9 @@ void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, 
     
     // East-west, looking south.
     
-    for (int i=dx; i<=dx+16; i++)
+    for (int i=dx+1; i<=dx+15; i++)
     {
-        for (int j=dy; j<=dy+16; j++)
+        for (int j=dy+1; j<=dy+15; j++)
         {
             if (region.riverdir(i,j+1)==0 && region.fakedir(i,j+1)==0 && region.map(i,j)>region.map(i,j+1)+threshold)
             {
@@ -15462,7 +17556,7 @@ void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, 
                     else
                         keepgoing=0;
                     
-                    if (ii>=dx+16)
+                    if (ii>=dx+15)
                         keepgoing=0;
                     
                 } while (keepgoing==1);
@@ -15477,9 +17571,9 @@ void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, 
     
     // East-west, looking north.
     
-    for (int i=dx; i<=dx+16; i++)
+    for (int i=dx+1; i<=dx+15; i++)
     {
-        for (int j=dy; j<=dy+16; j++)
+        for (int j=dy+1; j<=dy+15; j++)
         {
             if (region.riverdir(i,j-1)==0 && region.fakedir(i,j-1)==0 && region.map(i,j)>region.map(i,j-1)+threshold)
             {
@@ -15496,7 +17590,7 @@ void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, 
                     else
                         keepgoing=0;
                     
-                    if (ii>=dx+16)
+                    if (ii>=dx+15)
                         keepgoing=0;
                     
                 } while (keepgoing==1);
@@ -15550,9 +17644,9 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
     
     // North-south, looking east.
     
-    for (int i=dx; i<=dx+16; i++)
+    for (int i=dx+1; i<=dx+15; i++)
     {
-        for (int j=dy; j<=dy+16; j++)
+        for (int j=dy+1; j<=dy+15; j++)
         {
             if (region.truelake(i+1,j)==1 && region.map(i,j)>region.map(i+1,j)+threshold)
             {
@@ -15569,7 +17663,7 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
                     else
                         keepgoing=0;
                     
-                    if (jj>=dy+16)
+                    if (jj>=dy+15)
                         keepgoing=0;
                     
                 } while (keepgoing==1);
@@ -15584,9 +17678,9 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
     
     // North-south, looking west.
     
-    for (int i=dx; i<=dx+16; i++)
+    for (int i=dx+1; i<=dx+15; i++)
     {
-        for (int j=dy; j<=dy+16; j++)
+        for (int j=dy+1; j<=dy+15; j++)
         {
             if (region.truelake(i-1,j)==1 && region.map(i,j)>region.map(i-1,j)+threshold)
             {
@@ -15603,7 +17697,7 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
                     else
                         keepgoing=0;
                     
-                    if (jj>=dy+16)
+                    if (jj>=dy+15)
                         keepgoing=0;
                     
                 } while (keepgoing==1);
@@ -15618,9 +17712,9 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
     
     // East-west, looking south.
     
-    for (int i=dx; i<=dx+16; i++)
+    for (int i=dx+1; i<=dx+15; i++)
     {
-        for (int j=dy; j<=dy+16; j++)
+        for (int j=dy+1; j<=dy+15; j++)
         {
             if (region.truelake(i,j+1)==1 && region.map(i,j)>region.map(i,j+1)+threshold)
             {
@@ -15637,7 +17731,7 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
                     else
                         keepgoing=0;
                     
-                    if (ii>=dx+16)
+                    if (ii>=dx+15)
                         keepgoing=0;
                     
                 } while (keepgoing==1);
@@ -15652,9 +17746,9 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
     
     // East-west, looking north.
     
-    for (int i=dx; i<=dx+16; i++)
+    for (int i=dx+1; i<=dx+15; i++)
     {
-        for (int j=dy; j<=dy+16; j++)
+        for (int j=dy+1; j<=dy+15; j++)
         {
             if (region.truelake(i,j-1)==1 && region.map(i,j)>region.map(i,j-1)+threshold)
             {
@@ -15671,7 +17765,7 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
                     else
                         keepgoing=0;
                     
-                    if (ii>=dx+16)
+                    if (ii>=dx+15)
                         keepgoing=0;
                     
                 } while (keepgoing==1);
@@ -15685,7 +17779,7 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
     }
 }
 
-// This disrupts a long straight cliff on the regional map.
+// This disrupts a long straight cliff on the regional map by making a sort of terrace on it.
 
 void disruptcliff(planet &world, region &region, int dx, int dy, int sx, int sy, int startx, int starty, int endx, int endy, boolshapetemplate smalllake[], byteshapetemplate smudge[])
 {
@@ -18511,6 +20605,9 @@ void rotateland(planet &world, region &region, int centrex, int centrey, int max
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
+
+    int squaremax = maxradius * maxradius + maxradius;
+    int smallsquaremax = (maxradius - 2) * (maxradius - 2) + maxradius - 2;
     
     // First, clear this section of the newelevation array. We'll put the new elevation values in this array and then copy them onto the elevation map.
     
@@ -18542,7 +20639,7 @@ void rotateland(planet &world, region &region, int centrex, int centrey, int max
                 {
                     bool goahead=0;
                     
-                    if (region.sea(xx,yy)==0 && region.riverdir(xx,yy)==0 && region.fakedir(xx,yy)==0 && region.lakesurface(xx,yy)==0 && x*x+y*y<maxradius*maxradius+maxradius)
+                    if (region.sea(xx,yy)==0 && region.riverdir(xx,yy)==0 && region.fakedir(xx,yy)==0 && region.lakesurface(xx,yy)==0 && x*x+y*y< squaremax)
                     {
                         bool nearbyrivers=0;
                         
@@ -18602,6 +20699,63 @@ void rotateland(planet &world, region &region, int centrex, int centrey, int max
             {
                 if (y>=0 && y<=rheight && rotatearray[x][y]!=0)
                     region.setmap(x,y,rotatearray[x][y]);
+            }
+        }
+    }
+
+    // Now smooth the edges of the circle.
+
+    int amount = 1; // Size of the blurring.
+
+    for (int x = -maxradius; x <= maxradius; x++)
+    {
+        int xx = centrex + x;
+
+        if (xx >= 0 && xx <= rwidth)
+        {
+            for (int y = -maxradius; y <= maxradius; y++)
+            {
+                int yy = centrey + y;
+
+                if (yy >= 0 && yy <= rheight)
+                {
+                    bool goahead = 0;
+
+                    if (region.sea(xx, yy) == 0 && region.riverdir(xx, yy) == 0 && region.fakedir(xx, yy) == 0 && region.lakesurface(xx, yy) == 0)
+                    {
+                        int thissquare = x * x + y * y;
+
+                        if (thissquare<squaremax && thissquare>smallsquaremax)
+                        {
+                            float crount = 0;
+                            float total = 0;
+
+                            for (int i = xx - amount; i <= xx + amount; i++)
+                            {
+                                if (i >= 0 && i <= rwidth)
+                                {
+                                    for (int j = yy - amount; j <= yy + amount; j++)
+                                    {
+                                        if (j >= 0 && j <= rheight)
+                                        {
+                                            if (region.sea(i, j) == 0 && region.riverdir(i, j) == 0 && region.fakedir(i, j) == 0 && region.lakesurface(i, j) == 0)
+                                            {
+                                                total = total + region.map(i, j);
+                                                crount++;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            total = total / crount;
+
+                            int itotal = total;
+
+                            region.setmap(xx, yy, itotal);
+                        }
+                    }
+                }
             }
         }
     }
@@ -18828,6 +20982,8 @@ void removesmallislands(planet &world, region &region, int dx, int dy, int sx, i
     
     int width=world.width();
     int height=world.height();
+    int rwidth = region.rwidth();
+    int rheight = region.rheight();
     
     for (int i=sx-1; i<=sx+1; i++)
     {
@@ -18840,36 +20996,38 @@ void removesmallislands(planet &world, region &region, int dx, int dy, int sx, i
         {
             if (j>=0 && j<=height)
             {
-                if (world.island(i,j)==1 || world.mountainisland(i,j)==1)
+                if (world.island(ii,j)==1 || world.mountainisland(ii,j)==1)
                     return;
             }
         }
     }
+
+    // Problem is after this point.
     
     int sealevel=world.sealevel();
     int margin=8; // The margin around the current tile to check
     
     for (int i=dx-margin; i<=dx+16+margin; i++)
     {
-        if (region.map(i,dy-margin)>sealevel)
+        if (i>=0 && i<=rwidth && region.map(i,dy-margin)>sealevel)
             return;
     }
     
     for (int i=dx-margin; i<=dx+16+margin; i++)
     {
-        if (region.map(i,dy+16+margin)>sealevel)
+        if (i >= 0 && i <= rwidth && region.map(i,dy+16+margin)>sealevel)
             return;
     }
     
     for (int j=dy-margin; j<=dy+16+margin; j++)
     {
-        if (region.map(dx-margin,j)>sealevel)
+        if (j >= 0 && j <= rheight && region.map(dx-margin,j)>sealevel)
             return;
     }
     
     for (int j=dy-margin; j<=dy+16+margin; j++)
     {
-        if (region.map(dx+16+margin,j)>sealevel)
+        if (j >= 0 && j <= rheight && region.map(dx+16+margin,j)>sealevel)
             return;
     }
     
@@ -18877,7 +21035,7 @@ void removesmallislands(planet &world, region &region, int dx, int dy, int sx, i
     {
         for (int j=dy-margin+1; j<dy+16+margin; j++)
         {
-            if (region.map(i,j)>sealevel)
+            if (i >= 0 && i <= rwidth && j >= 0 && j <= rheight && region.map(i,j)>sealevel)
                 region.setmap(i,j,sealevel-100);
         }
     }

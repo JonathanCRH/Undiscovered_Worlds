@@ -10,9 +10,6 @@
 #include <cmath>
 #include <fstream>
 #include <stdio.h>
-//#include <unistd.h>
-//#include <SFML/Graphics.hpp>
-//#include <nanogui/nanogui.h>
 
 #include "classes.hpp"
 #include "planet.hpp"
@@ -20,6 +17,312 @@
 #include "functions.hpp"
 
 using namespace std;
+
+// This function creates the global climate.
+
+void generateglobalclimate(planet& world, boolshapetemplate smalllake[], boolshapetemplate largelake[], boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves)
+{
+    long seed = world.seed();
+    fast_srand(seed);
+
+    int width = world.width();
+    int height = world.height();
+    int maxelev = world.maxelevation();
+
+    // First, do the wind map.
+
+    updatereport("Generating wind map");
+
+    createwindmap(world);
+
+    // Now create the temperature map.
+
+    updatereport("Generating global temperature map");
+
+    // Start by generating a new fractal map.
+
+    int grain = 8; // Level of detail on this fractal map.
+    float valuemod = 0.2f;
+    int v = random(1, 4);
+    float valuemod2 = float(v);
+
+    vector<vector<int>> fractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    createfractal(fractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    createtemperaturemap(world, fractal);
+
+    // Now do the sea ice.
+
+    updatereport("Generating sea ice map");
+
+    flip(fractal, width, height, 1, 1);
+    int offset = random(1, width);
+    shift(fractal, width, height, offset);
+
+    createseaicemap(world, fractal);
+
+    // Work out the tidal ranges.
+
+    updatereport("Calculating tides");
+
+    createtidalmap(world);
+
+    // Now do rainfall.
+
+    flip(fractal, width, height, 1, 1);
+    offset = random(1, width);
+    shift(fractal, width, height, offset);
+
+    createrainmap(world, fractal, smalllake, landshape);
+
+    // Now add fjord mountains.
+
+    updatereport("Carving fjords");
+
+    addfjordmountains(world);
+
+    // Now work out the rivers initially. We do this the first time so that after the first time we can place the salt lakes in appropriate places, and then we work out the rivers again.
+
+    updatereport("Planning river courses");
+
+    createrivermap(world, mountaindrainage);
+
+    // Now create salt lakes.
+
+    updatereport("Placing hydrological basins");
+
+    vector<vector<vector<int>>> saltlakemap(ARRAYWIDTH, vector<vector<int>>(ARRAYHEIGHT, vector<int>(2)));
+    vector<vector<int>> nolake(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            saltlakemap[i][j][0] = 0;
+            saltlakemap[i][j][1] = 0;
+            nolake[i][j] = 0;
+        }
+    }
+
+    // First we need to prepare a no-lake template, marking out areas too close to the coasts, where lakes can't go.
+
+    int minseadistance = 15; // Points closer to the shore than this can't be the centre of lakes, normally.
+    int minseadistance2 = 8; // This is for any lake tile, not just the centre.
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            if (world.outline(i, j) == 1)
+            {
+                for (int k = i - minseadistance2; k <= i + minseadistance2; k++)
+                {
+                    int kk = k;
+
+                    if (kk<0 || kk>width)
+                        kk = wrap(kk, width);
+
+                    for (int l = j - minseadistance2; l <= j + minseadistance2; l++)
+                    {
+                        if (l >= 0 && l <= height)
+                            nolake[kk][l] = 1;
+                    }
+                }
+
+                for (int k = i - minseadistance; k <= i + minseadistance; k++)
+                {
+                    int kk = k;
+
+                    if (kk<0 || kk>width)
+                        kk = wrap(kk, width);
+
+                    for (int l = j - minseadistance; l <= j + minseadistance; l++)
+                    {
+                        if (l >= 0 && l <= height && nolake[kk][l] == 0)
+                            nolake[kk][l] = 2;
+                    }
+                }
+            }
+        }
+    }
+
+    createsaltlakes(world, saltlakemap, nolake, smalllake);
+
+    addlandnoise(world);
+    depressionfill(world);
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            world.setriverdir(i, j, 0);
+            world.setriverjan(i, j, 0);
+            world.setriverjul(i, j, 0);
+        }
+    }
+
+    // Now work out the rivers again.
+
+    updatereport("Generating rivers");
+
+    createrivermap(world, mountaindrainage);
+
+    // Now check river valleys in mountains.
+
+    updatereport("Checking mountain river valleys");
+
+    removerivermountains(world);
+
+    // Now create the lakes.
+
+    updatereport("Generating lakes");
+
+    convertsaltlakes(world, saltlakemap);
+
+    createlakemap(world, nolake, smalllake, largelake);
+
+    createriftlakemap(world, nolake);
+
+    world.setmaxriverflow();
+
+    // Now create the climate map.
+
+    updatereport("Calculating climates");
+
+    createclimatemap(world);
+
+    // Now specials.
+
+    updatereport("Generating sand dunes");
+
+    createergs(world, smalllake, largelake);
+
+    updatereport("Generating salt pans");
+
+    createsaltpans(world, smalllake, largelake);
+
+    // Add river deltas.
+
+    updatereport("Generating river deltas");
+
+    createriverdeltas(world);
+    checkrivers(world);
+
+    // Now wetlands.
+
+    updatereport("Generating wetlands");
+
+    createwetlands(world, smalllake);
+
+    removeexcesswetlands(world);
+
+    // Now it's time to finesse the roughness map.
+
+    updatereport("Refining roughness map");
+
+    refineroughnessmap(world);
+
+    // Check the rift lake map too.
+
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < ARRAYHEIGHT; j++)
+        {
+            if (world.lakestart(i, j) == 1 && world.riftlakesurface(i, j) == 0 && world.lakesurface(i, j) == 0)
+                world.setlakestart(i, j, 0);
+        }
+    }
+
+    // Finally, check that the climates at the edges of the map are correct.
+
+    updatereport("Checking poles");
+
+    checkpoleclimates(world);
+
+    removesealakes(world); // Also, make sure there are no weird bits of sea next to lakes.
+
+    connectlakes(world); // Make sure lakes aren't fragmented.
+}
+
+// Rain map creator.
+
+void createrainmap(planet& world, vector<vector<int>>& fractal, boolshapetemplate smalllake[], boolshapetemplate shape[])
+{
+    int slopewaterreduce = 20; // The higher this is, the less extra rain falls on slopes.
+    int maxmountainheight = 100;
+
+    vector<vector<int>> inland(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    // First, do rainfall over the oceans.
+
+    updatereport("Calculating ocean rainfall");
+
+    createoceanrain(world, fractal);
+
+    // Now we do the rainfall over land.
+
+    updatereport("Calculating rainfall from prevailing winds");
+
+    createprevailinglandrain(world, inland, maxmountainheight, slopewaterreduce);
+
+    // Now for monsoons!
+
+    updatereport("Calculating monsoons");
+
+    createmonsoons(world, maxmountainheight, slopewaterreduce);
+
+    // Now increase the seasonal variation in rainfall in certain areas, to encourage Mediterranean climates.
+
+    updatereport("Calculating seasonal rainfall");
+
+    adjustseasonalrainfall(world, inland);
+
+    // Now smooth the rainfall.
+
+    updatereport("Smoothing rainfall");
+
+    smoothrainfall(world, maxmountainheight);
+
+    // Now cap excessive rainfall.
+
+    updatereport("Capping rainfall");
+
+    caprainfall(world);
+
+    // Now we adjust temperatures in light of rainfall.
+
+    updatereport("Adjusting temperatures");
+
+    adjusttemperatures(world, inland);
+
+    // Now make temperatures a little more extreme when further from the sea.
+
+    updatereport("Adjusting continental temperatures");
+
+    adjustcontinentaltemperatures(world, inland);
+
+    // Now just smooth the temperatures a bit. Any temperatures that are lower than their neighbours to north and south get bumped up, to avoid the appearance of streaks.
+
+    updatereport("Smoothing temperatures");
+
+    smoothtemperatures(world);
+
+    // Now just prevent subpolar climates from turning into other continental types when further from the sea.
+
+    updatereport("Checking subpolar regions");
+
+    removesubpolarstreaks(world);
+    extendsubpolar(world);
+    removesubpolarstreaks(world);
+
+    // Now we just sort out the mountain precipitation arrays, which will be used at the regional level for ensuring that higher mountain precipitation isn't splashed too far.
+
+    updatereport("Calculating mountain rainfall");
+
+    createmountainprecipitation(world);
+}
+
 
 // Wind map creator.
 
@@ -385,6 +688,9 @@ void createwindmap(planet &world)
                     
                     jj--;
                     up++;
+
+                    if (up > height)
+                        found = 1;
                     
                 } while (found==0);
                 
@@ -408,6 +714,9 @@ void createwindmap(planet &world)
                     
                     jj++;
                     down++;
+
+                    if (down > height)
+                        found = 1;
                     
                 } while (found==0);
                 
@@ -429,6 +738,7 @@ void createwindmap(planet &world)
             }
         }
     }
+
 }
 
 // Temperature map creator.
@@ -1382,8 +1692,20 @@ void createprevailinglandrain(planet &world, vector<vector<int>> &inland, int ma
                                 waterdumped=waterlog;
                         }
                     }
+
+                    waterdumped = waterdumped - noslopewaterdumped; // Only reduce the waterlog as it goes over mountains etc.
                     
-                    waterlog=waterlog-(waterdumped/2); // 3 // Here we remove the dumped water from the waterlog. In fact we remove less so it doesn't all get dropped too quickly.
+                    
+                    // Here we removed the dumped water from the waterlog. In fact we don't remove it all, to ensure that precipitation keeps falling even over large continents.
+
+                    //if (world.mountainheight(x, y) > 10) // We do remove more over mountains, to ensure proper rain shadows.
+                    if (slope > 0)
+                        waterlog = waterlog - (waterdumped / 2);
+                    else
+                        waterlog = waterlog - (waterdumped / 4);
+                    
+
+                    //waterlog=waterlog-(waterdumped/2); // 2 // Here we remove the dumped water from the waterlog. In fact we remove less so it doesn't all get dropped too quickly.
                     waterlog=waterlog+landpickuprate;
                     
                     waterdumped=waterdumped+waterlog*extrarainrate;
@@ -3092,6 +3414,8 @@ void adjusttemperatures(planet &world, vector<vector<int>> &inland)
                 float summervar=summerrain*summerraincold;
                 
                 float continental=inland[i][j]; // Further inland, there is less warming effect from winter rain.
+
+                continental = continental - 20; // Offset the effect to ensure we do get temperate oceanic regions
                 
                 if (continental>0)
                 {
@@ -3137,7 +3461,7 @@ void adjusttemperatures(planet &world, vector<vector<int>> &inland)
     }
 }
 
-// This makes temperatures a bit more extreme further from thesea.
+// This makes temperatures a bit more extreme further from the sea.
 
 void adjustcontinentaltemperatures(planet &world, vector<vector<int>> &inland)
 {
@@ -3153,7 +3477,9 @@ void adjustcontinentaltemperatures(planet &world, vector<vector<int>> &inland)
         {
             if (world.sea(i,j)==0)
             {
-                float adjust=inland[i][j]*landfactor;
+                float adjust = inland[i][j];
+                
+                adjust=adjust*landfactor;
                 
                 float avetemp=(world.maxtemp(i,j)+world.mintemp(i,j))/2;
                 
@@ -11278,894 +11604,6 @@ void refineroughnessmap(planet &world)
                 world.setroughness(i,j,valuemod2[i][j]);
         }
     }
-}
-
-// This function creates channels on the sea bed of continental shelves.
-
-void createunderseachannels(planet &world, vector<vector<bool>> &shelves)
-{
-    int width=world.width();
-    int height=world.height();
-    int sealevel=world.sealevel();
-    
-    int oceanfloor=sealevel-3000; // Anything lower than this will be considered oceanic sea bed.
-    int maxrepeat=2; // If a channel goes in the same direction for longer than this, it will try to change course.
-    
-    int neighbours[8][2];
-    
-    neighbours[0][0]=0;
-    neighbours[0][1]=-1;
-    
-    neighbours[1][0]=1;
-    neighbours[1][1]=-1;
-    
-    neighbours[2][0]=1;
-    neighbours[2][1]=0;
-    
-    neighbours[3][0]=1;
-    neighbours[3][1]=1;
-    
-    neighbours[4][0]=0;
-    neighbours[4][1]=1;
-    
-    neighbours[5][0]=-1;
-    neighbours[5][1]=1;
-    
-    neighbours[6][0]=-1;
-    neighbours[6][1]=-0;
-    
-    neighbours[7][0]=-1;
-    neighbours[7][1]=-1;
-    
-    // First, we go through the map and mark the direction of sea bed flow on every ocean tile.
-    
-    for (int i=0; i<=width; i++)
-    {
-        world.setsubchanneldir(i,0,1); // Tiles on the northern edge point north.
-        world.setsubchanneldir(i,height,5); // Tiles on the southern edge point south.
-        
-        for (int j=1; j<height; j++)
-        {
-            if (world.sea(i,j)==1)
-            {
-                int dir=findlowestdir(world,neighbours,i,j);
-                
-                if (dir==0) // No lowest neighbour!
-                    dir=random(1,8);
-                
-                world.setsubchanneldir(i,j,dir);
-            }
-            else
-                world.setsubchanneldir(i,j,0);
-            
-        }
-    }
-    
-    // Now remove many of the diagonals if possible.
-    
-    removediagonalchannels(world);
-    
-    // Now add diagonals at some junctions.
-    
-    adddiagonalchanneljunctions(world);
-    
-    // Now make parallel channels flow into each other.
-    
-    removeparallelchannels(world);
-    
-    // Now, we go through the map tile by tile. Take the amount of sediment flow in each tile and add it to every downstream tile.
-    
-    vector<vector<int>> thisdrop(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    vector<vector<int>> sediment(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
-    
-    int dropno=1;
-    bool goahead=1;
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (world.sea(i,j)==1)
-            {
-                traceseadrop(world,i,j,dropno,thisdrop,maxrepeat,oceanfloor,neighbours,sediment);
-                dropno++;
-            }
-        }
-    }
-    
-    // Now we adjust the flow levels. If the channel is flattening out, reduce the flow.
-    
-    int mindiff=500; // If the difference in height down the slope is less than this, reduce the sediment.
-    
-    twointegers dest;
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=0; j<=height; j++)
-        {
-            if (world.sea(i,j)==1)
-            {
-                int thiselevation=world.nom(i,j);
-                int thissediment=sediment[i][j];
-                
-                dest=getflowdestination(world,i,j,world.subchanneldir(i,j));
-                
-                int destelevation=world.nom(dest.x,dest.y);
-                
-                int heightdiff=thiselevation-destelevation;
-                
-                if (heightdiff<1)
-                    thissediment=0;
-                else
-                {
-                    if (heightdiff<500)
-                    {
-                        float div=heightdiff/500;
-                        
-                        thissediment=thissediment*heightdiff;
-                    }
-                }
-                
-                world.setsubchanneldepth(i,j,thissediment);
-            }
-        }
-    }
-}
-
-// This function forces rivers to avoid diagonals, as they don't look so good on the regional map.
-
-void removediagonalchannels(planet &world)
-{
-    int width=world.width();
-    int height=world.height();
-    
-    int adjustchance=1; // Probability of adjusting these bits. The higher it is, the less likely.
-    
-    int desti, destj, adji, adjj, newdir1, newdir2, newheight;
-    
-    for (int i=0; i<=width; i++)
-    {
-        for (int j=2; j<=height-2; j++)
-        {
-            if (random(1,adjustchance)==1)
-            {
-                bool candoit=1;
-                
-                // Going northeast
-                
-                if (world.subchanneldir(i,j)==2)
-                {
-                    desti=i+1;
-                    destj=j-1;
-                    
-                    if (desti>width)
-                        desti=0;
-                    
-                    if (random(0,1)==1)
-                    {
-                        adji=i;
-                        adjj=j-1;
-                        
-                        newdir1=1;
-                        newdir2=3;
-                        
-                        if (world.subchanneldir(adji,adjj)==5 || world.subchanneldir(desti,destj)==7)
-                            candoit=0;
-                    }
-                    else
-                    {
-                        adji=i+1;
-                        adjj=j;
-                        
-                        if (adji>width)
-                            adji=0;
-                        
-                        newdir1=3;
-                        newdir2=1;
-                        
-                        if (world.subchanneldir(adji,adjj)==7 || world.subchanneldir(desti,destj)==5)
-                            candoit=0;
-                        
-                    }
-                    
-                    newheight=(world.nom(i,j)+world.nom(desti,destj))/2;
-                    
-                    if (newheight>world.nom(adji,adjj))
-                        candoit=0;
-                    
-                    if (candoit==1)
-                    {
-                        world.setnom(adji,adjj,newheight);
-                        world.setsubchanneldir(i,j,newdir1);
-                        world.setsubchanneldir(adji,adjj,newdir2);
-                    }
-                }
-                
-                // Going northwest
-                
-                if (world.subchanneldir(i,j)==8)
-                {
-                    desti=i-1;
-                    destj=j-1;
-                    
-                    if (desti<0)
-                        desti=width;
-                    
-                    if (random(0,1)==1)
-                    {
-                        adji=i;
-                        adjj=j-1;
-                        
-                        newdir1=1;
-                        newdir2=7;
-                        
-                        if (world.subchanneldir(adji,adjj)==5 || world.subchanneldir(desti,destj)==3)
-                            candoit=0;
-                    }
-                    else
-                    {
-                        adji=i-1;
-                        adjj=j;
-                        
-                        if (adji<0)
-                            adji=width;
-                        
-                        newdir1=7;
-                        newdir2=1;
-                        
-                        if (world.subchanneldir(adji,adjj)==5 || world.subchanneldir(desti,destj)==3)
-                            candoit=0;
-                        
-                    }
-                    
-                    newheight=(world.nom(i,j)+world.nom(desti,destj))/2;
-                    
-                    if (newheight>world.nom(adji,adjj))
-                        candoit=0;
-                    
-                    if (candoit==1)
-                    {
-                        world.setnom(adji,adjj,newheight);
-                        world.setsubchanneldir(i,j,newdir1);
-                        world.setsubchanneldir(adji,adjj,newdir2);
-                    }
-                }
-                
-                // Going southeast
-                
-                if (world.subchanneldir(i,j)==4)
-                {
-                    desti=i+1;
-                    destj=j+1;
-                    
-                    if (desti>width)
-                        desti=0;
-                    
-                    if (random(0,1)==1)
-                    {
-                        adji=i;
-                        adjj=j+1;
-                        
-                        newdir1=5;
-                        newdir2=3;
-                        
-                        if (world.subchanneldir(adji,adjj)==1 || world.subchanneldir(desti,destj)==7)
-                            candoit=0;
-                    }
-                    else
-                    {
-                        adji=i+1;
-                        adjj=j;
-                        
-                        if (adji>width)
-                            adji=0;
-                        
-                        newdir1=3;
-                        newdir2=5;
-                        
-                        if (world.subchanneldir(adji,adjj)==7 || world.subchanneldir(desti,destj)==1)
-                            candoit=0;
-                        
-                    }
-                    
-                    newheight=(world.nom(i,j)+world.nom(desti,destj))/2;
-                    
-                    if (newheight>world.nom(adji,adjj))
-                        candoit=0;
-                    
-                    if (candoit==1)
-                    {
-                        world.setnom(adji,adjj,newheight);
-                        world.setsubchanneldir(i,j,newdir1);
-                        world.setsubchanneldir(adji,adjj,newdir2);
-                    }
-                }
-                
-                // Going southwest
-                
-                if (world.subchanneldir(i,j)==6)
-                {
-                    desti=i-1;
-                    destj=j+1;
-                    
-                    if (desti<0)
-                        desti=width;
-                    
-                    if (random(0,1)==1)
-                    {
-                        adji=i;
-                        adjj=j+1;
-                        
-                        newdir1=5;
-                        newdir2=7;
-                        
-                        if (world.subchanneldir(adji,adjj)==1 || world.subchanneldir(desti,destj)==3)
-                            candoit=0;
-                    }
-                    else
-                    {
-                        adji=i-1;
-                        adjj=j;
-                        
-                        if (adji<0)
-                            adji=width;
-                        
-                        newdir1=7;
-                        newdir2=5;
-                        
-                        if (world.subchanneldir(adji,adjj)==3 || world.subchanneldir(desti,destj)==1)
-                            candoit=0;
-                        
-                    }
-                    
-                    newheight=(world.nom(i,j)+world.nom(desti,destj))/2;
-                    
-                    if (newheight>world.nom(adji,adjj))
-                        candoit=0;
-                    
-                    if (candoit==1)
-                    {
-                        world.setnom(adji,adjj,newheight);
-                        world.setsubchanneldir(i,j,newdir1);
-                        world.setsubchanneldir(adji,adjj,newdir2);
-                    }
-                }
-            }
-        }
-    }
-}
-
-// This function makes channels meet each other at diagonals, which looks a little more realistic.
-
-void adddiagonalchanneljunctions(planet &world)
-{
-    int width=world.width();
-    int height=world.height();
-    
-    // First the N/S and E/W ones
-    
-    for (int i=0; i<width; i++)
-    {
-        for (int j=0; j<height; j++)
-        {
-            // Going east
-            
-            if (world.subchanneldir(i,j)==3 && world.subchanneldir(i,j+1)==1)
-                world.setsubchanneldir(i,j+1,2);
-            
-            if (world.subchanneldir(i,j+1)==3 && world.subchanneldir(i,j)==5)
-                world.setsubchanneldir(i,j,4);
-            
-            // Going west
-            
-            if (world.subchanneldir(i+1,j)==7 && world.subchanneldir(i+1,j+1)==1)
-                world.setsubchanneldir(i+1,j+1,8);
-            
-            if (world.subchanneldir(i+1,j+1)==7 && world.subchanneldir(i+1,j)==5)
-                world.setsubchanneldir(i+1,j,6);
-            
-            // Going north
-            
-            if (world.subchanneldir(i,j+1)==1 && world.subchanneldir(i+1,j+1)==7)
-                world.setsubchanneldir(i+1,j+1,8);
-            
-            if (world.subchanneldir(i+1,j+1)==1 && world.subchanneldir(i,j+1)==3)
-                world.setsubchanneldir(i,j+1,2);
-            
-            // Going south
-            
-            if (world.subchanneldir(i,j)==5 && world.subchanneldir(i+1,j)==7)
-                world.setsubchanneldir(i+1,j,6);
-            
-            if (world.subchanneldir(i+1,j)==5 && world.subchanneldir(i,j)==3)
-                world.setsubchanneldir(i,j,4);
-        }
-    }
-    
-    // Now the diagonal ones.
-    
-    for (int i=0; i<width-1; i++)
-    {
-        for (int j=0; j<height-1; j++)
-        {
-            // Going northeast
-            
-            if (world.subchanneldir(i,j)==4 && world.subchanneldir(i+1,j+1)==2)
-            {
-                if (world.nom(i+1,j)>world.nom(i+2,j))
-                {
-                    world.setsubchanneldir(i,j,3);
-                    world.setsubchanneldir(i+1,j,3);
-                    
-                    if (world.nom(i+1,j)>world.nom(i,j))
-                        world.setnom(i+1,j,world.nom(i,j)-1);
-                }
-            }
-            
-            if (world.subchanneldir(i,j+1)==2 && world.subchanneldir(i+1,j+2)==8)
-            {
-                if (world.nom(i+1,j+1)>world.nom(i+1,j))
-                {
-                    world.setsubchanneldir(i+1,j+2,1);
-                    world.setsubchanneldir(i+1,j+1,1);
-                    
-                    if (world.nom(i+1,j+1)>world.nom(i+1,j+2))
-                        world.setnom(i+1,j+1,world.nom(i+1,j+1)-1);
-                }
-            }
-            
-            // Going southwest
-            
-            if (world.subchanneldir(i,j)==4 && world.subchanneldir(i+1,j+1)==6)
-            {
-                if (world.nom(i,j+1)>world.nom(i,j+1))
-                {
-                    world.setsubchanneldir(i,j,5);
-                    world.setsubchanneldir(i,j+1,5);
-                    
-                    if (world.nom(i,j+1)>world.nom(i,j))
-                        world.setnom(i,j+1,world.nom(i,j)-1);
-                }
-            }
-            
-            if (world.subchanneldir(i+1,j)==6 && world.subchanneldir(i+2,j+1)==8)
-            {
-                if (world.nom(i+1,j+1)>world.nom(i,j+1))
-                {
-                    world.setsubchanneldir(i+2,j+1,7);
-                    world.setsubchanneldir(i+1,j+1,7);
-                    
-                    if (world.nom(i+1,j+1)>world.nom(i+2,j+1))
-                        world.setnom(i+1,j+1,world.nom(i+1,j+1)-1);
-                }
-            }
-            
-            // Going southeast
-            
-            if (world.subchanneldir(i+1,j)==4 && world.subchanneldir(i,j+1)==2)
-            {
-                if (world.nom(i+1,j+1)>world.nom(i+2,j+1))
-                {
-                    world.setsubchanneldir(i,j+1,3);
-                    world.setsubchanneldir(i+1,j+1,3);
-                    
-                    if (world.nom(i+1,j+1)>world.nom(i,j+1))
-                        world.setnom(i+1,j+1,world.nom(i,j+1)-1);
-                }
-            }
-            
-            if (world.subchanneldir(i,j+1)==4 && world.subchanneldir(i+1,j)==6)
-            {
-                if (world.nom(i+1,j+1)>world.nom(i+1,j+2))
-                {
-                    world.setsubchanneldir(i+1,j,5);
-                    world.setsubchanneldir(i+1,j+1,5);
-                    
-                    if (world.nom(i+1,j+1)>world.nom(i+1,j))
-                        world.setnom(i+1,j+1,world.nom(i+1,j)-1);
-                }
-            }
-            
-            // Going northwest
-            
-            if (world.subchanneldir(i+1,j+1)==8 && world.subchanneldir(i+2,j)==6)
-            {
-                if (world.nom(i+1,j)>world.nom(i,j))
-                {
-                    world.setsubchanneldir(i+2,j,7);
-                    world.setsubchanneldir(i+1,j,7);
-                    
-                    if (world.nom(i+1,j)>world.nom(i+2,j))
-                        world.setnom(i+1,j,world.nom(i+2,j)-1);
-                }
-            }
-            
-            if (world.subchanneldir(i+1,j+1)==8 && world.subchanneldir(i,j+2)==2)
-            {
-                if (world.nom(i,j+1)>world.nom(i,j))
-                {
-                    world.setsubchanneldir(i,j+2,1);
-                    world.setsubchanneldir(i,j+1,1);
-                    
-                    if (world.nom(i,j+1)>world.nom(i,j+2))
-                        world.setnom(i,j+1,world.nom(i,j+2)-1);
-                }
-            }
-        }
-    }
-}
-
-// This function makes parallel channels run into each other.
-
-void removeparallelchannels(planet &world)
-{
-    int width=world.width();
-    int height=world.height();
-    
-    int removechance=1;
-    
-    vector<vector<int>> altered(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0)); // This will show any points that have been involved in a change
-    
-    // First, N/S and E/W
-    
-    for (int i=0; i<width; i++)
-    {
-        for (int j=0; j<height; j++)
-        {
-            if (random(1,removechance)==1)
-            {
-                // Going east
-                
-                if (world.subchanneldir(i,j)==3 && world.subchanneldir(i+1,j)==3 && world.subchanneldir(i,j+1)==3 && world.subchanneldir(i+1,j+1)==3)
-                {
-                    if (world.nom(i,j)>world.nom(i+1,j+1) && altered[i][j]==0)
-                    {
-                        world.setsubchanneldir(i,j,4);
-                        
-                        altered[i][j]=1;
-                        altered[i+1][j]=1;
-                        altered[i][j+1]=1;
-                        altered[i+1][j+1]=1;
-                    }
-                    else
-                    {
-                        if (world.nom(i,j+1)>world.nom(i+1,j) && altered[i][j+1]==0)
-                        {
-                            world.setsubchanneldir(i,j+1,2);
-                            
-                            altered[i][j]=1;
-                            altered[i+1][j]=1;
-                            altered[i][j+1]=1;
-                            altered[i+1][j+1]=1;
-                        }
-                    }
-                }
-                
-                // Going west
-                
-                if (world.subchanneldir(i,j)==7 && world.subchanneldir(i+1,j)==7 && world.subchanneldir(i,j+1)==7 && world.subchanneldir(i+1,j+1)==7)
-                {
-                    if (world.nom(i+1,j)>world.nom(i,j+1) && altered[i+1][j]==0)
-                    {
-                        world.setsubchanneldir(i+1,j,6);
-                        
-                        altered[i][j]=1;
-                        altered[i+1][j]=1;
-                        altered[i][j+1]=1;
-                        altered[i+1][j+1]=1;
-                    }
-                    else
-                    {
-                        if (world.nom(i+1,j+1)>world.nom(i,j) && altered[i+1][j+1]==0)
-                        {
-                            world.setsubchanneldir(i+1,j+1,8);
-                            
-                            altered[i][j]=1;
-                            altered[i+1][j]=1;
-                            altered[i][j+1]=1;
-                            altered[i+1][j+1]=1;
-                        }
-                    }
-                }
-                
-                // Going north
-                
-                if (world.subchanneldir(i,j)==1 && world.subchanneldir(i,j+1)==1 && world.subchanneldir(i+1,j)==1 && world.subchanneldir(i+1,j+1)==7)
-                {
-                    if (world.nom(i,j+1)>world.nom(i+1,j) && altered[i][j+1]==0)
-                    {
-                        world.setsubchanneldir(i,j+1,2);
-                        
-                        altered[i][j]=1;
-                        altered[i+1][j]=1;
-                        altered[i][j+1]=1;
-                        altered[i+1][j+1]=1;
-                    }
-                    else
-                    {
-                        if (world.nom(i+1,j+1)>world.nom(i,j) && altered[i+1][j+1]==0)
-                        {
-                            world.setsubchanneldir(i+1,j+1,8);
-                            
-                            altered[i][j]=1;
-                            altered[i+1][j]=1;
-                            altered[i][j+1]=1;
-                            altered[i+1][j+1]=1;
-                        }
-                    }
-                }
-                
-                // Going south
-                
-                if (world.subchanneldir(i,j)==5 && world.subchanneldir(i,j+1)==5 && world.subchanneldir(i+1,j)==5 && world.subchanneldir(i+1,j+1)==5)
-                {
-                    if (world.nom(i,j)>world.nom(i+1,j+1) && altered[i][j]==0)
-                    {
-                        world.setsubchanneldir(i,j,4);
-                        
-                        altered[i][j]=1;
-                        altered[i+1][j]=1;
-                        altered[i][j+1]=1;
-                        altered[i+1][j+1]=1;
-                    }
-                    else
-                    {
-                        if (world.nom(i+1,j)>world.nom(i,j+1) && altered[i+1][j]==0)
-                        {
-                            world.setsubchanneldir(i+1,j,6);
-                            
-                            altered[i][j]=1;
-                            altered[i+1][j]=1;
-                            altered[i][j+1]=1;
-                            altered[i+1][j+1]=1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    // Now the diagonals.
-    
-    for (int i=0; i<=width-2; i++)
-    {
-        for (int j=0; j<=height-2; j++)
-        {
-            if (random(1,removechance)==1)
-            {
-                // Going northeast
-                
-                if (world.subchanneldir(i,j+1)==2 && world.subchanneldir(i+1,j)==2 && world.subchanneldir(i+1,j+2)==2 && world.subchanneldir(i+2,j+1)==2)
-                {
-                    if (world.nom(i,j+1)>world.nom(i+2,j+1) && world.nom(i+1,j+1)>world.nom(i+2,j+1) && altered[i][j+1]==0)
-                    {
-                        world.setsubchanneldir(i,j+1,3);
-                        world.setsubchanneldir(i+1,j+1,3);
-                        
-                        altered[i][j+1]=1;
-                        altered[i+1][j]=1;
-                        altered[i+2][j+1]=1;
-                        altered[i+1][j+1]=1;
-                        
-                        if (world.nom(i+1,j+1)>world.nom(i,j+1))
-                            world.setnom(i+1,j+1,world.nom(i,j+1)-1);
-                        
-                    }
-                    else
-                    {
-                        if (world.nom(i+1,j+2)>world.nom(i+1,j) && world.nom(i+1,j+1)>world.nom(i+1,j) && altered[i+1][j+2]==0)
-                        {
-                            world.setsubchanneldir(i+1,j+2,1);
-                            world.setsubchanneldir(i+1,j+1,1);
-                            
-                            altered[i][j+1]=1;
-                            altered[i+1][j]=1;
-                            altered[i+2][j+1]=1;
-                            altered[i+1][j+1]=1;
-                            
-                            if (world.nom(i+1,j+1)>world.nom(i+1,j+2))
-                                world.setnom(i+1,j+1,world.nom(i+1,j+2)-1);
-                        }
-                    }
-                }
-                
-                // Going southwest
-                
-                if (world.subchanneldir(i,j+1)==6 && world.subchanneldir(i+1,j)==6 && world.subchanneldir(i+1,j+2)==6 && world.subchanneldir(i+2,j+1)==6)
-                {
-                    if (world.nom(i+1,j)>world.nom(i+1,j+2) && world.nom(i+1,j+1)>world.nom(i+1,j+2) && altered[i+1][j]==0)
-                    {
-                        world.setsubchanneldir(i+1,j,5);
-                        world.setsubchanneldir(i+1,j+1,5);
-                        
-                        altered[i][j+1]=1;
-                        altered[i+1][j]=1;
-                        altered[i+2][j+1]=1;
-                        altered[i+1][j+1]=1;
-                        
-                        if (world.nom(i+1,j+1)>world.nom(i+1,j))
-                            world.setnom(i+1,j+1,world.nom(i+1,j)-1);
-                        
-                    }
-                    else
-                    {
-                        if (world.nom(i+2,j+1)>world.nom(i,j+1) && world.nom(i+1,j+1)>world.nom(i,j+1) && altered[i+2][j+1]==0)
-                        {
-                            world.setsubchanneldir(i+2,j+1,7);
-                            world.setsubchanneldir(i+1,j+1,7);
-                            
-                            altered[i][j+1]=1;
-                            altered[i+1][j]=1;
-                            altered[i+2][j+1]=1;
-                            altered[i+1][j+1]=1;
-                            
-                            if (world.nom(i+1,j+1)>world.nom(i+2,j+1))
-                                world.setnom(i+1,j+1,world.nom(i+2,j+1)-1);
-                        }
-                    }
-                }
-                
-                // Going southeast
-                
-                if (world.subchanneldir(i,j+1)==4 && world.subchanneldir(i+1,j)==4 && world.subchanneldir(i+1,j+2)==4 && world.subchanneldir(i+2,j+1)==4)
-                {
-                    if (world.nom(i+1,j)>world.nom(i+1,j+2) && world.nom(i+1,j+1)>world.nom(i+1,j+2) && altered[i+1][j]==0)
-                    {
-                        world.setsubchanneldir(i+1,j,5);
-                        world.setsubchanneldir(i+1,j+1,5);
-                        
-                        altered[i][j+1]=1;
-                        altered[i+1][j]=1;
-                        altered[i+2][j+1]=1;
-                        altered[i+1][j+1]=1;
-                        
-                        if (world.nom(i+1,j+1)>world.nom(i+1,j))
-                            world.setnom(i+1,j+1,world.nom(i+1,j)-1);
-                        
-                    }
-                    else
-                    {
-                        if (world.nom(i,j+1)>world.nom(i+2,j+1) && world.nom(i+1,j+1)>world.nom(i+2,j+1) && altered[i][j+1]==0)
-                        {
-                            world.setsubchanneldir(i,j+1,3);
-                            world.setsubchanneldir(i+1,j+1,3);
-                            
-                            altered[i][j+1]=1;
-                            altered[i+1][j]=1;
-                            altered[i+2][j+1]=1;
-                            altered[i+1][j+1]=1;
-                            
-                            if (world.nom(i+1,j+1)>world.nom(i,j+1))
-                                world.setnom(i+1,j+1,world.nom(i,j+1)-1);
-                        }
-                    }
-                }
-                
-                // Going northwest
-                
-                if (world.subchanneldir(i,j+1)==8 && world.subchanneldir(i+1,j)==8 && world.subchanneldir(i+1,j+2)==8 && world.subchanneldir(i+2,j+1)==8)
-                {
-                    if (world.nom(i+2,j+1)>world.nom(i,j+1) && world.nom(i+1,j+1)>world.nom(i,j+1) && altered[i+2][j+1]==0)
-                    {
-                        world.setsubchanneldir(i+2,j+1,7);
-                        world.setsubchanneldir(i+1,j+1,7);
-                        
-                        altered[i][j+1]=1;
-                        altered[i+1][j]=1;
-                        altered[i+2][j+1]=1;
-                        altered[i+1][j+1]=1;
-                        
-                        if (world.nom(i+1,j+1)>world.nom(i+2,j+1))
-                            world.setnom(i+1,j+1,world.nom(i+2,j+1)-1);
-                        
-                    }
-                    else
-                    {
-                        if (world.nom(i+1,j+2)>world.nom(i+1,j) && world.nom(i+1,j+1)>world.nom(i+1,j) && altered[i+1][j+2]==0)
-                        {
-                            world.setsubchanneldir(i+1,j+2,1);
-                            world.setsubchanneldir(i+1,j+1,1);
-                            
-                            altered[i][j+1]=1;
-                            altered[i+1][j]=1;
-                            altered[i+2][j+1]=1;
-                            altered[i+1][j+1]=1;
-                            
-                            if (world.nom(i+1,j+1)>world.nom(i+1,j+2))
-                                world.setnom(i+1,j+1,world.nom(i+1,j+2)-1);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// This traces a drop over the sea bed.
-
-void traceseadrop(planet &world, int x, int y, int dropno, vector<vector<int>> &thisdrop, int maxrepeat, int oceanfloor, int neighbours[8][2], vector<vector<int>> &sediment)
-{
-    twointegers newseatile;
-    twointegers dest;
-    
-    int width=world.width();
-    int height=world.height();
-    
-    int coastalsediment=random(90,110);
-    int oceansediment=random(5,15); // Amounts of sediment acquired in different sorts of tiles
-    
-    bool coast=0;
-    
-    for (int i=x-1; i<=x+1; i++)
-    {
-        int ii=i;
-        
-        if (ii<0 || ii>width)
-            ii=wrap(ii,width);
-        
-        for (int j=y-1; j<=y+1; j++)
-        {
-            if (j>=0 && j<=height)
-            {
-                if (world.sea(i,j)==0)
-                {
-                    coast=1;
-                    i=x+1;
-                    j=y+1;
-                }
-            }
-        }
-    }
-    
-    int thissediment=oceansediment;
-    
-    if (coast==1)
-        thissediment=coastalsediment;
-    
-    // Now we just trace the drop through the map, increasing the water flow wherever it goes.
-    
-    int dir=-1;
-    int keepgoing=1;
-    
-    do
-    {
-        thisdrop[x][y]=dropno;
-        
-        sediment[x][y]=sediment[x][y]+thissediment;
-        
-        dir=world.subchanneldir(x,y);
-        
-        if (dir==8 || dir==1 || dir==2)
-            y--;
-        
-        if (dir==4 || dir==5 || dir==6)
-            y++;
-        
-        if (dir==2 || dir==3 || dir==4)
-            x++;
-        
-        if (dir==6 || dir==7 || dir==8)
-            x--;
-        
-        if (x<0 || x>width)
-            x=wrap(x,width);
-        
-        if (y<0)
-            y=0;
-        
-        if (y>height)
-            y=height;
-        
-        if (world.nom(x,y)<oceanfloor)
-            keepgoing=0;
-        
-        if (y==0 || y==height)
-            keepgoing=0;
-        
-        if (thisdrop[x][y]==dropno)
-            keepgoing=0;
-        
-    } while (keepgoing==1);
 }
 
 // This ensures that the climates at the bottom of the map are correct.

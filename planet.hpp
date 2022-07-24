@@ -84,7 +84,7 @@ public:
     void setseashading(float amount);
     
     short snowchange() const;
-    void setsnowchange(short amount);
+    void setsnowchange(short amount); // 1=abrupt; 2=speckled; 3=gradual
     
     short seaiceappearance() const;
     void setseaiceappearance(short amount);
@@ -309,7 +309,7 @@ public:
     int nom(int x, int y) const; // no-mountains terrain elevation
     void setnom(int x, int y, int amount);
     
-    int nomridge(int x, int y) const; // no-mountains, with undersea ridge terrain elevation
+    //int nomridge(int x, int y) const; // no-mountains, with undersea ridge terrain elevation
     
     int oceanridges(int x, int y) const; // undersea ridges
     void setoceanridges(int x, int y, int amount);
@@ -551,12 +551,6 @@ public:
     int deltajulwrap(int x, int y) const;
     void setdeltajulwrap(int x, int y, int amount);
     
-    int subchanneldir(int x, int y) const;
-    void setsubchanneldir(int x, int y, int amount);
-    
-    int subchanneldepth(int x, int y) const;
-    void setsubchanneldepth(int x, int y, int amount);
-    
     int horsewrap(int x, int y) const;
     void sethorsewrap(int x, int y, int amount);
     
@@ -721,8 +715,6 @@ private:
     bool islandmap[ARRAYWIDTH][ARRAYHEIGHT];
     bool mountainislandmap[ARRAYWIDTH][ARRAYHEIGHT];
     int itsnoisemap[NOISEWIDTH][NOISEHEIGHT];
-    int subchanneldirs[ARRAYWIDTH][ARRAYHEIGHT];
-    int subchanneldepths[ARRAYWIDTH][ARRAYHEIGHT];
     int oceanridgemap[ARRAYWIDTH][ARRAYHEIGHT];
     int oceanridgeheightmap[ARRAYWIDTH][ARRAYHEIGHT];
     int oceanriftmap[ARRAYWIDTH][ARRAYHEIGHT];
@@ -824,12 +816,13 @@ inline void planet::setminriverflowglobal(int amount) {itsminriverflowglobal=amo
 inline int planet::minriverflowregional() const {return itsminriverflowregional;};
 inline void planet::setminriverflowregional(int amount) {itsminriverflowregional=amount;};
 
-
-
 inline int planet::maxriverflow() const {return itsmaxriverflow;}
 
 inline int planet::map(int x, int y) const
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
     int thisvolcano=abs(volcanomap[x][y]);
     
     if (mapnom[x][y]<=itssealevel)
@@ -843,143 +836,688 @@ inline int planet::map(int x, int y) const
     return 0;
 }
 
-inline int planet::nom(int x, int y) const {return mapnom[x][y];}
-inline void planet::setnom(int x, int y, int amount) {mapnom[x][y]=amount;}
+inline int planet::nom(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
+    return mapnom[x][y];
+}
 
-inline int planet::oceanridges(int x, int y) const {return oceanridgemap[x][y];}
-inline void planet::setoceanridges(int x, int y, int amount) {oceanridgemap[x][y]=amount;}
+inline void planet::setnom(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline int planet::oceanridgeheights(int x, int y) const {return oceanridgeheightmap[x][y];}
-inline void planet::setoceanridgeheights(int x, int y, int amount) {oceanridgeheightmap[x][y]=amount;}
+    mapnom[x][y]=amount;
+}
 
-inline int planet::oceanrifts(int x, int y) const {return oceanriftmap[x][y];}
-inline void planet::setoceanrifts(int x, int y, int amount) {oceanriftmap[x][y]=amount;}
+inline int planet::oceanridges(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
+    return oceanridgemap[x][y];
+}
 
-inline int planet::oceanridgeoffset(int x, int y) const {return oceanridgeoffsetmap[x][y];}
-inline void planet::setoceanridgeoffset(int x, int y, int amount) {oceanridgeoffsetmap[x][y]=amount;}
+inline void planet::setoceanridges(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline int planet::oceanridgeangle(int x, int y) const {return oceanridgeanglemap[x][y];}
-inline void planet::setoceanridgeangle(int x, int y, int amount) {oceanridgeanglemap[x][y]=amount;}
+    oceanridgemap[x][y]=amount;
+}
 
-inline int planet::volcano(int x, int y) const {return volcanomap[x][y];}
-inline void planet::setvolcano(int x, int y, int amount) {volcanomap[x][y]=amount;}
+inline int planet::oceanridgeheights(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline bool planet::strato(int x, int y) const {return stratomap[x][y];}
-inline void planet::setstrato(int x, int y, bool amount) {stratomap[x][y]=amount;}
+    return oceanridgeheightmap[x][y];
+}
 
-inline int planet::extraelev(int x, int y) const {return extraelevmap[x][y];}
-inline void planet::setextraelev(int x, int y, int amount) {extraelevmap[x][y]=amount;}
+inline void planet::setoceanridgeheights(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline int planet::maxtemp(int x, int y) const {return maxtempmap[x][y];}
-inline void planet::setmaxtemp(int x, int y, int amount) {maxtempmap[x][y]=amount;}
+    oceanridgeheightmap[x][y]=amount;
+}
 
-inline int planet::mintemp(int x, int y) const {return mintempmap[x][y];}
-inline void planet::setmintemp(int x, int y, int amount) {mintempmap[x][y]=amount;}
+inline int planet::oceanrifts(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline int planet::avetemp(int x, int y) const {return ((mintempmap[x][y]+maxtempmap[x][y])/2);}
+    return oceanriftmap[x][y];
+}
 
-inline int planet::summerrain(int x, int y) const {return summerrainmap[x][y];}
-inline void planet::setsummerrain(int x, int y, int amount) {summerrainmap[x][y]=amount;}
+inline void planet::setoceanrifts(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline int planet::winterrain(int x, int y) const {return winterrainmap[x][y];}
-inline void planet::setwinterrain(int x, int y, int amount) {winterrainmap[x][y]=amount;}
+    oceanriftmap[x][y]=amount;
+}
 
-inline int planet::averain(int x, int y) const {return ((winterrainmap[x][y]+summerrainmap[x][y])/2);}
+inline int planet::oceanridgeoffset(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline int planet::wintermountainrain(int x, int y) const {return wintermountainrainmap[x][y];}
-inline void planet::setwintermountainrain(int x, int y, int amount) {wintermountainrainmap[x][y]=amount;}
+    return oceanridgeoffsetmap[x][y];
+}
 
-inline int planet::summermountainrain(int x, int y) const {return summermountainrainmap[x][y];}
-inline void planet::setsummermountainrain(int x, int y, int amount) {summermountainrainmap[x][y]=amount;}
+inline void planet::setoceanridgeoffset(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline short planet::wintermountainraindir(int x, int y) const {return wintermountainraindirmap[x][y];}
-inline void planet::setwintermountainraindir(int x, int y, short amount) {wintermountainraindirmap[x][y]=amount;}
+    oceanridgeoffsetmap[x][y]=amount;
+}
 
-inline short planet::summermountainraindir(int x, int y) const {return summermountainraindirmap[x][y];}
-inline void planet::setsummermountainraindir(int x, int y, short amount) {summermountainraindirmap[x][y]=amount;}
+inline int planet::oceanridgeangle(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline string planet::climate(int x, int y) const {return climatemap[x][y];}
-inline void planet::setclimate(int x, int y, string amount) {climatemap[x][y]=amount;}
+    return oceanridgeanglemap[x][y];
+}
 
-inline int planet::seaice(int x, int y) const {return seaicemap[x][y];}
-inline void planet::setseaice(int x, int y, int amount) {seaicemap[x][y]=amount;}
+inline void planet::setoceanridgeangle(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline int planet::riverdir(int x, int y) const {return rivermapdir[x][y];}
-inline void planet::setriverdir(int x, int y, int amount) {rivermapdir[x][y]=amount;}
+    oceanridgeanglemap[x][y]=amount;
+}
 
-inline int planet::riverjan(int x, int y) const {return rivermapjan[x][y];}
-inline void planet::setriverjan(int x, int y, int amount) {rivermapjan[x][y]=amount;}
+inline int planet::volcano(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline int planet::riverjul(int x, int y) const {return rivermapjul[x][y];}
-inline void planet::setriverjul(int x, int y, int amount) {rivermapjul[x][y]=amount;}
+    return volcanomap[x][y];
+}
 
-inline int planet::riveraveflow(int x, int y) const {return (rivermapjan[x][y]+rivermapjul[x][y])/2;}
+inline void planet::setvolcano(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline int planet::wind(int x, int y) const {return windmap[x][y];}
-inline void planet::setwind(int x, int y, int amount) {windmap[x][y]=amount;}
+    volcanomap[x][y]=amount;
+}
 
-inline int planet::lakesurface(int x, int y) const {return lakemap[x][y];}
-inline void planet::setlakesurface(int x, int y, int amount) {lakemap[x][y]=amount;}
+inline bool planet::strato(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline float planet::roughness(int x, int y) const {return roughnessmap[x][y];}
-inline void planet::setroughness(int x, int y, float amount) {roughnessmap[x][y]=amount;}
+    return stratomap[x][y];
+}
 
-inline int planet::mountainridge(int x, int y) const {return mountainridges[x][y];}
-inline void planet::setmountainridge(int x, int y, int amount) {mountainridges[x][y]=amount;}
+inline void planet::setstrato(int x, int y, bool amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline int planet::mountainheight(int x, int y) const {return mountainheights[x][y];}
-inline void planet::setmountainheight(int x, int y, int amount) {mountainheights[x][y]=amount;}
+    stratomap[x][y]=amount;
+}
 
-inline int planet::tide(int x, int y) const {return tidalmap[x][y];}
-inline void planet::settide(int x, int y, int amount) {tidalmap[x][y]=amount;}
+inline int planet::extraelev(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline int planet::riftlakesurface(int x, int y) const {return riftlakemapsurface[x][y];}
-inline void planet::setriftlakesurface(int x, int y, int amount) {riftlakemapsurface[x][y]=amount;}
+    return extraelevmap[x][y];
+}
 
-inline int planet::riftlakebed(int x, int y) const {return riftlakemapbed[x][y];}
-inline void planet::setriftlakebed(int x, int y, int amount) {riftlakemapbed[x][y]=amount;}
+inline void planet::setextraelev(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline int planet::special(int x, int y) const {return specials[x][y];}
-inline void planet::setspecial(int x, int y, int amount) {specials[x][y]=amount;}
+    extraelevmap[x][y]=amount;
+}
 
-inline int planet::deltadir(int x, int y) const {return deltamapdir[x][y];}
-inline void planet::setdeltadir(int x, int y, int amount) {deltamapdir[x][y]=amount;}
+inline int planet::maxtemp(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline int planet::deltajan(int x, int y) const {return deltamapjan[x][y];}
-inline void planet::setdeltajan(int x, int y, int amount) {deltamapjan[x][y]=amount;}
+    return maxtempmap[x][y];
+}
 
-inline int planet::deltajul(int x, int y) const {return deltamapjul[x][y];}
-inline void planet::setdeltajul(int x, int y, int amount) {deltamapjul[x][y]=amount;}
+inline void planet::setmaxtemp(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline bool planet::lakestart(int x, int y) const {return lakestartmap[x][y];}
-inline void planet::setlakestart(int x, int y, int amount) {lakestartmap[x][y]=amount;}
+    maxtempmap[x][y]=amount;
+}
 
-inline bool planet::island(int x, int y) const {return islandmap[x][y];}
-inline void planet::setisland(int x, int y, bool amount) {islandmap[x][y]=amount;}
+inline int planet::mintemp(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline bool planet::mountainisland(int x, int y) const {return mountainislandmap[x][y];}
-inline void planet::setmountainisland(int x, int y, bool amount) {mountainislandmap[x][y]=amount;}
+    return mintempmap[x][y];
+}
 
-inline bool planet::noshade(int x, int y) const {return noshademap[x][y];}
-inline void planet::setnoshade(int x, int y, bool amount) {noshademap[x][y]=amount;}
+inline void planet::setmintemp(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
 
-inline int planet::noisemap(int x, int y) const {return itsnoisemap[x][y];}
-inline void planet::setnoisemap(int x, int y, int amount) {itsnoisemap[x][y]=amount;}
+    mintempmap[x][y]=amount;
+}
 
-inline int planet::horse(int x, int y) const {return horselats[x][y];}
-inline void planet::sethorse(int x, int y, int amount) {horselats[x][y]=amount;}
+inline int planet::avetemp(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline int planet::subchanneldir(int x, int y) const {return subchanneldirs[x][y];}
-inline void planet::setsubchanneldir(int x, int y, int amount) {subchanneldirs[x][y]=amount;}
+    return ((mintempmap[x][y]+maxtempmap[x][y])/2);
+}
 
-inline int planet::subchanneldepth(int x, int y) const {return subchanneldepths[x][y];}
-inline void planet::setsubchanneldepth(int x, int y, int amount) {subchanneldepths[x][y]=amount;}
+inline int planet::summerrain(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
 
-inline int planet::test(int x, int y) const {return testmap[x][y];}
-inline void planet::settest(int x, int y, int amount) {testmap[x][y]=amount;}
+    return summerrainmap[x][y];
+}
+
+inline void planet::setsummerrain(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    summerrainmap[x][y]=amount;
+}
+
+inline int planet::winterrain(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return winterrainmap[x][y];
+}
+
+inline void planet::setwinterrain(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    winterrainmap[x][y]=amount;
+}
+
+inline int planet::averain(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return ((winterrainmap[x][y]+summerrainmap[x][y])/2);
+}
+
+inline int planet::wintermountainrain(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return wintermountainrainmap[x][y];
+}
+
+inline void planet::setwintermountainrain(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    wintermountainrainmap[x][y]=amount;
+}
+
+inline int planet::summermountainrain(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return summermountainrainmap[x][y];
+}
+
+inline void planet::setsummermountainrain(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    summermountainrainmap[x][y]=amount;
+}
+
+inline short planet::wintermountainraindir(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return wintermountainraindirmap[x][y];
+}
+
+inline void planet::setwintermountainraindir(int x, int y, short amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    wintermountainraindirmap[x][y]=amount;
+}
+
+inline short planet::summermountainraindir(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return summermountainraindirmap[x][y];
+}
+
+inline void planet::setsummermountainraindir(int x, int y, short amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    summermountainraindirmap[x][y]=amount;
+}
+
+inline string planet::climate(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return climatemap[x][y];
+}
+
+inline void planet::setclimate(int x, int y, string amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    climatemap[x][y]=amount;
+}
+
+inline int planet::seaice(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return seaicemap[x][y];
+}
+
+inline void planet::setseaice(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    seaicemap[x][y]=amount;
+}
+
+inline int planet::riverdir(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return rivermapdir[x][y];
+}
+
+inline void planet::setriverdir(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    rivermapdir[x][y]=amount;
+}
+
+inline int planet::riverjan(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return rivermapjan[x][y];
+}
+
+inline void planet::setriverjan(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    rivermapjan[x][y]=amount;
+}
+
+inline int planet::riverjul(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return rivermapjul[x][y];
+}
+
+inline void planet::setriverjul(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    rivermapjul[x][y]=amount;
+}
+
+inline int planet::riveraveflow(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return (rivermapjan[x][y]+rivermapjul[x][y])/2;
+}
+
+inline int planet::wind(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return windmap[x][y];
+}
+
+inline void planet::setwind(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    windmap[x][y]=amount;
+}
+
+inline int planet::lakesurface(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return lakemap[x][y];
+}
+
+inline void planet::setlakesurface(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    lakemap[x][y]=amount;
+}
+
+inline float planet::roughness(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return roughnessmap[x][y];
+}
+
+inline void planet::setroughness(int x, int y, float amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    roughnessmap[x][y]=amount;
+}
+
+inline int planet::mountainridge(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return mountainridges[x][y];
+}
+
+inline void planet::setmountainridge(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    mountainridges[x][y]=amount;
+}
+
+inline int planet::mountainheight(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return mountainheights[x][y];
+}
+
+inline void planet::setmountainheight(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    mountainheights[x][y]=amount;
+}
+
+inline int planet::tide(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return tidalmap[x][y];
+}
+
+inline void planet::settide(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    tidalmap[x][y]=amount;
+}
+
+inline int planet::riftlakesurface(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return riftlakemapsurface[x][y];
+}
+
+inline void planet::setriftlakesurface(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    riftlakemapsurface[x][y]=amount;
+}
+
+inline int planet::riftlakebed(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return riftlakemapbed[x][y];
+}
+
+inline void planet::setriftlakebed(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    riftlakemapbed[x][y]=amount;
+}
+
+inline int planet::special(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return specials[x][y];
+}
+
+inline void planet::setspecial(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    specials[x][y]=amount;
+}
+
+inline int planet::deltadir(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return deltamapdir[x][y];
+}
+
+inline void planet::setdeltadir(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    deltamapdir[x][y]=amount;
+}
+
+inline int planet::deltajan(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return deltamapjan[x][y];
+}
+
+inline void planet::setdeltajan(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    deltamapjan[x][y]=amount;
+}
+
+inline int planet::deltajul(int x, int y) const
+{
+    return deltamapjul[x][y];
+}
+
+inline void planet::setdeltajul(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    deltamapjul[x][y]=amount;
+}
+
+inline bool planet::lakestart(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return lakestartmap[x][y];
+}
+
+inline void planet::setlakestart(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    lakestartmap[x][y]=amount;
+}
+
+inline bool planet::island(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return islandmap[x][y];
+}
+
+inline void planet::setisland(int x, int y, bool amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    islandmap[x][y]=amount;
+}
+
+inline bool planet::mountainisland(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return mountainislandmap[x][y];
+}
+
+inline void planet::setmountainisland(int x, int y, bool amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    mountainislandmap[x][y]=amount;
+}
+
+inline bool planet::noshade(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return noshademap[x][y];
+}
+
+inline void planet::setnoshade(int x, int y, bool amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    noshademap[x][y]=amount;
+}
+
+inline int planet::noisemap(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return itsnoisemap[x][y];
+}
+
+inline void planet::setnoisemap(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    itsnoisemap[x][y]=amount;
+}
+
+inline int planet::horse(int x, int y) const
+{
+    if (x<0 || x>itswidth)
+        return 0;
+
+    return horselats[x][y];
+}
+
+inline void planet::sethorse(int x, int y, int amount)
+{
+    if (x<0 || x>itswidth)
+        return;
+
+    horselats[x][y]=amount;
+}
+
+inline int planet::test(int x, int y) const
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+
+    return testmap[x][y];
+}
+
+inline void planet::settest(int x, int y, int amount)
+{
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+
+    testmap[x][y]=amount;
+}
 
 inline bool planet::sea(int x, int y) const
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
     if (mapnom[x][y]<=itssealevel && lakemap[x][y]==0)
         return 1;
     
@@ -996,6 +1534,9 @@ inline bool planet::sea(int x, int y) const
 
 inline int planet::jantemp(int x, int y) const
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
     if (y<itsheight/2)
         return(mintempmap[x][y]);
     else
@@ -1004,6 +1545,9 @@ inline int planet::jantemp(int x, int y) const
 
 inline void planet::setjantemp(int x, int y, int amount)
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+    
     if (y<itsheight/2)
         mintempmap[x][y]=amount;
     else
@@ -1012,6 +1556,9 @@ inline void planet::setjantemp(int x, int y, int amount)
 
 inline int planet::jultemp(int x, int y) const
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
     if (y<itsheight/2)
         return(maxtempmap[x][y]);
     else
@@ -1020,6 +1567,9 @@ inline int planet::jultemp(int x, int y) const
 
 inline void planet::setjultemp(int x, int y, int amount)
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+    
     if (y<itsheight/2)
         maxtempmap[x][y]=amount;
     else
@@ -1028,6 +1578,9 @@ inline void planet::setjultemp(int x, int y, int amount)
 
 inline int planet::janrain(int x, int y) const
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
     if (y<itsheight/2)
         return(winterrainmap[x][y]);
     else
@@ -1036,6 +1589,9 @@ inline int planet::janrain(int x, int y) const
 
 inline void planet::setjanrain(int x, int y, int amount)
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+    
     if (y<itsheight/2)
         winterrainmap[x][y]=amount;
     else
@@ -1044,6 +1600,9 @@ inline void planet::setjanrain(int x, int y, int amount)
 
 inline int planet::julrain(int x, int y) const
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
     if (y<itsheight/2)
         return(summerrainmap[x][y]);
     else
@@ -1052,6 +1611,9 @@ inline int planet::julrain(int x, int y) const
 
 inline void planet::setjulrain(int x, int y, int amount)
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return;
+    
     if (y<itsheight/2)
         summerrainmap[x][y]=amount;
     else
@@ -1060,6 +1622,9 @@ inline void planet::setjulrain(int x, int y, int amount)
 
 inline int planet::truelake(int x, int y) const
 {
+    if (y<0 || y>itsheight || x<0 || x>itswidth)
+        return 0;
+    
     if (lakesurface(x,y)!=0 && special(x,y)<110)
         return (1);
     else

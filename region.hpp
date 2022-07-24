@@ -305,11 +305,27 @@ inline void region::setgridlines(int amount){itsgridlines=amount;}
 
 // Accessor functions for location-specific information
 
-inline int region::map(int x, int y) const{return rmap[x][y];}
-inline void region::setmap(int x, int y, int amount){rmap[x][y]=amount;}
+inline int region::map(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+    
+    return rmap[x][y];
+}
+
+inline void region::setmap(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rmap[x][y]=amount;
+}
 
 inline int region::surface(int x, int y) const
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+    
     if (rlakemap[x][y]!=0)
         return rlakemap[x][y];
     else
@@ -318,6 +334,9 @@ inline int region::surface(int x, int y) const
 
 inline bool region::sea(int x, int y) const
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+    
     if (rmap[x][y]<=itssealevel && rlakemap[x][y]==0)
         return 1;
     
@@ -325,87 +344,384 @@ inline bool region::sea(int x, int y) const
         return 0;
 }
 
-inline int region::maxtemp(int x, int y) const{return rmaxtempmap[x][y];}
-inline void region::setmaxtemp(int x, int y, int amount){rmaxtempmap[x][y]=amount;}
+inline int region::maxtemp(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+    
+    return rmaxtempmap[x][y];
+}
 
-inline int region::mintemp(int x, int y) const{return rmintempmap[x][y];}
-inline void region::setmintemp(int x, int y, int amount){rmintempmap[x][y]=amount;}
+inline void region::setmaxtemp(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
 
-inline int region::extramaxtemp(int x, int y) const{return rextramaxtempmap[x][y];}
-inline void region::setextramaxtemp(int x, int y, int amount){rextramaxtempmap[x][y]=amount;}
+    rmaxtempmap[x][y]=amount;
+}
 
-inline int region::extramintemp(int x, int y) const{return rextramintempmap[x][y];}
-inline void region::setextramintemp(int x, int y, int amount){rextramintempmap[x][y]=amount;}
+inline int region::mintemp(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+    
+    return rmintempmap[x][y];
+}
 
-inline int region::avetemp(int x, int y) const{return (rmintempmap[x][y]+rmaxtempmap[x][y])/2;}
+inline void region::setmintemp(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
 
-inline int region::summerrain(int x, int y) const{return rsummerrainmap[x][y];}
-inline void region::setsummerrain(int x, int y, int amount){rsummerrainmap[x][y]=amount;}
+    rmintempmap[x][y]=amount;
+}
 
-inline int region::winterrain(int x, int y) const{return rwinterrainmap[x][y];}
-inline void region::setwinterrain(int x, int y, int amount){rwinterrainmap[x][y]=amount;}
+inline int region::extramaxtemp(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
 
-inline int region::averain(int x, int y) const{return (rwinterrainmap[x][y]+rsummerrainmap[x][y])/2;}
+    return rextramaxtempmap[x][y];
+}
 
-inline string region::climate(int x, int y) const{return rclimatemap[x][y];}
-inline void region::setclimate(int x, int y, string amount) {rclimatemap[x][y]=amount;}
+inline void region::setextramaxtemp(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
 
-inline int region::seaice(int x, int y) const{return rseaicemap[x][y];}
-inline void region::setseaice(int x, int y, int amount){rseaicemap[x][y]=amount;}
+    rextramaxtempmap[x][y]=amount;
+}
 
-inline int region::riverdir(int x, int y) const{return rrivermapdir[x][y];}
-inline void region::setriverdir(int x, int y, int amount){rrivermapdir[x][y]=amount;}
+inline int region::extramintemp(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
 
-inline int region::riverjan(int x, int y) const{return rrivermapjan[x][y];}
-inline void region::setriverjan(int x, int y, int amount){rrivermapjan[x][y]=amount;}
+    return rextramintempmap[x][y];
+}
 
-inline int region::riverjul(int x, int y) const{return rrivermapjul[x][y];}
-inline void region::setriverjul(int x, int y, int amount){rrivermapjul[x][y]=amount;}
+inline void region::setextramintemp(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
 
-inline int region::riveraveflow(int x, int y) const{return (rrivermapjan[x][y]+rrivermapjul[x][y])/2;}
+    rextramintempmap[x][y]=amount;
+}
 
-inline int region::fakedir(int x, int y) const{return rfakeriversdir[x][y];}
-inline void region::setfakedir(int x, int y, int amount){rfakeriversdir[x][y]=amount;}
+inline int region::avetemp(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
 
-inline int region::fakejan(int x, int y) const{return rfakeriversjan[x][y];}
-inline void region::setfakejan(int x, int y, int amount){rfakeriversjan[x][y]=amount;}
+    return (rmintempmap[x][y]+rmaxtempmap[x][y])/2;
+}
 
-inline int region::fakejul(int x, int y) const{return rfakeriversjul[x][y];}
-inline void region::setfakejul(int x, int y, int amount){rfakeriversjul[x][y]=amount;}
+inline int region::summerrain(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
 
-inline int region::fakeaveflow(int x, int y) const{return (rfakeriversjan[x][y]+rfakeriversjul[x][y])/2;}
+    return rsummerrainmap[x][y];
+}
 
-inline int region::lakesurface(int x, int y) const{return rlakemap[x][y];}
-inline void region::setlakesurface(int x, int y, int amount){rlakemap[x][y]=amount;}
+inline void region::setsummerrain(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rsummerrainmap[x][y]=amount;
+}
+
+inline int region::winterrain(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rwinterrainmap[x][y];
+}
+
+inline void region::setwinterrain(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rwinterrainmap[x][y]=amount;
+}
+
+inline int region::averain(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return (rwinterrainmap[x][y]+rsummerrainmap[x][y])/2;
+}
+
+inline string region::climate(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rclimatemap[x][y];
+}
+
+inline void region::setclimate(int x, int y, string amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rclimatemap[x][y]=amount;
+}
+
+inline int region::seaice(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rseaicemap[x][y];
+}
+
+inline void region::setseaice(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rseaicemap[x][y]=amount;
+}
+
+inline int region::riverdir(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rrivermapdir[x][y];
+}
+
+inline void region::setriverdir(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rrivermapdir[x][y]=amount;
+}
+
+inline int region::riverjan(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rrivermapjan[x][y];
+}
+
+inline void region::setriverjan(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rrivermapjan[x][y]=amount;
+}
+
+inline int region::riverjul(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rrivermapjul[x][y];
+}
+
+inline void region::setriverjul(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rrivermapjul[x][y]=amount;
+}
+
+inline int region::riveraveflow(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return (rrivermapjan[x][y]+rrivermapjul[x][y])/2;
+}
+
+inline int region::fakedir(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rfakeriversdir[x][y];
+}
+
+inline void region::setfakedir(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rfakeriversdir[x][y]=amount;
+}
+
+inline int region::fakejan(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rfakeriversjan[x][y];
+}
+
+inline void region::setfakejan(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rfakeriversjan[x][y]=amount;
+}
+
+inline int region::fakejul(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rfakeriversjul[x][y];
+}
+
+inline void region::setfakejul(int x, int y, int amount)
+{
+    rfakeriversjul[x][y]=amount;
+}
+
+inline int region::fakeaveflow(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return (rfakeriversjan[x][y]+rfakeriversjul[x][y])/2;
+}
+
+inline int region::lakesurface(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rlakemap[x][y];
+}
+
+inline void region::setlakesurface(int x, int y, int amount)
+{
+    rlakemap[x][y]=amount;
+}
 
 inline int region::truelake(int x, int y) const
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
     if (rlakemap[x][y]!=0 && rspecials[x][y]<110)
         return (1);
     else
         return(0);
 }
 
-inline int region::special(int x, int y) const{return rspecials[x][y];}
-inline void region::setspecial(int x, int y, int amount){rspecials[x][y]=amount;}
+inline int region::special(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
 
-inline int region::deltadir(int x, int y) const{return rdeltamapdir[x][y];}
-inline void region::setdeltadir(int x, int y, int amount){rdeltamapdir[x][y]=amount;}
+    return rspecials[x][y];
+}
 
-inline int region::deltajan(int x, int y) const{return rdeltamapjan[x][y];}
-inline void region::setdeltajan(int x, int y, int amount){rdeltamapjan[x][y]=amount;}
+inline void region::setspecial(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
 
-inline int region::deltajul(int x, int y) const{return rdeltamapjul[x][y];}
-inline void region::setdeltajul(int x, int y, int amount){rdeltamapjul[x][y]=amount;}
+    rspecials[x][y]=amount;
+}
 
-inline bool region::mountainsdone(int x, int y) const{return rmountainsdone[x][y];} // Whether this cell has had mountains applied to it.
-inline void region::setmountainsdone(int x, int y, bool amount){rmountainsdone[x][y]=amount;};
+inline int region::deltadir(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
 
-inline bool region::volcano(int x, int y) const{return rvolcanomap[x][y];} // Whether this cell has had mountains applied to it.
-inline void region::setvolcano(int x, int y, bool amount){rvolcanomap[x][y]=amount;};
+    return rdeltamapdir[x][y];
+}
+
+inline void region::setdeltadir(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rdeltamapdir[x][y]=amount;
+}
+
+inline int region::deltajan(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rdeltamapjan[x][y];
+}
+
+inline void region::setdeltajan(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rdeltamapjan[x][y]=amount;
+}
+
+inline int region::deltajul(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rdeltamapjul[x][y];
+}
+
+inline void region::setdeltajul(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rdeltamapjul[x][y]=amount;
+}
+
+inline bool region::mountainsdone(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rmountainsdone[x][y];
+} // Whether this cell has had mountains applied to it.
+
+inline void region::setmountainsdone(int x, int y, bool amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rmountainsdone[x][y]=amount;
+};
+
+inline bool region::volcano(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rvolcanomap[x][y];
+} // Whether this cell is a volcano.
+
+inline void region::setvolcano(int x, int y, bool amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rvolcanomap[x][y]=amount;
+};
 
 inline int region::waterdir(int x, int y, bool delta) const
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
     if (delta)
         return rdeltamapdir[x][y];
     
@@ -414,6 +730,9 @@ inline int region::waterdir(int x, int y, bool delta) const
 
 inline void region::setwaterdir(int x, int y, bool delta, int amount)
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
     if (delta)
         rdeltamapdir[x][y]=amount;
     else
@@ -422,6 +741,9 @@ inline void region::setwaterdir(int x, int y, bool delta, int amount)
 
 inline int region::waterjan(int x, int y, bool delta) const
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
     if (delta)
         return rdeltamapjan[x][y];
     
@@ -430,6 +752,9 @@ inline int region::waterjan(int x, int y, bool delta) const
 
 inline void region::setwaterjan(int x, int y, bool delta, int amount)
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
     if (delta)
         rdeltamapjan[x][y]=amount;
     else
@@ -438,6 +763,9 @@ inline void region::setwaterjan(int x, int y, bool delta, int amount)
 
 inline int region::waterjul(int x, int y, bool delta) const
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
     if (delta)
         return rdeltamapjul[x][y];
     
@@ -446,31 +774,89 @@ inline int region::waterjul(int x, int y, bool delta) const
 
 inline void region::setwaterjul(int x, int y, bool delta, int amount)
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
     if (delta)
         rdeltamapjul[x][y]=amount;
     else
         rrivermapjul[x][y]=amount;
 }
 
-inline float region::roughness(int x, int y) const{return rroughnessmap[x][y];}
-inline void region::setroughness(int x, int y, float amount){rroughnessmap[x][y]=amount;}
+inline float region::roughness(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rroughnessmap[x][y];
+}
+
+inline void region::setroughness(int x, int y, float amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rroughnessmap[x][y]=amount;
+}
 
 inline bool region::rivervalley(int x, int y) const
 {
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
     if (rfakeriversdir[x][y]==-1 && rmap[x][y]>itssealevel && rspecials[x][y]!=140)
         return 1;
     
     return 0;
 }
 
-inline int region::test(int x, int y) const{return testmap[x][y];} // Test array.
-inline void region::settest(int x, int y, int amount){testmap[x][y]=amount;}
+inline int region::test(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
 
-inline int region::test2(int x, int y) const{return testmap2[x][y];} // Test array.
-inline void region::settest2(int x, int y, int amount){testmap2[x][y]=amount;}
+    return testmap[x][y];
+} // Test array.
 
-inline float region::testfloat(int x, int y) const{return testmapfloat[x][y];}
-inline void region::settestfloat(int x, int y, float amount){testmapfloat[x][y]=amount;}
+inline void region::settest(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    testmap[x][y]=amount;
+}
+
+inline int region::test2(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return testmap2[x][y];
+} // Test array.
+
+inline void region::settest2(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    testmap2[x][y]=amount;
+}
+
+inline float region::testfloat(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return testmapfloat[x][y];
+}
+
+inline void region::settestfloat(int x, int y, float amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    testmapfloat[x][y]=amount;
+}
 
 
 

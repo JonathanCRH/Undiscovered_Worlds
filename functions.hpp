@@ -7,9 +7,11 @@
 //  The code for this project is released under the GNU General Public Licence v3.0 - https://choosealicense.com/licenses/gpl-3.0/
 //
 //  Please note that this code requires the following libraries to work:
-//  NanoGUI - https://github.com/mitsuba-renderer/nanogui
+// 
 //  SFML - https://www.sfml-dev.org/
-//  stb_image - https://github.com/nothings/stb
+//  Dear ImGui - https://github.com/ocornut/imgui
+//  ImGui-SFML - https://github.com/eliasdaler/imgui-sfml
+//  ImGuiFileDialog - https://github.com/aiekick/ImGuiFileDialog
 //
 //  main.cpp contains the functions for drawing the map images (as well as the main loop, of course), and all functions that require external libraries.
 //  misc.cpp contains various utility functions that are used throughout the program.
@@ -30,9 +32,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <SFML/Graphics.hpp>
-#include <nanogui/nanogui.h>
 
-#include "stb_image.h"
 
 #include "classes.hpp"
 #include "planet.hpp"
@@ -55,55 +55,39 @@ using namespace std;
 
 // Define some enums.
 
-enum screenmodeenum{quit,createworld,globalmap,regionalmap};
-enum mapviewenum{elevation,temperature,precipitation,climate,rivers,relief};
+enum screenmodeenum { quit, createworldscreen, creatingworldscreen, globalmapscreen, regionalmapscreen, importscreen, movingtoglobalmapscreen, exportareascreen };
+enum mapviewenum { elevation, temperature, precipitation, climate, rivers, relief };
 
 // Declare functions that are in main.cpp
 
 void fast_srand(long seed);
 int fast_rand(void);
-void setregionalminimap(planet &world, region &region, uint8_t globalreliefimage[], nanogui::Texture &regionalminimap, int globalimagewidth, int globalimageheight, int globalimagechannels);
-screenmodeenum regionalmapscreen(planet &world, region &region, sf::RenderWindow &window, sf::Font &font, boolshapetemplate &globalreliefimage, vector<string> climatename, boolshapetemplate &regionalelevationimage, boolshapetemplate &regionaltemperatureimage, boolshapetemplate &regionalprecipitationimage, boolshapetemplate &regionalclimateimage, boolshapetemplate &regionalriversimage, boolshapetemplate &regionalreliefimage, boolshapetemplate smalllake[], boolshapetemplate island[], peaktemplate peaks, vector<vector<float>> &riftblob, int riftblobsize);
-void drawzoommap(region &region, int poix, int poiy, int squaresize, boolshapetemplate &zoommapimage, sf::Texture &zoommaptexture, sf:: Sprite &zoommapsprite);
-void saveimage(uint8_t source[], int globalimagechannels, int width, int height, string filename);
-sf::Color getclimatecolours(int climate);
-void drawglobalmapimage(mapviewenum mapview, planet &world, bool globalmapimagecreated[], uint8_t globalelevationimage[], uint8_t globaltemperatureimage[], uint8_t globalprecipitationimage[], uint8_t globalclimateimage[], uint8_t globalriversimage[], uint8_t globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalelevationmapimage(planet &world, uint8_t globalelevationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobaltemperaturemapimage(planet &world, uint8_t globaltemperatureimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalprecipitationmapimage(planet &world, uint8_t globalprecipitationimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalclimatemapimage(planet &world, uint8_t globalclimateimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalriversmapimage(planet &world, uint8_t globalriversimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawglobalreliefmapimage(planet &world, uint8_t globalreliefimage[], int globalimagewidth, int globalimageheight, int globalimagechannels);
-void drawregionalmapimage(mapviewenum mapview, planet &world, region &region, bool regionalmapimagecreated[], uint8_t regionalelevationimage[], uint8_t regionaltemperatureimage[], uint8_t regionalprecipitationimage[],  uint8_t regionalclimateimage[], uint8_t regionalriversimage[], uint8_t regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalelevationmapimage(planet &world, region &region, uint8_t regionalelevationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionaltemperaturemapimage(planet &world, region &region, uint8_t regionaltemperatureimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalprecipitationmapimage(planet &world, region &region, uint8_t regionalprecipitationimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalclimatemapimage(planet &world, region &region, uint8_t regionalclimateimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalriversmapimage(planet &world, region &region, uint8_t regionalriversimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void drawregionalreliefmapimage(planet &world, region &region, uint8_t regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void blankregionalreliefimage(region &region, uint8_t regionalreliefimage[], int regionalimagewidth, int regionalimageheight, int regionalimagechannels);
-void addgridlines(boolshapetemplate &mapimage);
-void shiftregionalmapimage(region &region, boolshapetemplate &image, int shifting);
-void displaytemplates(planet &world, uint8_t globalreliefimage[], int globalimagewidth, int globalimagechannels, boolshapetemplate shape[]);
-void generateglobalterrain(planet &world, short terraintype, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves);
-void generateglobalterraintype1(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate landshape[], vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves, boolshapetemplate chainland[]);
-void generateglobalterraintype2(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate landshape[], vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves, boolshapetemplate chainland[]);
-void largecontinents(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, int baseheight, int conheight, vector<vector<int>> &fractal, vector<vector<int>> &plateaumap, vector<vector<bool>> &shelves, boolshapetemplate landshape[], boolshapetemplate chainland[]);
-void generateglobalclimate(planet &world, nanogui::Screen &screen, nanogui::Window &worldgenerationwindow, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, boolshapetemplate smalllake[], boolshapetemplate largelake[], boolshapetemplate landshape[], vector<vector<int>> &mountaindrainage, vector<vector<bool>> &shelves);
-void createrainmap(planet &world, nanogui::Screen &screen, nanogui::Label &worldgenerationlabel, nanogui::ProgressBar &worldprogress, float progressstep, vector<vector<int>> &fractal, boolshapetemplate smalllake[], boolshapetemplate shape[]);
-void generateregionalmap(planet &world, region &region, nanogui::Screen &screen, nanogui::ProgressBar &regionprogress, float progressstep, boolshapetemplate smalllake[], boolshapetemplate island[], peaktemplate &peaks, vector<vector<float>> &riftblob, int riftblobsize, int partial, byteshapetemplate smudge[], byteshapetemplate smallsmudge[]);
-void makeregionalwater(planet &world, region &region, nanogui::Screen &screen, nanogui::ProgressBar &regionprogress, float progressstep, vector<vector<bool>> &safesaltlakes, vector<vector<bool>> &disruptpoints, vector<vector<int>> &rriverscarved, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey, boolshapetemplate smalllake[], boolshapetemplate island[], vector<vector<float>> &riftblob, int riftblobsize, int xleft, int xright, int ytop, int ybottom);
-void makeregionalterrain(planet &world, region &region, nanogui::Screen &screen, nanogui::ProgressBar &regionprogress, float progressstep, vector<vector<bool>> &disruptpoints, vector<vector<bool>> &riverinlets,vector<vector<int>> &rriverscarved, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey, boolshapetemplate smalllake[], peaktemplate &peaks, byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom);
-void makeregionalunderseaterrain(planet &world, region &region, nanogui::Screen &screen, nanogui::ProgressBar &regionprogress, float progressstep, peaktemplate &peaks, byteshapetemplate smudge[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom);
-void makeregionalmiscellanies(planet &world, region &region, nanogui::Screen &screen, nanogui::ProgressBar &regionprogress, float progressstep, vector<vector<bool>> &safesaltlakes, vector<vector<bool>> &riverinlets, boolshapetemplate smalllake[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom);
-void makeregionalclimates(planet &world, region &region, nanogui::Screen &screen, nanogui::ProgressBar &regionprogress, float progressstep, vector<vector<bool>> &safesaltlakes, boolshapetemplate smalllake[], int xleft, int xright, int ytop, int ybottom);
+void drawhighlightobjects(planet& world, sf::Image& highlightimage, int highlightsize, sf::Image& minihighlightimage, int minihighlightsize);
+void updatereport(string text);
+bool standardbutton(const char* label);
+void drawglobalmapimage(mapviewenum mapview, planet& world, bool globalmapimagecreated[], sf::Image &globalelevationimage, sf::Image &globaltemperatureimage, sf::Image &globalprecipitationimage, sf::Image &globalclimateimage, sf::Image &globalriversimage, sf::Image &globalreliefimage, sf::Image& displayglobalelevationimage, sf::Image& displayglobaltemperatureimage, sf::Image& displayglobalprecipitationimage, sf::Image& displayglobalclimateimage, sf::Image& displayglobalriversimage, sf::Image& displayglobalreliefimage);
+void drawglobalelevationmapimage(planet& world, sf::Image &globalelevationimage, sf::Image& displayglobalelevationimage);
+void drawglobaltemperaturemapimage(planet& world, sf::Image& globaltemperatureimage, sf::Image& displayglobaltemperatureimage);
+void drawglobalprecipitationmapimage(planet& world, sf::Image& globalprecipitationimage, sf::Image& displayglobalprecipitationimage);
+void drawglobalclimatemapimage(planet& world, sf::Image& globalclimateimage, sf::Image& displayglobalclimateimage);
+void drawglobalriversmapimage(planet& world, sf::Image& globalriversimage, sf::Image& displayglobalriversimage);
+void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::Image& displayglobalreliefimage);
+sf::Color getclimatecolours(string climate);
+void drawregionalmapimage(mapviewenum mapview, planet& world, region& region, bool regionalmapimagecreated[], sf::Image& regionalelevationimage, sf::Image& regionaltemperatureimage, sf::Image& regionalprecipitationimage, sf::Image& regionalclimateimage, sf::Image& regionalriversimage, sf::Image& regionalreliefimage);
+void drawregionalelevationmapimage(planet& world, region& region, sf::Image& regionalelevationimage);
+void drawregionaltemperaturemapimage(planet& world, region& region, sf::Image& regionaltemperatureimage);
+void drawregionalprecipitationmapimage(planet& world, region& region, sf::Image& regionalprecipitationimage);
+void drawregionalclimatemapimage(planet& world, region& region, sf::Image& regionalclimateimage);
+void drawregionalriversmapimage(planet& world, region& region, sf::Image& regionalriversimage);
+void drawregionalreliefmapimage(planet& world, region& region, sf::Image& regionalreliefimage);
 
 // Declare functions that are in misc.cpp
 
-void saveworld(planet &world);
-bool loadworld(planet &world);
-void savesettings(planet &world);
-bool loadsettings(planet &world);
+bool stob(string instring);
+void saveworld(planet& world, string filename);
+bool loadworld(planet& world, string filename);
+void savesettings(planet& world, string filename);
+bool loadsettings(planet& world, string filename);
 void createriftblob(vector<vector<float>> &riftblob, int size);
 int random(int a, int b);
 int randomsign(int a);
@@ -178,6 +162,10 @@ void initialiseregion(planet &world, region &region);
 
 // Declare functions that are in globalterrain.cpp
 
+void generateglobalterrain(planet& world, short terraintype, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves);
+void generateglobalterraintype1(planet& world, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[]);
+void generateglobalterraintype2(planet& world, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[]);
+void largecontinents(planet& world, int baseheight, int conheight, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& shelves, boolshapetemplate landshape[], boolshapetemplate chainland[]);
 void createfractal(vector<vector<int>> &arr, int awidth, int aheight, int grain, float valuemod, float valuemod2, int min, int max, bool extreme, bool wrapped);
 void newfractalinit(vector<vector<int>> &arr, int awidth, int aheight, int grain, int min, int max, bool extreme);
 void newfractal(vector<vector<int>> &arr, int awidth, int aheight, int grain, float valuemod, float valuemod2, int min, int max, bool wrapped);
@@ -259,6 +247,8 @@ void checkpoles(planet &world);
 
 // Declare functions that are in globalclimate.cpp
 
+void generateglobalclimate(planet& world, boolshapetemplate smalllake[], boolshapetemplate largelake[], boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves);
+void createrainmap(planet& world, vector<vector<int>>& fractal, boolshapetemplate smalllake[], boolshapetemplate shape[]);
 void createwindmap(planet &world);
 void createtemperaturemap(planet &world, vector<vector<int>> &fractal);
 void createseaicemap(planet &world, vector<vector<int>> &fractal);
@@ -332,19 +322,19 @@ void createwetlands(planet &world, boolshapetemplate smalllake[]);
 void pastewetland(planet &world, int centrex, int centrey, int shapenumber, boolshapetemplate smalllake[]);
 void removeexcesswetlands(planet &world);
 void refineroughnessmap(planet &world);
-void createunderseachannels(planet &world, vector<vector<bool>> &shelves);
-void removediagonalchannels(planet &world);
-void adddiagonalchanneljunctions(planet &world);
-void removeparallelchannels(planet &world);
-void traceseadrop(planet &world, int x, int y, int dropno, vector<vector<int>> &thisdrop, int maxrepeat, int oceanfloor, int neighbours[8][2], vector<vector<int>> &sediment);
 void checkpoleclimates(planet &world);
 void removesealakes(planet &world);
 void connectlakes(planet &world);
 
 // Declare functions that are in regionalmap.cpp
 
+void generateregionalmap(planet& world, region& region, boolshapetemplate smalllake[], boolshapetemplate island[], peaktemplate& peaks, vector<vector<float>>& riftblob, int riftblobsize, int partial, byteshapetemplate smudge[], byteshapetemplate smallsmudge[]);
+void makeregionalwater(planet& world, region& region, vector<vector<bool>>& safesaltlakes, vector<vector<bool>>& disruptpoints, vector<vector<int>>& rriverscarved, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, boolshapetemplate smalllake[], boolshapetemplate island[], vector<vector<float>>& riftblob, int riftblobsize, int xleft, int xright, int ytop, int ybottom);
+void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& disruptpoints, vector<vector<bool>>& riverinlets, vector<vector<int>>& rriverscarved, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, boolshapetemplate smalllake[], peaktemplate& peaks, byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom);
+void makeregionalunderseaterrain(planet& world, region& region, peaktemplate& peaks, byteshapetemplate smudge[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom);
+void makeregionalmiscellanies(planet& world, region& region, vector<vector<bool>>& safesaltlakes, vector<vector<bool>>& riverinlets, boolshapetemplate smalllake[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom);
+void makeregionalclimates(planet& world, region& region, vector<vector<bool>>& safesaltlakes, boolshapetemplate smalllake[], int xleft, int xright, int ytop, int ybottom);
 twointegers convertregionaltoglobal(planet &world, region &region, int x, int y);
-void addlakeborders(planet &world, region &region, int dx, int dy, int sx, int sy);
 void removesealakes(planet &world, region &region, int leftx, int lefty, int rightx, int righty);
 void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rriverscarved, boolshapetemplate smalllake[], vector<vector<bool>> &rivercurves);
 twointegers getjunctionpoint (planet &world, region &region, int dx, int dy, int sx, int sy, bool lakepresent, bool goingtolake, bool diag, int maininflow, int inx, int iny, int outx, int outy);
@@ -381,7 +371,7 @@ int rlakesquare(region &region, int dx, int dy, int s, int x, int y, int value, 
 int rlakediamond(region &region, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], int lakesurface);
 int rdiamond(region &region, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], bool onlyup, int negchance, int sealevel, bool nosea);
 int rcoastdiamond(region &region, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], int sealevel);
-void landfill(planet &world, region &region, int dx, int dy, int sx, int sy, int surfaceleve, boolshapetemplate smalllake[]);
+//void landfill(planet &world, region &region, int dx, int dy, int sx, int sy, int surfaceleve, boolshapetemplate smalllake[]);
 void removestraights(planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[]);
 void disruptseacoastline(planet &world, region &region, int dx, int dy, int centrex, int centrey, int avedepth, bool raise, int maxsize, bool stayintile, boolshapetemplate smalllake[]);
 void disruptlakecoastline(planet &world, region &region, int dx, int dy, int centrex, int centrey, int surfacelevel, int avedepth, bool raise, int size, bool stayintile, int special, boolshapetemplate smalllake[]);
@@ -414,7 +404,7 @@ void checkdepression(region &region, int dx, int dy, int x, int y, int elev, boo
 void filldepression(region &region, int dx, int dy, int x, int y, int elev);
 void addinlets(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &riverinlets);
 void pasteinletcircle(region &region, int centrex, int centrey, int depth, int pixels, vector<vector<bool>> &riverinlets);
-void addmountainsprings(planet &world, region &region, int dx, int dy, int sx, int sy);
+//void addmountainsprings(planet &world, region &region, int dx, int dy, int sx, int sy);
 void makewetlandtile(planet &world ,region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[]);
 void pasteregionalwetlands(region &region, int centrex, int centrey, int special, int elev, int shapenumber, boolshapetemplate smalllake[]);
 void convertlakestospecials(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &safesaltlakes);
@@ -449,7 +439,7 @@ void disruptcliff(planet &world, region &region, int dx, int dy, int sx, int sy,
 void disruptlakecliff(planet &world, region &region, int dx, int dy, int sx, int sy, int startx, int starty, int endx, int endy, boolshapetemplate smalllake[], byteshapetemplate smudge[]);
 void disruptland(region &region, int centrex, int centrey, int newheight, boolshapetemplate smalllake[]);
 void disruptlakebed(region &region, int centrex, int centrey, int newheight, boolshapetemplate smalllake[]);
-void checkgrid(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &elevs, vector<vector<int>> &severities);
+//void checkgrid(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &elevs, vector<vector<int>> &severities);
 void makesubmarineelevationtile(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &underseamap, int coords[4][2], int extra);
 int submarinesquare(vector<vector<int>> &underseamap, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], bool onlyup);
 int submarinediamond(vector<vector<int>> &underseamap, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], bool onlyup);

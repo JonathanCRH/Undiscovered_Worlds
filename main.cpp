@@ -1055,7 +1055,7 @@ int main()
                             infotext = infotext + "Submarine volcano.\n";
                     }
 
-                    infotext = infotext + "January temperature: " + to_string(world->jantemp(poix, poiy)) + "°. July temperature: " + to_string(world->jultemp(poix, poiy)) + "°. ";
+                    infotext = infotext + "January temperature: " + to_string(world->jantemp(poix, poiy)) + "C. July temperature: " + to_string(world->jultemp(poix, poiy)) + "C. ";
                     infotext = infotext + "January rainfall: " + to_string(world->janrain(poix, poiy)) + " mm/month. July rainfall: " + to_string(world->julrain(poix, poiy)) + " mm/month.\n";
 
                     if (world->sea(poix, poiy) == 0 && world->riveraveflow(poix, poiy) > 0 && world->lakesurface(poix, poiy) == 0)
@@ -1096,7 +1096,7 @@ int main()
                             direction = "northwest";
                             break;
                         }
-                        infotext = infotext + "River direction: " + direction + ". January flow: " + to_string(world->riverjan(poix, poiy)) + " m³/s. July flow: " + to_string(world->riverjul(poix, poiy)) + " m³/s.\n";
+                        infotext = infotext + "River direction: " + direction + ". January flow: " + to_string(world->riverjan(poix, poiy)) + " m3/s. July flow: " + to_string(world->riverjul(poix, poiy)) + " m3/s.\n";
                     }
 
                     if (world->truelake(poix, poiy) != 0)
@@ -1347,7 +1347,7 @@ int main()
                         jultemp = region->mintemp(poix, poiy);
                     }
 
-                    infotext2 = infotext2 + "January temperature: " + to_string(jantemp) + "°. July temperature: " + to_string(jultemp) + "°. ";
+                    infotext2 = infotext2 + "January temperature: " + to_string(jantemp) + "C. July temperature: " + to_string(jultemp) + "C. ";
 
                     infotext2 = infotext2 + "January rainfall: " + to_string(janrain) + " mm/month. July rainfall: " + to_string(julrain) + " mm/month.\n";
 
@@ -1365,14 +1365,14 @@ int main()
                         if (region->riverdir(poix, poiy) != 0 && region->special(poix, poiy) != 140) // If there's a river here
                         {
                             infotext2 = infotext2 + "River direction: " + getdirstring(region->riverdir(poix, poiy)) + ". ";
-                            infotext2 = infotext2 + "January flow: " + to_string(region->riverjan(poix, poiy)) + " m³/s. July flow: " + to_string(region->riverjul(poix, poiy)) + " m³/s. \n";
+                            infotext2 = infotext2 + "January flow: " + to_string(region->riverjan(poix, poiy)) + " m3/s. July flow: " + to_string(region->riverjul(poix, poiy)) + " m3/s. \n";
                         }
                         else
                         {
                             if (region->fakedir(poix, poiy) > 0 && region->special(poix, poiy) != 140) // If there's a fake river here
                             {
                                 infotext2 = infotext2 + "River direction: " + getdirstring(region->fakedir(poix, poiy)) + ". ";
-                                infotext2 = infotext2 + "January flow: " + to_string(region->fakejan(poix, poiy)) + " m³/s. July flow: " + to_string(region->fakejul(poix, poiy)) + " m³/s. \n";
+                                infotext2 = infotext2 + "January flow: " + to_string(region->fakejan(poix, poiy)) + " m3/s. July flow: " + to_string(region->fakejul(poix, poiy)) + " m3/s. \n";
                             }
                         }
                     }

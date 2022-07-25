@@ -23,6 +23,9 @@
 #include "region.hpp"
 #include "functions.hpp"
 
+// nodiscard attribute
+#pragma warning (disable: 4834)
+
 #define REGIONALCREATIONSTEPS 84
 
 #define GLOBALTERRAINCREATIONSTEPS1 26

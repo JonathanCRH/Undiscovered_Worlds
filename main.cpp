@@ -974,7 +974,7 @@ int main()
 
                     int sealevel = world->sealevel();
 
-                    infotext = "Location is " + to_string(poix) + ", " + to_string(poiy) + ". Latitude " + to_string(world->latitude(poix, poiy)) + " degrees. ";
+                    infotext = "Location is " + to_string(poix) + ", " + to_string(poiy) + ". Latitude: " + to_string(world->latitude(poix, poiy)) + " degrees. ";
 
                     int wind = world->wind(poix, poiy);
                     string winddir;
@@ -994,7 +994,7 @@ int main()
                     if (wind > 50)
                         wind = 0;
 
-                    infotext = infotext + "Prevailing wind: " + winddir;
+                    infotext = infotext + "Prevailing wind:" + winddir;
 
                     int pointelevation = world->map(poix, poiy);
 

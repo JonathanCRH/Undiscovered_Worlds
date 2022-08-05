@@ -23,6 +23,9 @@
 #include "region.hpp"
 #include "functions.hpp"
 
+// nodiscard attribute
+#pragma warning (disable: 4834)
+
 #define REGIONALCREATIONSTEPS 84
 
 #define GLOBALTERRAINCREATIONSTEPS1 26
@@ -708,9 +711,6 @@ int main()
             {
                 // Accept seed and generate world
 
-                //seedentry = 68384841; // Works!
-                //seedentry = 55647486; // volcano
-
                 world->setseed(seedentry);
 
                 screenmode = creatingworldscreen;
@@ -1010,8 +1010,8 @@ int main()
                                 infotext = infotext + "Elevation: " + to_string(world->lakesurface(poix, poiy) - sealevel) + " metres above sea level.\n";
                         }
 
-                        string climatetype = world->climate(poix, poiy);
-                        string climate = getclimatename(climatetype) + " (" + climatetype + ")";
+                        short climatetype = world->climate(poix, poiy);
+                        string climate = getclimatename(climatetype) + " (" + getclimatecode(climatetype) + ")";
                         string glac = "";
 
                         if ((world->jantemp(poix, poiy) + world->jultemp(poix, poiy)) / 2 <= world->glacialtemp())
@@ -1035,7 +1035,7 @@ int main()
                         if (world->volcano(poix, poiy) > 0)
                             climate = climate + ". Volcano";
 
-                        infotext = infotext + "Climate: " + climate + ". " + glac + "\n";
+                        infotext = infotext + "Climate: " + to_string(climatetype) + " " + climate + ". " + glac + "\n";
                     }
                     else
                     {
@@ -1112,6 +1112,8 @@ int main()
                         infotext = infotext + "Depth: " + to_string(depth) + " metres. " + salt;
 
                     }
+
+                    infotext = infotext + "\nInland: " + to_string(world->test(poix, poiy));
                 }
                 else
                 {
@@ -1395,35 +1397,35 @@ int main()
                     }
                     else
                     {
-                        string climate = region->climate(poix, poiy);
+                        short climate = region->climate(poix, poiy);
 
-                        climate = getclimatename(climate) + " (" + climate + ")";
+                        string climatename = getclimatename(climate) + " (" + getclimatecode(climate) + ")";
 
                         if (region->special(poix, poiy) == 110)
-                            climate = climate + ". Salt pan";
+                            climatename = climatename + ". Salt pan";
 
                         if (region->special(poix, poiy) == 120)
-                            climate = climate + ". Dunes";
+                            climatename = climatename + ". Dunes";
 
                         if (region->special(poix, poiy) == 130)
-                            climate = climate + ". Wetlands";
+                            climatename = climatename + ". Wetlands";
 
                         if (region->special(poix, poiy) == 131)
-                            climate = climate + ". Brackish wetlands";
+                            climatename = climatename + ". Brackish wetlands";
 
                         if (region->special(poix, poiy) == 132)
-                            climate = climate + ". Salt wetlands";
+                            climatename = climatename + ". Salt wetlands";
 
                         if (region->rivervalley(poix, poiy) == 1)
-                            climate = climate + ". River valley";
+                            climatename = climatename + ". River valley";
 
                         if (region->special(poix, poiy) == 140)
-                            climate = climate + ". Glacier";
+                            climatename = climatename + ". Glacier";
 
                         if (region->volcano(poix, poiy))
-                            climate = climate + ". Volcano";
+                            climatename = climatename + ". Volcano";
 
-                        infotext2 = infotext2 + "Climate: " + climate + ".\n";
+                        infotext2 = infotext2 + "Climate: " + climatename + ".\n";
                     }
                 }
                 else
@@ -2509,7 +2511,18 @@ int main()
 
                 if (filepathname != "")
                 {
-                    cout << "Loading world object." << endl;
+                    for (int n = 0; n < 2; n++)
+                    {
+                        ImGui::SFML::Update(window, deltaClock.restart());
+                        ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
+                        ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                        ImGui::Begin("Please wait!");
+                        ImGui::Text("Loading world...");
+                        ImGui::End();
+                        window.clear();
+                        ImGui::SFML::Render(window);
+                        window.display();
+                    }
 
                     loadworld(*world, filepathname);
 
@@ -2542,6 +2555,19 @@ int main()
 
                 if (filepathname != "")
                 {
+                    for (int n = 0; n < 2; n++)
+                    {
+                        ImGui::SFML::Update(window, deltaClock.restart());
+                        ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
+                        ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                        ImGui::Begin("Please wait!");
+                        ImGui::Text("Saving world...");
+                        ImGui::End();
+                        window.clear();
+                        ImGui::SFML::Render(window);
+                        window.display();
+                    }
+                    
                     saveworld(*world, filepathname);
 
                     savingworld = 0;
@@ -4138,7 +4164,6 @@ void drawglobalclimatemapimage(planet& world, sf::Image& globalclimateimage, sf:
                 sf::Color landcolour;
 
                 landcolour = getclimatecolours(world.climate(i, j));
-
                 globalclimateimage.setPixel(i, j, landcolour);
             }
         }
@@ -4791,7 +4816,8 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
 
                 if (goahead == 1 || world.sea(i, j) == 0)
                 {
-                    int slope1, slope2;
+                    int slope1 = 0;
+                    int slope2 = 0;
 
                     if (shadingdir == 2)
                     {
@@ -4938,223 +4964,223 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
 
 // This function gets colours for drawing climate maps.
 
-sf::Color getclimatecolours(string climate)
+sf::Color getclimatecolours(short climate)
 {
     int colour1 = 0;
     int colour2 = 0;
     int colour3 = 0;
 
-    if (climate == "Af")
+    if (climate == 1)
     {
         colour1 = 0;
         colour2 = 0;
         colour3 = 254;
     }
 
-    if (climate == "Am")
+    if (climate == 2)
     {
         colour1 = 1;
         colour2 = 119;
         colour3 = 255;
     }
 
-    if (climate == "Aw")
+    if (climate == 3)
     {
         colour1 = 70;
         colour2 = 169;
         colour3 = 250;
     }
 
-    if (climate == "As")
+    if (climate == 4)
     {
         colour1 = 70;
         colour2 = 169;
         colour3 = 250;
     }
 
-    if (climate == "BWh")
+    if (climate == 5)
     {
         colour1 = 249;
         colour2 = 15;
         colour3 = 0;
     }
 
-    if (climate == "BWk")
+    if (climate == 6)
     {
         colour1 = 251;
         colour2 = 150;
         colour3 = 149;
     }
 
-    if (climate == "BSh")
+    if (climate == 7)
     {
         colour1 = 245;
         colour2 = 163;
         colour3 = 1;
     }
 
-    if (climate == "BSk")
+    if (climate == 8)
     {
         colour1 = 254;
         colour2 = 219;
         colour3 = 99;
     }
 
-    if (climate == "Csa")
+    if (climate == 9)
     {
         colour1 = 255;
         colour2 = 255;
         colour3 = 0;
     }
 
-    if (climate == "Csb")
+    if (climate == 10)
     {
         colour1 = 198;
         colour2 = 199;
         colour3 = 1;
     }
 
-    if (climate == "Csc")
+    if (climate == 11)
     {
         colour1 = 184;
         colour2 = 184;
         colour3 = 114;
     }
 
-    if (climate == "Cwa")
+    if (climate == 12)
     {
         colour1 = 138;
         colour2 = 255;
         colour3 = 162;
     }
 
-    if (climate == "Cwb")
+    if (climate == 13)
     {
         colour1 = 86;
         colour2 = 199;
         colour3 = 112;
     }
 
-    if (climate == "Cwc")
+    if (climate == 14)
     {
         colour1 = 30;
         colour2 = 150;
         colour3 = 66;
     }
 
-    if (climate == "Cfa")
+    if (climate == 15)
     {
         colour1 = 192;
         colour2 = 254;
         colour3 = 109;
     }
 
-    if (climate == "Cfb")
+    if (climate == 16)
     {
         colour1 = 76;
         colour2 = 255;
         colour3 = 93;
     }
 
-    if (climate == "Cfc")
+    if (climate == 17)
     {
         colour1 = 19;
         colour2 = 203;
         colour3 = 74;
     }
 
-    if (climate == "Dsa")
+    if (climate == 18)
     {
         colour1 = 255;
         colour2 = 8;
         colour3 = 245;
     }
 
-    if (climate == "Dsb")
+    if (climate == 19)
     {
         colour1 = 204;
         colour2 = 3;
         colour3 = 192;
     }
 
-    if (climate == "Dsc")
+    if (climate == 20)
     {
         colour1 = 154;
         colour2 = 51;
         colour3 = 144;
     }
 
-    if (climate == "Dsd")
+    if (climate == 21)
     {
         colour1 = 153;
         colour2 = 100;
         colour3 = 146;
     }
 
-    if (climate == "Dwa")
+    if (climate == 22)
     {
         colour1 = 172;
         colour2 = 178;
         colour3 = 249;
     }
 
-    if (climate == "Dwb")
+    if (climate == 23)
     {
         colour1 = 91;
         colour2 = 121;
         colour3 = 213;
     }
 
-    if (climate == "Dwc")
+    if (climate == 24)
     {
         colour1 = 78;
         colour2 = 83;
         colour3 = 175;
     }
 
-    if (climate == "Dwd")
+    if (climate == 25)
     {
         colour1 = 54;
         colour2 = 3;
         colour3 = 130;
     }
 
-    if (climate == "Dfa")
+    if (climate == 26)
     {
         colour1 = 0;
         colour2 = 255;
         colour3 = 245;
     }
 
-    if (climate == "Dfb")
+    if (climate == 27)
     {
         colour1 = 32;
         colour2 = 200;
         colour3 = 250;
     }
 
-    if (climate == "Dfc")
+    if (climate == 28)
     {
         colour1 = 0;
         colour2 = 126;
         colour3 = 125;
     }
 
-    if (climate == "Dfd")
+    if (climate == 29)
     {
         colour1 = 0;
         colour2 = 69;
         colour3 = 92;
     }
 
-    if (climate == "ET")
+    if (climate == 30)
     {
         colour1 = 178;
         colour2 = 178;
         colour3 = 178;
     }
 
-    if (climate == "EF")
+    if (climate == 31)
     {
         colour1 = 104;
         colour2 = 104;

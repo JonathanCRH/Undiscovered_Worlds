@@ -24,17 +24,6 @@ planet::~planet()
 {
 }
 
-// accessor functions
-
-
-// Accessor functions for location-specific information.
-
-
-
-// slightly more complicated accessor functions for location-specific information.
-
-
-
 bool planet::outline(int x, int y) const
 {
     if (y<1||y>itsheight-1)
@@ -237,7 +226,7 @@ void planet::setwinterrainwrap(int x, int y, int amount)
     winterrainmap[x][y]=amount;
 }
 
-string planet::climatewrap(int x, int y) const
+short planet::climatewrap(int x, int y) const
 {
     x=wrapx(x);
     y=clipy(y);
@@ -245,7 +234,7 @@ string planet::climatewrap(int x, int y) const
     return climatemap[x][y];
 }
 
-void planet::setclimatewrap(int x, int y, string amount)
+void planet::setclimatewrap(int x, int y, short amount)
 {
     x=wrapx(x);
     y=clipy(y);
@@ -714,7 +703,7 @@ void planet::clear()
         {
             maxtempmap[i][j]=0;
             mintempmap[i][j]=0;
-            climatemap[i][j]="";
+            climatemap[i][j]=0;
             summerrainmap[i][j]=0;
             winterrainmap[i][j]=0;
             wintermountainrainmap[i][j]=0;
@@ -929,8 +918,8 @@ void planet::smoothoverland(int arr[][ARRAYHEIGHT], int amount, bool uponly)
 
 void planet::shift(int arr[][ARRAYHEIGHT], int offset)
 {
-    vector<vector<int>> dummy(ARRAYWIDTH,vector<int>(ARRAYWIDTH,ARRAYHEIGHT));
-    
+    vector<vector<int>> dummy(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
     //int dummy[ARRAYWIDTH][ARRAYHEIGHT];
     
     for (int i=0; i<=itswidth; i++)
@@ -955,7 +944,7 @@ void planet::shift(int arr[][ARRAYHEIGHT], int offset)
 
 void planet::shift(float arr[][ARRAYHEIGHT], int offset)
 {
-    vector<vector<float>> dummy(ARRAYWIDTH,vector<float>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<float>> dummy(ARRAYWIDTH, vector<float>(ARRAYHEIGHT, 0));
     
     //float dummy[ARRAYWIDTH][ARRAYHEIGHT];
     
@@ -981,7 +970,7 @@ void planet::shift(float arr[][ARRAYHEIGHT], int offset)
 
 void planet::shift(bool arr[][ARRAYHEIGHT], int offset)
 {
-    vector<vector<bool>> dummy(ARRAYWIDTH,vector<bool>(ARRAYWIDTH,ARRAYHEIGHT));
+    vector<vector<bool>> dummy(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
     
     //bool dummy[ARRAYWIDTH][ARRAYHEIGHT];
     
@@ -1003,5 +992,27 @@ void planet::shift(bool arr[][ARRAYHEIGHT], int offset)
     }
 }
 
+// The same thing, but for a uint8_t array.
 
+void planet::shift(uint8_t arr[][ARRAYHEIGHT], int offset)
+{
+    vector<vector<uint8_t>> dummy(ARRAYWIDTH, vector<uint8_t>(ARRAYHEIGHT, 0));
+
+    for (int i = 0; i <= itswidth; i++)
+    {
+        for (int j = 0; j <= itsheight; j++)
+            dummy[i][j] = arr[i][j];
+    }
+
+    for (int i = 0; i <= itswidth; i++)
+    {
+        int ii = i + offset;
+
+        if (ii<0 || ii>itswidth)
+            ii = wrap(ii, itswidth);
+
+        for (int j = 0; j <= itsheight; j++)
+            arr[i][j] = dummy[ii][j];
+    }
+}
 

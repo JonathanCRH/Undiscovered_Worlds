@@ -53,7 +53,7 @@ void region::clear()
             rmintempmap[i][j]=0;
             rsummerrainmap[i][j]=0;
             rwinterrainmap[i][j]=0;
-            rclimatemap[i][j]="";
+            rclimatemap[i][j]=0;
             rlakemap[i][j]=0;
             rrivermapdir[i][j]=0;
             rrivermapjan[i][j]=0;

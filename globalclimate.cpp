@@ -775,22 +775,22 @@ void createtemperaturemap(planet &world, vector<vector<int>> &fractal)
         float thisdiffperlat=diffperlat;
         
         if (j<equatorlat*0.05 || j>height-equatorlat*0.05)
-            thisdiffperlat=thisdiffperlat*0.6f; // 0.4
+            thisdiffperlat=thisdiffperlat*0.6f; //
         
         if ((j>equatorlat*0.05 && j<equatorlat*0.1) || (j<height-equatorlat*0.05 && j>height-equatorlat*0.1))
-            thisdiffperlat=thisdiffperlat*2.5f; // 1.2
+            thisdiffperlat=thisdiffperlat*2.5f; // 2.5
         
         if ((j>equatorlat*0.1 && j<equatorlat*0.3) || (j<height-equatorlat*0.1 && j>height-equatorlat*0.3))
-            thisdiffperlat=thisdiffperlat*1.8f; // 1.6
+            thisdiffperlat=thisdiffperlat*1.8f; // 1.8
         
         if ((j>equatorlat*0.3 && j<equatorlat*0.45) || (j<height-equatorlat*0.3 && j>height-equatorlat*0.45))
             thisdiffperlat=thisdiffperlat*0.6f; // 0.6
         
         if ((j>equatorlat*0.45 && j<equatorlat*0.6) || (j<height-equatorlat*0.45 && j>height-equatorlat*0.6))
-            thisdiffperlat=thisdiffperlat*1.2f;
+            thisdiffperlat=thisdiffperlat*1.2f; // 1.2
         
         if ((j>equatorlat*0.6 && j<equatorlat) || (j<height-equatorlat*0.6 && j>height-equatorlat))
-            thisdiffperlat=thisdiffperlat*0.7f; // 0.9
+            thisdiffperlat=thisdiffperlat*0.7f; //
         
         if (j<equatorlat)
             lattemp=lattemp+thisdiffperlat;
@@ -804,10 +804,7 @@ void createtemperaturemap(planet &world, vector<vector<int>> &fractal)
         
         else
             lat=j-equatorlat;
-        
-        //float lattemp=equatorialtemp-(lat*diffperlat);
-        
-        
+
         // Now get the seasonal variation for this latitude.
         
         float latvariation=(lat*variationperlat)*0.5f;
@@ -816,8 +813,7 @@ void createtemperaturemap(planet &world, vector<vector<int>> &fractal)
         
         for (int i=0; i<=width; i++)
         {
-            float temperature=lattemp;
-            
+            float temperature=lattemp;           
             
             // Now we adjust for sea temperatures.
             
@@ -2992,7 +2988,7 @@ void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
     }
 }
 
-// This adjusts the seasonal rainfall (to ensure Mediterranean climates)
+// This adjusts the seasonal rainfall (to ensure certain climates)
 
 void adjustseasonalrainfall(planet &world, vector<vector<int>> &inland)
 {
@@ -3000,6 +2996,8 @@ void adjustseasonalrainfall(planet &world, vector<vector<int>> &inland)
     int height=world.height();
     int sealevel=world.sealevel();
     int maxelev=world.maxelevation();
+
+    // First, do some tinkering to encourage Mediterranean climates.
     
     vector<vector<float>> mediterranean(ARRAYWIDTH,vector<float>(ARRAYHEIGHT,0));
     
@@ -3114,6 +3112,168 @@ void adjustseasonalrainfall(planet &world, vector<vector<int>> &inland)
                 world.setwinterrain(i,j,winterrain);
                 world.setsummerrain(i,j,summerrain);
             }
+        }
+    }
+
+    // Now some tinkering to encourage rainforest near the equator.
+
+    float equator = height / 2;
+
+    float winteradd = 0.3; // 1.0;
+    float summeradd = 1.6; // 0.4;
+
+    for (int i = 0; i <= width; i++)
+    {
+        float tropicnorth = world.horse(i, 2);
+        float tropicnorthheight = equator - tropicnorth;
+        float winterstep = winteradd / tropicnorthheight;
+        float summerstep = summeradd / tropicnorthheight;
+
+        float currentwinteradd = 0;
+        float currentsummeradd = 0;
+
+        for (int j = tropicnorth; j <= equator; j++)
+        {
+            currentwinteradd = currentwinteradd + winterstep;
+            currentsummeradd = currentsummeradd + summerstep;
+
+            float currentjan = float(world.janrain(i, j));
+            float currentjul = float(world.julrain(i, j));
+
+            currentjan = currentjan + currentjan * currentwinteradd;
+            currentjul = currentjul + currentjul * currentsummeradd;
+
+            int newjan = (int)currentjan;
+            int newjul = (int)currentjul;
+
+            world.setjanrain(i, j, newjan);
+            world.setjulrain(i, j, newjul);
+        }
+
+        float tropicsouth = world.horse(i, 3);
+        float tropicsouthheight = tropicsouth - equator;
+        winterstep = winteradd / tropicsouthheight;
+        summerstep = summeradd / tropicsouthheight;
+
+        currentwinteradd = 0;
+        currentsummeradd = 0;
+
+        for (int j = tropicsouth; j > equator; j--)
+        {
+            currentwinteradd = currentwinteradd + winterstep;
+            currentsummeradd = currentsummeradd + summerstep;
+
+            float currentjan = float(world.janrain(i, j));
+            float currentjul = float(world.julrain(i, j));
+
+            currentjan = currentjan + currentjan * currentsummeradd;
+            currentjul = currentjul + currentjul * currentwinteradd;
+
+            int newjan = (int)currentjan;
+            int newjul = (int)currentjul;
+
+            world.setjanrain(i, j, newjan);
+            world.setjulrain(i, j, newjul);
+        }
+    }
+
+    // And now some more tinkering, to encourage savannah nearer the edge of the tropics.
+
+    float janadd = -0.6;
+    float juladd = 0.6;
+
+    float bandwidth = 30; // The strip affected will extend by this much to the north and south of the boundary of the horse latitudes.
+
+    float janstep = janadd / bandwidth;
+    float julstep = juladd / bandwidth;
+
+    for (int i = 0; i <= width; i++)
+    {
+        float tropicnorth = (world.horse(i, 2)+equator)/2;
+        float tropicsouth = (world.horse(i, 3)+equator)/2;
+
+        float currentjanadd = 0;
+        float currentjuladd = 0;
+
+        for (int j = tropicnorth - bandwidth; j <= tropicnorth; j++)
+        {
+            currentjanadd = currentjanadd + janstep;
+            currentjuladd = currentjuladd + julstep;
+
+            float currentjan = float(world.janrain(i, j));
+            float currentjul = float(world.julrain(i, j));
+
+            currentjan = currentjan + currentjan * currentjanadd;
+            currentjul = currentjul + currentjul * currentjuladd;
+
+            int newjan = (int)currentjan;
+            int newjul = (int)currentjul;
+
+            world.setjanrain(i, j, newjan);
+            world.setjulrain(i, j, newjul);
+        }
+
+        currentjanadd = 0;
+        currentjuladd = 0;
+
+        for (int j = tropicnorth+bandwidth; j > tropicnorth; j--)
+        {
+            currentjanadd = currentjanadd + janstep;
+            currentjuladd = currentjuladd + julstep;
+
+            float currentjan = float(world.janrain(i, j));
+            float currentjul = float(world.julrain(i, j));
+
+            currentjan = currentjan + currentjan * currentjanadd;
+            currentjul = currentjul + currentjul * currentjuladd;
+
+            int newjan = (int)currentjan;
+            int newjul = (int)currentjul;
+
+            world.setjanrain(i, j, newjan);
+            world.setjulrain(i, j, newjul);
+        }
+
+        currentjanadd = 0;
+        currentjuladd = 0;
+
+        for (int j = tropicsouth - bandwidth; j <= tropicsouth; j++)
+        {
+            currentjanadd = currentjanadd + janstep;
+            currentjuladd = currentjuladd + julstep;
+
+            float currentjan = float(world.janrain(i, j));
+            float currentjul = float(world.julrain(i, j));
+
+            currentjan = currentjan + currentjan * currentjuladd; // Other way round for southern hemisphere!
+            currentjul = currentjul + currentjul * currentjanadd;
+
+            int newjan = (int)currentjan;
+            int newjul = (int)currentjul;
+
+            world.setjanrain(i, j, newjan);
+            world.setjulrain(i, j, newjul);
+        }
+
+        currentjanadd = 0;
+        currentjuladd = 0;
+
+        for (int j = tropicsouth + bandwidth; j > tropicsouth; j--)
+        {
+            currentjanadd = currentjanadd + janstep;
+            currentjuladd = currentjuladd + julstep;
+
+            float currentjan = float(world.janrain(i, j));
+            float currentjul = float(world.julrain(i, j));
+
+            currentjan = currentjan + currentjan * currentjuladd; // Other way round for southern hemisphere!
+            currentjul = currentjul + currentjul * currentjanadd;
+
+            int newjan = (int)currentjan;
+            int newjul = (int)currentjul;
+
+            world.setjanrain(i, j, newjan);
+            world.setjulrain(i, j, newjul);
         }
     }
 }
@@ -3392,7 +3552,7 @@ void adjusttemperatures(planet &world, vector<vector<int>> &inland)
     int height=world.height();
     int sealevel=world.sealevel();
     
-    float winterrainwarmth=0.08; //0.01; // Factor to increase temperature in winter because of rain.
+    float winterrainwarmth=0.08; // Factor to increase temperature in winter because of rain.
     int maxwinterrainwarmth=10; //6; // Most that can be added.
     float summerraincold=0.0025;
     float norainheat=1.3; // Amount that the summer temperature increases where there's no rain at all.
@@ -3469,7 +3629,8 @@ void adjustcontinentaltemperatures(planet &world, vector<vector<int>> &inland)
     int height=world.height();
     
     float landfactor=0.1; // The higher this is, the more seasonal variation in temperature there will be away from the sea.
-    int maxlandadjust=5; // The maximum extra seasonal variation in temperature there can be.
+    float summernudge = 0.2; // 0.6 // The lower this is, the less additional temperature there will be in summer.
+    int maxlandadjust = 10; // 5; // The maximum extra seasonal variation in temperature there can be.
     
     for (int i=0; i<=width; i++)
     {
@@ -3477,13 +3638,15 @@ void adjustcontinentaltemperatures(planet &world, vector<vector<int>> &inland)
         {
             if (world.sea(i,j)==0)
             {
-                float adjust = inland[i][j];
+                world.settest(i, j, inland[i][j]);
                 
+                float adjust = (float)inland[i][j];
+
+                float avetemp = (float)(world.maxtemp(i, j) + world.mintemp(i, j)) / 2;
+
                 adjust=adjust*landfactor;
                 
-                float avetemp=(world.maxtemp(i,j)+world.mintemp(i,j))/2;
-                
-                adjust=adjust*(avetemp/20.0);
+                adjust=adjust*(avetemp/20.0); // 20
                 
                 if (world.mintemp(i,j)>-3) // If this isn't continental
                 {
@@ -3492,9 +3655,65 @@ void adjustcontinentaltemperatures(planet &world, vector<vector<int>> &inland)
                     
                     if (adjust>maxlandadjust)
                         adjust=maxlandadjust;
+
+                    int newmintemp = world.mintemp(i, j) - adjust;
+                    int newmaxtemp = world.maxtemp(i, j) + (adjust * summernudge);
+
+                    // If we're a long way from the sea, and it's not tropical, force a continental climate.
+
+                    if (newmintemp < 18 && (j<world.horse(i,2) || j>world.horse(i,3)))
+                    {
+                        if (inland[i][j] > 30)
+                        {
+                            if (newmintemp > 4)
+                                newmintemp = 4;
+                        }
+                        
+                        if (inland[i][j] > 40)
+                        {
+                            if (newmintemp > 3)
+                                newmintemp = 3;
+                        }
+                        
+                        if (inland[i][j] > 50)
+                        {
+                            if (newmintemp > 2)
+                                newmintemp = 2;
+                        }
+                        
+                        if (inland[i][j] > 60)
+                        {
+                            if (newmintemp > 1)
+                                newmintemp = 1;
+                        }
+                        
+                        if (inland[i][j] > 70)
+                        {
+                            if (newmintemp > 0)
+                                newmintemp = 0;
+                        }
+
+                        if (inland[i][j] > 80)
+                        {
+                            if (newmintemp > -1)
+                                newmintemp = -1;
+                        }
+
+                        if (inland[i][j] > 90)
+                        {
+                            if (newmintemp > -2)
+                                newmintemp = -2;
+                        }
+
+                        if (inland[i][j] > 100)
+                        {
+                            if (newmintemp > -3)
+                                newmintemp = -3;
+                        }
+                    }
                     
-                    world.setmintemp(i,j,world.mintemp(i,j)-adjust);
-                    world.setmaxtemp(i,j,world.maxtemp(i,j)+adjust);
+                    world.setmintemp(i,j,newmintemp);
+                    world.setmaxtemp(i,j,newmaxtemp);
                 }
             }
         }
@@ -3587,9 +3806,9 @@ void removesubpolarstreaks(planet &world)
                 {
                     if (world.sea(i,j)==0)
                     {
-                        string climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j),1);
+                        short climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j));
                         
-                        if (world.mountainheight(i,j)<200 && (climate=="D" || climate=="BW" || climate=="BS"))
+                        if (world.mountainheight(i,j)<200 && ((climate>4 && climate<9) || (climate>17 && climate<30))) //  climate=="D" || climate=="BW" || climate=="BS"))
                         {
                             int jminus=j-1;
                             int jplus=j+1;
@@ -3623,9 +3842,9 @@ void removesubpolarstreaks(planet &world)
         {
             if (world.sea(i,j)==0)
             {
-                string climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j),1);
+                short climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j));
                 
-                if (world.mountainheight(i,j)<200 && (climate=="D" || climate=="BW" || climate=="BS"))
+                if (world.mountainheight(i,j)<200 && ((climate > 4 && climate < 9) || (climate > 17 && climate < 30))) // (climate=="D" || climate=="BW" || climate=="BS"))
                 {
                     int iminus=i-1;
                     int iplus=i+1;
@@ -3666,9 +3885,9 @@ void extendsubpolar(planet &world)
         {
             if (world.sea(i,j)==0 && subpolar[i][j]==0)
             {
-                string climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j),0);
+                short climate=calculateclimate(world.map(i,j),world.sealevel(),world.winterrain(i,j),world.summerrain(i,j),world.mintemp(i,j),world.maxtemp(i,j));
                 
-                if (climate=="Dfc" || climate=="Dfd") // If it's subpolar
+                if (climate==28 || climate==29) // If it's subpolar
                 {
                     int x=i;
                     int y=j;
@@ -8900,7 +9119,7 @@ void createclimatemap(planet &world)
     int width=world.width();
     int height=world.height();
     
-    string climate;
+    short climate;
     
     for (int i=0; i<=width; i++)
     {
@@ -8915,10 +9134,10 @@ void createclimatemap(planet &world)
 
 // This returns the climate type of the given point.
 
-string getclimate(planet &world, int x, int y)
+short getclimate(planet &world, int x, int y)
 {
     if (world.sea(x,y)==1)
-        return ("");
+        return (0);
     
     int elev=world.map(x,y);
     int sealevel=world.sealevel();
@@ -8929,17 +9148,17 @@ string getclimate(planet &world, int x, int y)
     float mintemp=world.mintemp(x,y);
     float maxtemp=world.maxtemp(x,y);
     
-    string climate=calculateclimate(elev,sealevel,wrain,srain,mintemp,maxtemp,0);
+    short climate=calculateclimate(elev,sealevel,wrain,srain,mintemp,maxtemp);
     
     return climate;
 }
 
 // The same thing, but for the regional map.
 
-string getclimate(region &region, int x, int y)
+short getclimate(region &region, int x, int y)
 {
     if (region.sea(x,y)==1)
-        return ("");
+        return (0);
     
     int elev=region.map(x,y);
     int sealevel=region.sealevel();
@@ -8949,14 +9168,14 @@ string getclimate(region &region, int x, int y)
     float mintemp=region.mintemp(x,y);
     float maxtemp=region.maxtemp(x,y);
     
-    string climate=calculateclimate(elev,sealevel,wrain,srain,mintemp,maxtemp,0);
+    short climate=calculateclimate(elev,sealevel,wrain,srain,mintemp,maxtemp);
     
     return climate;
 }
 
 // This does the actual climate calculations for the above two functions.
 
-string calculateclimate(int elev, int sealevel, float wrain, float srain, float mintemp, float maxtemp, bool onlyfirst)
+short calculateclimate(int elev, int sealevel, float wrain, float srain, float mintemp, float maxtemp)
 {
     float totalannualrain=(wrain+srain)*6;
     float meanannualrain=(wrain+srain)/2;
@@ -9009,11 +9228,7 @@ string calculateclimate(int elev, int sealevel, float wrain, float srain, float 
         group="C";
     
     if (group=="" && mintemp<=-3)
-        group="D";
-    
-    if (onlyfirst==1)
-        return group;
-    
+        group="D";   
     
     // Now, establish the precipitation type (second letter).
     
@@ -9072,107 +9287,300 @@ string calculateclimate(int elev, int sealevel, float wrain, float srain, float 
     }
     
     string climate=group+preptype+heattype;
+
+    if (climate == "Af") // Af
+        return 1;
+
+    if (climate == "Am") // Am
+        return 2;
+
+    if (climate == "Aw") // Aw
+        return 3;
+
+    if (climate == "As") // As
+        return 4;
+
+    if (climate == "BWh") // Bwh
+        return 5;
+
+    if (climate == "BWk") // BWk
+        return 6;
+
+    if (climate == "BSh") // BSh
+        return 7;
+
+    if (climate == "BSk") // BSk
+        return 8;
+
+    if (climate == "Csa") // Csa
+        return 9;
+
+    if (climate == "Csb") // Csb
+        return 10;
+
+    if (climate == "Csc") // Csc
+        return 11;
+
+    if (climate == "Cwa") // Cwa
+        return 12;
+
+    if (climate == "Cwb") // Cwb
+        return 13;
+
+    if (climate == "Cwc") // Cwc
+        return 14;
+
+    if (climate == "Cfa") // Cfa
+        return 15;
+
+    if (climate == "Cfb") // Cfb
+        return 16;
+
+    if (climate == "Cfc") // Cfc
+        return 17;
+
+    if (climate == "Dsa") // Dsa
+        return 18;
+
+    if (climate == "Dsb") // Dsb
+        return 19;
+
+    if (climate == "Dsc") // Dsc
+        return 20;
+
+    if (climate == "Dsd") // Dsd
+        return 21;
+
+    if (climate == "Dwa") // Dwa
+        return 22;
+
+    if (climate == "Dwb") // Dwb
+        return 23;
+
+    if (climate == "Dwc") // Dwc
+        return 24;
+
+    if (climate == "Dwd") // Dwd
+        return 25;
+
+    if (climate == "Dfa") // Dfa
+        return 26;
+
+    if (climate == "Dfb") // Dfb
+        return 27;
+
+    if (climate == "Dfc") // Dfc
+        return 28;
+
+    if (climate == "Dfd") // Dfd
+        return 29;
+
+    if (climate == "ET") // ET
+        return 30;
+
+    if (climate == "EF") // EF
+        return 31;
     
-    return climate;
+    return 0;
 }
 
 // This function gives the names of the climate types.
 
-string getclimatename(string climate)
+string getclimatename(short climate)
 {
-    if (climate=="Af")
+    if (climate == 1) // Af
         return "Tropical rainforest";
-    
-    if (climate=="Am")
+
+    if (climate == 2) // Am
         return "Monsoon";
-    
-    if (climate=="Aw")
+
+    if (climate == 3) // Aw
         return "Savannah";
-    
-    if (climate=="As")
+
+    if (climate == 4) // As
         return "Savannah";
-    
-    if (climate=="BWh")
+
+    if (climate == 5) // Bwh
         return "Hot desert";
-    
-    if (climate=="BWk")
+
+    if (climate == 6) // BWk
         return "Cold desert";
-    
-    if (climate=="BSh")
+
+    if (climate == 7) // BSh
         return "Hot semi-arid";
-    
-    if (climate=="BSk")
+
+    if (climate == 8) // BSk
         return "Cold steppe";
-    
-    if (climate=="Csa")
+
+    if (climate == 9) // Csa
         return "Hot, dry-summer Mediterranean";
-    
-    if (climate=="Csb")
+
+    if (climate == 10) // Csb
         return "Warm, dry-summer Mediterranean";
-    
-    if (climate=="Csc")
+
+    if (climate == 11) // Csc
         return "Cold, dry-summer Mediterranean";
-    
-    if (climate=="Cwa")
+
+    if (climate == 12) // Cwa
         return "Dry-winter humid subtropical";
-    
-    if (climate=="Cwb")
+
+    if (climate == 13) // Cwb
         return "Dry-winter subtropical highland";
-    
-    if (climate=="Cwc")
+
+    if (climate == 14) // Cwc
         return "Dry-winter subpolar oceanic";
-    
-    if (climate=="Cfa")
+
+    if (climate == 15) // Cfa
         return "Humid subtropical";
-    
-    if (climate=="Cfb")
+
+    if (climate == 16) // Cfb
         return "Temperate oceanic";
-    
-    if (climate=="Cfc")
+
+    if (climate == 17) // Cfc
         return "Subpolar oceanic";
-    
-    if (climate=="Dsa")
+
+    if (climate == 18) // Dsa
         return "Mediterranean-influenced hot-summer humid continental";
-    
-    if (climate=="Dsb")
+
+    if (climate == 19) // Dsb
         return "Mediterranean-influenced warm-summer humid continental";
-    
-    if (climate=="Dsc")
+
+    if (climate == 20) // Dsc
         return "Mediterranean-influenced subarctic";
-    
-    if (climate=="Dsd")
+
+    if (climate == 21) // Dsd
         return "Mediterranean-influenced extremely cold subarctic";
-    
-    if (climate=="Dwa")
+
+    if (climate == 22) // Dwa
         return "Monsoon-influenced hot-summer humid continental";
-    
-    if (climate=="Dwb")
+
+    if (climate == 23) // Dwb
         return "Monsoon-influenced warm-summer humid continental";
-    
-    if (climate=="Dwc")
+
+    if (climate == 24) // Dwc
         return "Monsoon-influenced subarctic";
-    
-    if (climate=="Dwd")
+
+    if (climate == 25) // Dwd
         return "Monsoon-influenced extremely cold subarctic";
-    
-    if (climate=="Dfa")
+
+    if (climate == 26) // Dfa
         return "Hot-summer humid continental";
-    
-    if (climate=="Dfb")
+
+    if (climate == 27) // Dfb
         return "Warm-summer humid continental";
-    
-    if (climate=="Dfc")
+
+    if (climate == 28) // Dfc
         return "Subarctic";
-    
-    if (climate=="Dfd")
+
+    if (climate == 29) // Dfd
         return "Extremely cold subarctic";
-    
-    if (climate=="ET")
+
+    if (climate == 30) // ET
         return "Tundra";
-    
-    if (climate=="EF")
+
+    if (climate == 31) // EF
         return "Frost";
-    
+
+    return "";
+}
+
+// This function gives the codes of the climate types.
+
+string getclimatecode(short climate)
+{
+    if (climate == 1) // Af
+        return "Af";
+
+    if (climate == 2) // Am
+        return "Am";
+
+    if (climate == 3) // Aw
+        return "Aw";
+
+    if (climate == 4) // As
+        return "As";
+
+    if (climate == 5) // Bwh
+        return "BWh";
+
+    if (climate == 6) // BWk
+        return "BWk";
+
+    if (climate == 7) // BSh
+        return "BSh";
+
+    if (climate == 8) // BSk
+        return "BSk";
+
+    if (climate == 9) // Csa
+        return "Csa";
+
+    if (climate == 10) // Csb
+        return "Csb";
+
+    if (climate == 11) // Csc
+        return "Csc";
+
+    if (climate == 12) // Cwa
+        return "Cwa";
+
+    if (climate == 13) // Cwb
+        return "Cwb";
+
+    if (climate == 14) // Cwc
+        return "Cwc";
+
+    if (climate == 15) // Cfa
+        return "Cfa";
+
+    if (climate == 16) // Cfb
+        return "Cfb";
+
+    if (climate == 17) // Cfc
+        return "Cfc";
+
+    if (climate == 18) // Dsa
+        return "Dsa";
+
+    if (climate == 19) // Dsb
+        return "Dsb";
+
+    if (climate == 20) // Dsc
+        return "Dsc";
+
+    if (climate == 21) // Dsd
+        return "Dsd";
+
+    if (climate == 22) // Dwa
+        return "Dwa";
+
+    if (climate == 23) // Dwb
+        return "Dwb";
+
+    if (climate == 24) // Dwc
+        return "Dwc";
+
+    if (climate == 25) // Dwd
+        return "Dwd";
+
+    if (climate == 26) // Dfa
+        return "Dfa";
+
+    if (climate == 27) // Dfb
+        return "Dfb";
+
+    if (climate == 28) // Dfc
+        return "Dfc";
+
+    if (climate == 29) // Dfd
+        return "Dfd";
+
+    if (climate == 30) // ET
+        return "ET";
+
+    if (climate == 31) // EF
+        return "EF";
+
     return "";
 }
 
@@ -9250,7 +9658,7 @@ void createergs(planet &world, boolshapetemplate smalllake[], boolshapetemplate 
     {
         for (int j=0; j<=height; j++)
         {
-            if (world.climate(i,j)=="BWh" && ergprobability[i][j]!=0) // If this is a hot desert
+            if (world.climate(i,j)==5 && ergprobability[i][j]!=0) // If this is a hot desert
             {
                 int thisergchance=ergchance;
                 
@@ -9323,7 +9731,7 @@ void createsaltpans(planet &world, boolshapetemplate smalllake[], boolshapetempl
     {
         for (int j=0; j<=height; j++)
         {
-            if (world.climate(i,j)=="BWh") // If this is a hot desert
+            if (world.climate(i,j)==5) // If this is a hot desert
             {
                 if (random(1,saltchance)==1)
                 {
@@ -9475,7 +9883,7 @@ void drawspeciallake(planet &world, int shapenumber, int centrex, int centrey, i
                                 {
                                     if (l>=0 && l<=height)
                                     {
-                                        if (world.climate(kk,l)!="BWh" || world.riverjan(kk,l)>0 || world.riverjul(kk,l)>0)
+                                        if (world.climate(kk,l)!=5 || world.riverjan(kk,l)>0 || world.riverjul(kk,l)>0)
                                         {
                                             clim=0;
                                             
@@ -11003,7 +11411,7 @@ void createwetlands(planet &world, boolshapetemplate smalllake[])
     {
         for (int j=0; j<=height; j++)
         {
-            if (world.sea(i,j)==0 && world.special(i,j)==0 && world.lakesurface(i,j)==0 && world.climate(i,j)!="EF" && world.climate(i,j)!="BWh")
+            if (world.sea(i,j)==0 && world.special(i,j)==0 && world.lakesurface(i,j)==0 && world.climate(i,j)!=31 && world.climate(i,j)!=5)
             {
                 if (world.deltadir(i,j)!=0)
                 {
@@ -11055,7 +11463,7 @@ void createwetlands(planet &world, boolshapetemplate smalllake[])
                             //prob=prob+(7-(world.averain(i,j)/60));
                             prob=prob+(40-(world.averain(i,j)/10));
                             
-                            if (world.climate(i,j)=="ET" && world.maxtemp(i,j)>=5) // Much likelier in tundra with warmish summers
+                            if (world.climate(i,j)==30 && world.maxtemp(i,j)>=5) // Much likelier in tundra with warmish summers
                                 prob=prob/4;
                             
                             if (prob<1)
@@ -11091,7 +11499,7 @@ void createwetlands(planet &world, boolshapetemplate smalllake[])
     {
         for (int j=0; j<=height; j++)
         {
-            if (world.sea(i,j)==0 && world.special(i,j)==0 && world.climate(i,j)!="EF")
+            if (world.sea(i,j)==0 && world.special(i,j)==0 && world.climate(i,j)!=31)
             {
                 int westx=i-1;
                 if (westx<0)

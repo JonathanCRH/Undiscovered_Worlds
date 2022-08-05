@@ -375,8 +375,8 @@ public:
     short summermountainraindir(int x, int y) const;  // direction of summer precipitation on mountains
     void setsummermountainraindir(int x, int y, short amount);
     
-    string climate(int x, int y) const; // climate type
-    void setclimate(int x, int y, string amount);
+    short climate(int x, int y) const; // climate type
+    void setclimate(int x, int y, short amount);
     
     int seaice(int x, int y) const;  // sea ice
     void setseaice(int x, int y, int amount);
@@ -496,8 +496,8 @@ public:
     
     int averainwrap(int x, int y) const;
     
-    string climatewrap(int x, int y) const;
-    void setclimatewrap(int x, int y, string amount);
+    short climatewrap(int x, int y) const;
+    void setclimatewrap(int x, int y, short amount);
     
     int seaicewrap(int x, int y) const;
     void setseaicewrap(int x, int y, int amount);
@@ -686,7 +686,7 @@ private:
     
     int maxtempmap[ARRAYWIDTH][ARRAYHEIGHT];
     int mintempmap[ARRAYWIDTH][ARRAYHEIGHT];
-    string climatemap[ARRAYWIDTH][ARRAYHEIGHT];
+    short climatemap[ARRAYWIDTH][ARRAYHEIGHT];
     int summerrainmap[ARRAYWIDTH][ARRAYHEIGHT];
     int winterrainmap[ARRAYWIDTH][ARRAYHEIGHT];
     int wintermountainrainmap[ARRAYWIDTH][ARRAYHEIGHT];
@@ -736,6 +736,7 @@ private:
     void shift(int arr[][ARRAYHEIGHT], int amount);
     void shift(float arr[][ARRAYHEIGHT], int amount);
     void shift(bool arr[][ARRAYHEIGHT], int amount);
+    void shift(uint8_t arr[][ARRAYHEIGHT], int amount);
 };
 
 inline long planet::seed() const {return itsseed;}
@@ -1124,7 +1125,7 @@ inline void planet::setsummermountainraindir(int x, int y, short amount)
     summermountainraindirmap[x][y]=amount;
 }
 
-inline string planet::climate(int x, int y) const
+inline short planet::climate(int x, int y) const
 {
     if (y<0 || y>itsheight || x<0 || x>itswidth)
         return 0;
@@ -1132,7 +1133,7 @@ inline string planet::climate(int x, int y) const
     return climatemap[x][y];
 }
 
-inline void planet::setclimate(int x, int y, string amount)
+inline void planet::setclimate(int x, int y, short amount)
 {
     if (y<0 || y>itsheight || x<0 || x>itswidth)
         return;

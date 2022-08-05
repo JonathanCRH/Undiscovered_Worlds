@@ -2559,11 +2559,7 @@ void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
                             if (waterdumped>monsoonmap[x][y])
                                 monsoonmap[x][y]=waterdumped;
                             
-                            //raindir[x][y]=dir;
                             monsoonstrength[x][y]=waterlog;
-                            
-                            //world.settest(x,y,dir);
-                            
                         }
                         else
                             monsoonmap[x][y]=0;
@@ -3638,8 +3634,6 @@ void adjustcontinentaltemperatures(planet &world, vector<vector<int>> &inland)
         {
             if (world.sea(i,j)==0)
             {
-                world.settest(i, j, inland[i][j]);
-                
                 float adjust = (float)inland[i][j];
 
                 float avetemp = (float)(world.maxtemp(i, j) + world.mintemp(i, j)) / 2;
@@ -6983,8 +6977,6 @@ void sortlakerivers(planet &world, int leftx, int lefty, int rightx, int righty,
             keepgoing=0;
         
     } while (keepgoing==1);
-    
-    //world.settest(outflowx,outflowy,500);
 }
 
 // This marks the route of a river on an array, from the given point.
@@ -8646,9 +8638,9 @@ void createriftlakemap(planet &world, vector<vector<int>> &nolake)
     int height=world.height();
     int sealevel=world.sealevel();
     
-    int riftlakechance=random(500,4000); // `5 `20 `100 // The higher this is, the fewer rift lakes there will be.
+    int riftlakechance=random(500,4000); // The higher this is, the fewer rift lakes there will be.
     int minlake=1000; // Flows of this size or higher might have lakes on them.
-    int maxlake=6000; // Flows larger than this can't have lakes.
+    int maxlake=3000; // Flows larger than this can't have lakes.
     int minlakelength=4;
     int maxlakelength=10;
     

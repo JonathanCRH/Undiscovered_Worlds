@@ -974,7 +974,7 @@ int main()
 
                     int sealevel = world->sealevel();
 
-                    infotext = "Location is " + to_string(poix) + ", " + to_string(poiy) + ". Latitude " + to_string(world->latitude(poix, poiy)) + "°. ";
+                    infotext = "Location is " + to_string(poix) + ", " + to_string(poiy) + ". Latitude " + to_string(world->latitude(poix, poiy)) + " degrees. ";
 
                     int wind = world->wind(poix, poiy);
                     string winddir;
@@ -986,7 +986,7 @@ int main()
                         winddir = " easterly. ";
 
                     if (wind == 0 || wind > 50)
-                        winddir = ". ";
+                        winddir = " none. ";
 
                     if (wind < 0)
                         wind = -wind;
@@ -994,7 +994,7 @@ int main()
                     if (wind > 50)
                         wind = 0;
 
-                    infotext = infotext + "Wind: " + to_string(wind) + winddir;
+                    infotext = infotext + "Prevailing wind: " + winddir;
 
                     int pointelevation = world->map(poix, poiy);
 
@@ -1035,7 +1035,7 @@ int main()
                         if (world->volcano(poix, poiy) > 0)
                             climate = climate + ". Volcano";
 
-                        infotext = infotext + "Climate: " + to_string(climatetype) + " " + climate + ". " + glac + "\n";
+                        infotext = infotext + "Climate: " + climate + ". " + glac + "\n";
                     }
                     else
                     {
@@ -1112,8 +1112,6 @@ int main()
                         infotext = infotext + "Depth: " + to_string(depth) + " metres. " + salt;
 
                     }
-
-                    infotext = infotext + "\nInland: " + to_string(world->test(poix, poiy));
                 }
                 else
                 {

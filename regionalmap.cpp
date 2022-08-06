@@ -2090,7 +2090,7 @@ void makeregionalclimates(planet& world, region& region, vector<vector<bool>>& s
     {
         for (int j = ystart; j <= yend; j++)
         {
-            string climate = getclimate(region, i, j);
+            short climate = getclimate(region, i, j);
             region.setclimate(i, j, climate);
         }
     }
@@ -3488,9 +3488,9 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
         {
             if (region.riverdir(junctionpointx,junctionpointy)!=0)
             {
-                string climate=world.climate(sx,sy);
+                short climate=world.climate(sx,sy);
                 {
-                    if (climate!="BWh" && climate!="BSh") // Don't put lakes onto hot/mild deserts/semi-arid climates.
+                    if (climate!=5 && climate!=7) // Don't put lakes onto hot/mild deserts/semi-arid climates.
                     {
                         if (nearlake(world,sx,sy,1,1)==0) // Don't do this near big lakes
                         {
@@ -12586,7 +12586,7 @@ int getsurroundingice(planet &world, int x, int y)
 
 void makesmallsaltpans(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &safesaltlakes, boolshapetemplate smalllake[])
 {
-    if (world.climate(sx,sy)!="BWh")
+    if (world.climate(sx,sy)!=5)
         return;
     
     if (world.riverjan(sx,sy)!=0 || world.riverjul(sx,sy)!=0)
@@ -12688,7 +12688,7 @@ void makesmallsaltpans(planet &world, region &region, int dx, int dy, int sx, in
                 
                 bool goahead=1;
                 
-                if (region.climate(xx,yy)!="BWh")
+                if (region.climate(xx,yy)!=5)
                     goahead=0;
                 
                 if (xx-dx<0 || xx-dx>16 || yy-dy<0 || yy-dy>16)

@@ -99,8 +99,8 @@ public:
     
     int averain(int x, int y) const; // average precipitation
     
-    string climate(int x, int y) const; // climate type
-    void setclimate(int x, int y, string amount);
+    short climate(int x, int y) const; // climate type
+    void setclimate(int x, int y, short amount);
     
     int seaice(int x, int y) const;  // sea ice
     void setseaice(int x, int y, int amount);
@@ -222,7 +222,7 @@ private:
     int rextramintempmap[RARRAYWIDTH][RARRAYHEIGHT];
     int rsummerrainmap[RARRAYWIDTH][RARRAYHEIGHT];
     int rwinterrainmap[RARRAYWIDTH][RARRAYHEIGHT];
-    string rclimatemap[RARRAYWIDTH][RARRAYHEIGHT];
+    short rclimatemap[RARRAYWIDTH][RARRAYHEIGHT];
     int rlakemap[RARRAYWIDTH][RARRAYHEIGHT];
     int rrivermapdir[RARRAYWIDTH][RARRAYHEIGHT];
     int rrivermapjan[RARRAYWIDTH][RARRAYHEIGHT];
@@ -456,7 +456,7 @@ inline int region::averain(int x, int y) const
     return (rwinterrainmap[x][y]+rsummerrainmap[x][y])/2;
 }
 
-inline string region::climate(int x, int y) const
+inline short region::climate(int x, int y) const
 {
     if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
         return 0;
@@ -464,7 +464,7 @@ inline string region::climate(int x, int y) const
     return rclimatemap[x][y];
 }
 
-inline void region::setclimate(int x, int y, string amount)
+inline void region::setclimate(int x, int y, short amount)
 {
     if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
         return;

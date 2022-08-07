@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="imgGUI">
+      <UniqueIdentifier>{1cfc8ab0-4354-4743-ab8e-9ed7e1b53e0f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\assetdata.cpp">
@@ -41,6 +44,24 @@
     </ClCompile>
     <ClCompile Include="..\misc.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui.cpp">
+      <Filter>imgGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui_draw.cpp">
+      <Filter>imgGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui_tables.cpp">
+      <Filter>imgGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui_widgets.cpp">
+      <Filter>imgGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ImGuiFileDialog\ImGuiFileDialog.cpp">
+      <Filter>imgGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui-sfml\imgui-SFML.cpp">
+      <Filter>imgGUI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

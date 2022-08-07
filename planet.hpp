@@ -562,7 +562,11 @@ public:
     void shiftterrain(int offset); // Shifts the physical terrain by a given amount.
     void smoothrainmaps(int amount); // Smoothes the rain maps by a given amount.
     void setmaxriverflow(); // Calculates the largest river flow on the map.
-    
+
+    void saveworld(string filename); // Saves the world.
+    void loadworld(string filename); // Loads the world.
+
+
 private:
     
     // Private variables.
@@ -737,6 +741,28 @@ private:
     void shift(float arr[][ARRAYHEIGHT], int amount);
     void shift(bool arr[][ARRAYHEIGHT], int amount);
     void shift(uint8_t arr[][ARRAYHEIGHT], int amount);
+
+    void writevariable(ofstream& outfile, int val);
+    void writevariable(ofstream& outfile, bool val);
+    void writevariable(ofstream& outfile, short val);
+    void writevariable(ofstream& outfile, float val);
+    void writevariable(ofstream& outfile, long val);
+
+    void writedata(ofstream& outfile, int (arr)[ARRAYWIDTH][ARRAYHEIGHT]);
+    void writedata(ofstream& outfile, bool(arr)[ARRAYWIDTH][ARRAYHEIGHT]);
+    void writedata(ofstream& outfile, short(arr)[ARRAYWIDTH][ARRAYHEIGHT]);
+    void writedata(ofstream& outfile, float(arr)[ARRAYWIDTH][ARRAYHEIGHT]);
+
+    void readvariable(ifstream& infile, int& val);
+    void readvariable(ifstream& infile, bool& val);
+    void readvariable(ifstream& infile, short& val);
+    void readvariable(ifstream& infile, float& val);
+    void readvariable(ifstream& infile, long& val);
+
+    void readdata(ifstream& infile, int(arr)[ARRAYWIDTH][ARRAYHEIGHT]);
+    void readdata(ifstream& infile, bool(arr)[ARRAYWIDTH][ARRAYHEIGHT]);
+    void readdata(ifstream& infile, short(arr)[ARRAYWIDTH][ARRAYHEIGHT]);
+    void readdata(ifstream& infile, float(arr)[ARRAYWIDTH][ARRAYHEIGHT]);
 };
 
 inline long planet::seed() const {return itsseed;}

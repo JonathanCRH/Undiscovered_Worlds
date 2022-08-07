@@ -799,6 +799,295 @@ void planet::setmaxriverflow()
     itsmaxriverflow=largest;
 }
 
+void planet::saveworld(string filename)
+{
+    ofstream outfile;
+    outfile.open(filename, ios::out);
+
+    writevariable(outfile,itswidth);
+    writevariable(outfile,itsheight);
+    writevariable(outfile,itsseed);
+    writevariable(outfile,itsrotation);
+    writevariable(outfile,itsriverfactor);
+    writevariable(outfile,itsriverlandreduce);
+    writevariable(outfile,itsestuarylimit);
+    writevariable(outfile,itsglacialtemp);
+    writevariable(outfile,itsglaciertemp);
+    writevariable(outfile,itsmountainreduce);
+    writevariable(outfile,itsclimateno);
+    writevariable(outfile,itsmaxheight);
+    writevariable(outfile,itssealevel);
+
+    writevariable(outfile,itslandshading);
+    writevariable(outfile,itslakeshading);
+    writevariable(outfile,itsseashading);
+    writevariable(outfile,itsshadingdir);
+    writevariable(outfile,itssnowchange);
+    writevariable(outfile,itsseaiceappearance);
+    writevariable(outfile,itslandmarbling);
+    writevariable(outfile,itslakemarbling);
+    writevariable(outfile,itsseamarbling);
+    writevariable(outfile,itsminriverflowglobal);
+    writevariable(outfile,itsminriverflowregional);
+    writevariable(outfile,itsseaice1);
+    writevariable(outfile,itsseaice2);
+    writevariable(outfile,itsseaice3);
+    writevariable(outfile,itsocean1);
+    writevariable(outfile,itsocean2);
+    writevariable(outfile,itsocean3);
+    writevariable(outfile,itsdeepocean1);
+    writevariable(outfile,itsdeepocean2);
+    writevariable(outfile,itsdeepocean3);
+    writevariable(outfile,itsbase1);
+    writevariable(outfile,itsbase2);
+    writevariable(outfile,itsbase3);
+    writevariable(outfile,itsbasetemp1);
+    writevariable(outfile,itsbasetemp2);
+    writevariable(outfile,itsbasetemp3);
+    writevariable(outfile,itshighbase1);
+    writevariable(outfile,itshighbase2);
+    writevariable(outfile,itshighbase3);
+    writevariable(outfile,itsdesert1);
+    writevariable(outfile,itsdesert2);
+    writevariable(outfile,itsdesert3);
+    writevariable(outfile,itshighdesert1);
+    writevariable(outfile,itshighdesert2);
+    writevariable(outfile,itshighdesert3);
+    writevariable(outfile,itscolddesert1);
+    writevariable(outfile,itscolddesert2);
+    writevariable(outfile,itscolddesert3);
+    writevariable(outfile,itsgrass1);
+    writevariable(outfile,itsgrass2);
+    writevariable(outfile,itsgrass3);
+    writevariable(outfile,itscold1);
+    writevariable(outfile,itscold2);
+    writevariable(outfile,itscold3);
+    writevariable(outfile,itstundra1);
+    writevariable(outfile,itstundra2);
+    writevariable(outfile,itstundra3);
+    writevariable(outfile,itseqtundra1);
+    writevariable(outfile,itseqtundra2);
+    writevariable(outfile,itseqtundra3);
+    writevariable(outfile,itssaltpan1);
+    writevariable(outfile,itssaltpan2);
+    writevariable(outfile,itssaltpan3);
+    writevariable(outfile,itserg1);
+    writevariable(outfile,itserg2);
+    writevariable(outfile,itserg3);
+    writevariable(outfile,itswetlands1);
+    writevariable(outfile,itswetlands2);
+    writevariable(outfile,itswetlands3);
+    writevariable(outfile,itslake1);
+    writevariable(outfile,itslake2);
+    writevariable(outfile,itslake3);
+    writevariable(outfile,itsriver1);
+    writevariable(outfile,itsriver2);
+    writevariable(outfile,itsriver3);
+    writevariable(outfile,itsglacier1);
+    writevariable(outfile,itsglacier2);
+    writevariable(outfile,itsglacier3);
+    writevariable(outfile,itshighlight1);
+    writevariable(outfile,itshighlight2);
+    writevariable(outfile,itshighlight3);
+
+    writedata(outfile,maxtempmap);
+    writedata(outfile,mintempmap);
+    writedata(outfile, climatemap);
+    writedata(outfile,summerrainmap);
+    writedata(outfile,winterrainmap);
+    writedata(outfile,wintermountainrainmap);
+    writedata(outfile,summermountainrainmap);
+    writedata(outfile, wintermountainraindirmap);
+    writedata(outfile, summermountainraindirmap);
+    writedata(outfile,seaicemap);
+    writedata(outfile,rivermapdir);
+    writedata(outfile,rivermapjan);
+    writedata(outfile,rivermapjul);
+    writedata(outfile,windmap);
+    writedata(outfile,lakemap);
+    writedata(outfile, roughnessmap);
+    writedata(outfile,mountainridges);
+    writedata(outfile,mountainheights);
+    writedata(outfile,mapnom);
+    writedata(outfile,tidalmap);
+    writedata(outfile,riftlakemapsurface);
+    writedata(outfile,riftlakemapbed);
+    writedata(outfile, lakestartmap);
+    writedata(outfile,specials);
+    writedata(outfile,extraelevmap);
+    writedata(outfile,deltamapdir);
+    writedata(outfile,deltamapjan);
+    writedata(outfile,deltamapjul);
+    writedata(outfile, islandmap);
+    writedata(outfile, mountainislandmap);
+    writedata(outfile,oceanridgemap);
+    writedata(outfile,oceanridgeheightmap);
+    writedata(outfile,oceanriftmap);
+    writedata(outfile,oceanridgeoffsetmap);
+    writedata(outfile,oceanridgeanglemap);
+    writedata(outfile,volcanomap);
+    writedata(outfile, stratomap);
+    writedata(outfile, noshademap);
+    writedata(outfile,testmap);
+
+    for (int i = 0; i < NOISEWIDTH; i++)
+    {
+        for (int j = 0; j < NOISEHEIGHT; j++)
+            writevariable(outfile,itsnoisemap[i][j]);
+    }
+
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < 6; j++)
+            writevariable(outfile,horselats[i][j]);
+    }
+}
+
+void planet::loadworld(string filename)
+{
+    ifstream infile;
+    infile.open(filename, ios::in);
+
+    readvariable(infile,itswidth);
+    readvariable(infile, itsheight);
+    readvariable(infile, itsseed);
+    readvariable(infile, itsrotation);
+    readvariable(infile, itsriverfactor);
+    readvariable(infile, itsriverlandreduce);
+    readvariable(infile, itsestuarylimit);
+    readvariable(infile, itsglacialtemp);
+    readvariable(infile, itsglaciertemp);
+    readvariable(infile, itsmountainreduce);
+    readvariable(infile, itsclimateno);
+    readvariable(infile, itsmaxheight);
+    readvariable(infile, itssealevel);
+    readvariable(infile, itslandshading);
+    readvariable(infile, itslakeshading);
+    readvariable(infile, itsseashading);
+    readvariable(infile, itsshadingdir);
+    readvariable(infile, itssnowchange);
+    readvariable(infile, itsseaiceappearance);
+    readvariable(infile, itslandmarbling);
+    readvariable(infile, itslakemarbling);
+    readvariable(infile, itsseamarbling);
+    readvariable(infile, itsminriverflowglobal);
+    readvariable(infile, itsminriverflowregional);
+    readvariable(infile, itsseaice1);
+    readvariable(infile, itsseaice2);
+    readvariable(infile, itsseaice3);
+    readvariable(infile, itsocean1);
+    readvariable(infile, itsocean2);
+    readvariable(infile, itsocean3);
+    readvariable(infile, itsdeepocean1);
+    readvariable(infile, itsdeepocean2);
+    readvariable(infile, itsdeepocean3);
+    readvariable(infile, itsbase1);
+    readvariable(infile, itsbase2);
+    readvariable(infile, itsbase3);
+    readvariable(infile, itsbasetemp1);
+    readvariable(infile, itsbasetemp2);
+    readvariable(infile, itsbasetemp3);
+    readvariable(infile, itshighbase1);
+    readvariable(infile, itshighbase2);
+    readvariable(infile, itshighbase3);
+    readvariable(infile, itsdesert1);
+    readvariable(infile, itsdesert2);
+    readvariable(infile, itsdesert3);
+    readvariable(infile, itshighdesert1);
+    readvariable(infile, itshighdesert2);
+    readvariable(infile, itshighdesert3);
+    readvariable(infile, itscolddesert1);
+    readvariable(infile, itscolddesert2);
+    readvariable(infile, itscolddesert3);
+    readvariable(infile, itsgrass1);
+    readvariable(infile, itsgrass2);
+    readvariable(infile, itsgrass3);
+    readvariable(infile, itscold1);
+    readvariable(infile, itscold2);
+    readvariable(infile, itscold3);
+    readvariable(infile, itstundra1);
+    readvariable(infile, itstundra2);
+    readvariable(infile, itstundra3);
+    readvariable(infile, itseqtundra1);
+    readvariable(infile, itseqtundra2);
+    readvariable(infile, itseqtundra3);
+    readvariable(infile, itssaltpan1);
+    readvariable(infile, itssaltpan2);
+    readvariable(infile, itssaltpan3);
+    readvariable(infile, itserg1);
+    readvariable(infile, itserg2);
+    readvariable(infile, itserg3);
+    readvariable(infile, itswetlands1);
+    readvariable(infile, itswetlands2);
+    readvariable(infile, itswetlands3);
+    readvariable(infile, itslake1);
+    readvariable(infile, itslake2);
+    readvariable(infile, itslake3);
+    readvariable(infile, itsriver1);
+    readvariable(infile, itsriver2);
+    readvariable(infile, itsriver3);
+    readvariable(infile, itsglacier1);
+    readvariable(infile, itsglacier2);
+    readvariable(infile, itsglacier3);
+    readvariable(infile, itshighlight1);
+    readvariable(infile, itshighlight2);
+    readvariable(infile, itshighlight3);
+
+    readdata(infile, maxtempmap);
+    readdata(infile, mintempmap);
+    readdata(infile, climatemap);
+    readdata(infile, summerrainmap);
+    readdata(infile, winterrainmap);
+    readdata(infile, wintermountainrainmap);
+    readdata(infile, summermountainrainmap);
+    readdata(infile, wintermountainraindirmap);
+    readdata(infile, summermountainraindirmap);
+    readdata(infile, seaicemap);
+    readdata(infile, rivermapdir);
+    readdata(infile, rivermapjan);
+    readdata(infile, rivermapjul);
+    readdata(infile, windmap);
+    readdata(infile, lakemap);
+    readdata(infile, roughnessmap);
+    readdata(infile, mountainridges);
+    readdata(infile, mountainheights);
+    readdata(infile, mapnom);
+    readdata(infile, tidalmap);
+    readdata(infile, riftlakemapsurface);
+    readdata(infile, riftlakemapbed);
+    readdata(infile, lakestartmap);
+    readdata(infile, specials);
+    readdata(infile, extraelevmap);
+    readdata(infile, deltamapdir);
+    readdata(infile, deltamapjan);
+    readdata(infile, deltamapjul);
+    readdata(infile, islandmap);
+    readdata(infile, mountainislandmap);
+    readdata(infile, oceanridgemap);
+    readdata(infile, oceanridgeheightmap);
+    readdata(infile, oceanriftmap);
+    readdata(infile, oceanridgeoffsetmap);
+    readdata(infile, oceanridgeanglemap);
+    readdata(infile, volcanomap);
+    readdata(infile, stratomap);
+    readdata(infile, noshademap);
+    readdata(infile, testmap);
+
+    for (int i = 0; i < NOISEWIDTH; i++)
+    {
+        for (int j = 0; j < NOISEHEIGHT; j++)
+            readvariable(infile, itsnoisemap[i][j]);
+    }
+
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < 6; j++)
+            readvariable(infile, horselats[i][j]);
+    }
+
+    setmaxriverflow();
+}
+
 // Private member functions.
 
 int planet::wrapx(int x) const // This wraps X coordinates so they point to proper locations on the map.
@@ -1016,3 +1305,167 @@ void planet::shift(uint8_t arr[][ARRAYHEIGHT], int offset)
     }
 }
 
+// Functions for saving member variables.
+
+void planet::writevariable(ofstream& outfile, int val)
+{
+    outfile << val << '\n';
+}
+
+void planet::writevariable(ofstream& outfile, bool val)
+{
+    outfile << val << '\n';
+}
+
+void planet::writevariable(ofstream& outfile, short val)
+{
+    outfile << val << '\n';
+}
+
+void planet::writevariable(ofstream& outfile, float val)
+{
+    outfile << val << '\n';
+}
+
+void planet::writevariable(ofstream& outfile, long val)
+{
+    outfile << val << '\n';
+}
+
+// Functions for saving member arrays.
+
+void planet::writedata(ofstream& outfile, int(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+{
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < ARRAYHEIGHT; j++)
+            outfile << arr[i][j] << '\n';
+    }
+}
+
+void planet::writedata(ofstream& outfile, bool(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+{
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < ARRAYHEIGHT; j++)
+            outfile << arr[i][j] << '\n';
+    }
+}
+
+void planet::writedata(ofstream& outfile, short(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+{
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < ARRAYHEIGHT; j++)
+            outfile << arr[i][j] << '\n';
+    }
+}
+
+void planet::writedata(ofstream& outfile, float(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+{
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < ARRAYHEIGHT; j++)
+            outfile << arr[i][j] << '\n';
+    }
+}
+
+// Functions for loading member variables.
+
+void planet::readvariable(ifstream& infile, int& val)
+{
+    string line;
+    
+    getline(infile, line);
+    val = stoi(line);
+}
+
+void planet::readvariable(ifstream& infile, bool& val)
+{
+    string line;
+
+    getline(infile, line);
+    val = stob(line);
+}
+
+void planet::readvariable(ifstream& infile, short& val)
+{
+    string line;
+
+    getline(infile, line);
+    val = stos(line);
+}
+
+void planet::readvariable(ifstream& infile, float& val)
+{
+    string line;
+
+    getline(infile, line);
+    val = stof(line);
+}
+
+void planet::readvariable(ifstream& infile, long& val)
+{
+    string line;
+
+    getline(infile, line);
+    val = stol(line);
+}
+
+// Functions for loading member arrays.
+
+void planet::readdata(ifstream& infile, int(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+{
+    string line;
+    
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < ARRAYHEIGHT; j++)
+        {
+            getline(infile, line);
+            arr[i][j] = stoi(line);
+        }
+    }
+}
+
+void planet::readdata(ifstream& infile, bool(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+{
+    string line;
+    
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < ARRAYHEIGHT; j++)
+        {
+            getline(infile, line);
+            arr[i][j] = stob(line);
+        }
+    }
+}
+
+void planet::readdata(ifstream& infile, short(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+{
+    string line;
+    
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < ARRAYHEIGHT; j++)
+        {
+            getline(infile, line);
+            arr[i][j] = stos(line);
+        }
+    }
+}
+
+void planet::readdata(ifstream& infile, float(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+{
+    string line;
+
+    for (int i = 0; i < ARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < ARRAYHEIGHT; j++)
+        {
+            getline(infile, line);
+            arr[i][j] = stof(line);
+        }
+    }
+}

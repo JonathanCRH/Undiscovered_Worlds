@@ -2522,7 +2522,7 @@ int main()
                         window.display();
                     }
 
-                    loadworld(*world, filepathname);
+                    world->loadworld(filepathname);
 
                     for (int n = 0; n < GLOBALMAPTYPES; n++)
                         globalmapimagecreated[n] = 0;
@@ -2565,8 +2565,8 @@ int main()
                         ImGui::SFML::Render(window);
                         window.display();
                     }
-                    
-                    saveworld(*world, filepathname);
+
+                    world->saveworld(filepathname);
 
                     savingworld = 0;
                 }

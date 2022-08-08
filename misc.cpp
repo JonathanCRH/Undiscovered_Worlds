@@ -18,7 +18,7 @@
 
 // This converts strings into bools.
 
-bool stob(string instring)
+bool stob(string const &instring)
 {
     if (instring == "1")
         return 1;
@@ -28,7 +28,7 @@ bool stob(string instring)
 
 // This converts strings into shorts. (Note: no error trapping.)
 
-short stos(string instring)
+short stos(string const &instring)
 {    
     int val = stoi(instring);
 

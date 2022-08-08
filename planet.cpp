@@ -14,6 +14,11 @@
 #include "planet.hpp"
 #include "functions.hpp"
 
+//#define ENABLE_PROFILER
+#ifdef ENABLE_PROFILER
+#include "profiler.h"
+#endif
+
 planet::planet() //constructor
 {
     itswidth=1024;
@@ -801,6 +806,9 @@ void planet::setmaxriverflow()
 
 void planet::saveworld(string filename)
 {
+#ifdef ENABLE_PROFILER
+    highres_timer_t timer("Save World"); // 26.5s => 10.9s
+#endif
     ofstream outfile;
     outfile.open(filename, ios::out);
 
@@ -941,10 +949,18 @@ void planet::saveworld(string filename)
         for (int j = 0; j < 6; j++)
             writevariable(outfile,horselats[i][j]);
     }
+
+    if (!outfile.good())
+    {
+        cerr << "Error writing world '" << filename << "'" << endl;
+    }
 }
 
 void planet::loadworld(string filename)
 {
+#ifdef ENABLE_PROFILER
+    highres_timer_t timer("Load World"); // 9.1s => 8.8s
+#endif
     ifstream infile;
     infile.open(filename, ios::in);
 
@@ -1086,6 +1102,11 @@ void planet::loadworld(string filename)
     }
 
     setmaxriverflow();
+
+    if (!infile.good())
+    {
+        cerr << "Error reading world '" << filename << "'" << endl;
+    }
 }
 
 // Private member functions.
@@ -1205,267 +1226,104 @@ void planet::smoothoverland(int arr[][ARRAYHEIGHT], int amount, bool uponly)
 
 // This function shifts everything in an array to the left by a given number of pixels.
 
-void planet::shift(int arr[][ARRAYHEIGHT], int offset)
+template<typename T> void planet::shift(T arr[][ARRAYHEIGHT], int offset)
 {
-    vector<vector<int>> dummy(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<T>> dummy(ARRAYWIDTH, vector<T>(ARRAYHEIGHT, 0));
 
-    //int dummy[ARRAYWIDTH][ARRAYHEIGHT];
-    
+    //T dummy[ARRAYWIDTH][ARRAYHEIGHT];
+
     for (int i=0; i<=itswidth; i++)
     {
         for (int j=0; j<=itsheight; j++)
             dummy[i][j]=arr[i][j];
     }
-    
+
     for (int i=0; i<=itswidth; i++)
     {
         int ii=i+offset;
-        
+
         if (ii<0 || ii>itswidth)
             ii=wrap(ii,itswidth);
-        
+
         for (int j=0; j<=itsheight; j++)
             arr[i][j]=dummy[ii][j];
-    }
-}
-
-// The same thing, but for a float array.
-
-void planet::shift(float arr[][ARRAYHEIGHT], int offset)
-{
-    vector<vector<float>> dummy(ARRAYWIDTH, vector<float>(ARRAYHEIGHT, 0));
-    
-    //float dummy[ARRAYWIDTH][ARRAYHEIGHT];
-    
-    for (int i=0; i<=itswidth; i++)
-    {
-        for (int j=0; j<=itsheight; j++)
-            dummy[i][j]=arr[i][j];
-    }
-    
-    for (int i=0; i<=itswidth; i++)
-    {
-        int ii=i+offset;
-        
-        if (ii<0 || ii>itswidth)
-            ii=wrap(ii,itswidth);
-        
-        for (int j=0; j<=itsheight; j++)
-            arr[i][j]=dummy[ii][j];
-    }
-}
-
-// The same thing, but for a bool array.
-
-void planet::shift(bool arr[][ARRAYHEIGHT], int offset)
-{
-    vector<vector<bool>> dummy(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
-    
-    //bool dummy[ARRAYWIDTH][ARRAYHEIGHT];
-    
-    for (int i=0; i<=itswidth; i++)
-    {
-        for (int j=0; j<=itsheight; j++)
-            dummy[i][j]=arr[i][j];
-    }
-    
-    for (int i=0; i<=itswidth; i++)
-    {
-        int ii=i+offset;
-        
-        if (ii<0 || ii>itswidth)
-            ii=wrap(ii,itswidth);
-        
-        for (int j=0; j<=itsheight; j++)
-            arr[i][j]=dummy[ii][j];
-    }
-}
-
-// The same thing, but for a uint8_t array.
-
-void planet::shift(uint8_t arr[][ARRAYHEIGHT], int offset)
-{
-    vector<vector<uint8_t>> dummy(ARRAYWIDTH, vector<uint8_t>(ARRAYHEIGHT, 0));
-
-    for (int i = 0; i <= itswidth; i++)
-    {
-        for (int j = 0; j <= itsheight; j++)
-            dummy[i][j] = arr[i][j];
-    }
-
-    for (int i = 0; i <= itswidth; i++)
-    {
-        int ii = i + offset;
-
-        if (ii<0 || ii>itswidth)
-            ii = wrap(ii, itswidth);
-
-        for (int j = 0; j <= itsheight; j++)
-            arr[i][j] = dummy[ii][j];
     }
 }
 
 // Functions for saving member variables.
 
-void planet::writevariable(ofstream& outfile, int val)
-{
-    outfile << val << '\n';
+template<typename T> void write_val(T const val, ostream &out) { // default
+    out << val;
+}
+void write_int_val(int val, ostream &out) {
+    if      (val < 0   ) {out.put('-'); val = -val;} // negative
+    if      (val < 10  ) {out.put('0' + char(val));} // 1 digit
+    else if (val < 100 ) {out.put('0' + char(val/10 )); out.put('0' + char(val%10));} // 2 digits
+    else if (val < 1000) {out.put('0' + char(val/100)); out.put('0' + char((val/10)%10)); out.put('0' + char(val%10));} // 3 digits
+    else {out << val;} // 4+ digits
+}
+void write_val(int   const val, ostream &out) {write_int_val(val, out);}
+void write_val(short const val, ostream &out) {write_int_val(val, out);}
+
+void write_val(bool const val, ostream &out) {
+    out.put(val ? '1' : '0');
 }
 
-void planet::writevariable(ofstream& outfile, bool val)
+template<typename T> void planet::writevariable(ofstream& outfile, T val)
 {
-    outfile << val << '\n';
-}
-
-void planet::writevariable(ofstream& outfile, short val)
-{
-    outfile << val << '\n';
-}
-
-void planet::writevariable(ofstream& outfile, float val)
-{
-    outfile << val << '\n';
-}
-
-void planet::writevariable(ofstream& outfile, long val)
-{
-    outfile << val << '\n';
+    write_val(val, outfile);
+    outfile.put('\n');
 }
 
 // Functions for saving member arrays.
 
-void planet::writedata(ofstream& outfile, int(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+template<typename T> void planet::writedata(ofstream& outfile, T const arr[ARRAYWIDTH][ARRAYHEIGHT])
 {
     for (int i = 0; i < ARRAYWIDTH; i++)
     {
         for (int j = 0; j < ARRAYHEIGHT; j++)
-            outfile << arr[i][j] << '\n';
-    }
-}
-
-void planet::writedata(ofstream& outfile, bool(arr)[ARRAYWIDTH][ARRAYHEIGHT])
-{
-    for (int i = 0; i < ARRAYWIDTH; i++)
-    {
-        for (int j = 0; j < ARRAYHEIGHT; j++)
-            outfile << arr[i][j] << '\n';
-    }
-}
-
-void planet::writedata(ofstream& outfile, short(arr)[ARRAYWIDTH][ARRAYHEIGHT])
-{
-    for (int i = 0; i < ARRAYWIDTH; i++)
-    {
-        for (int j = 0; j < ARRAYHEIGHT; j++)
-            outfile << arr[i][j] << '\n';
-    }
-}
-
-void planet::writedata(ofstream& outfile, float(arr)[ARRAYWIDTH][ARRAYHEIGHT])
-{
-    for (int i = 0; i < ARRAYWIDTH; i++)
-    {
-        for (int j = 0; j < ARRAYHEIGHT; j++)
-            outfile << arr[i][j] << '\n';
+        {
+            write_val(arr[i][j], outfile);
+            outfile.put('\n');
+        }
     }
 }
 
 // Functions for loading member variables.
 
-void planet::readvariable(ifstream& infile, int& val)
-{
-    string line;
-    
-    getline(infile, line);
+void read_val(string const &line, int &val) {
     val = stoi(line);
 }
-
-void planet::readvariable(ifstream& infile, bool& val)
-{
-    string line;
-
-    getline(infile, line);
+void read_val(string const &line, bool &val) {
     val = stob(line);
 }
-
-void planet::readvariable(ifstream& infile, short& val)
-{
-    string line;
-
-    getline(infile, line);
+void read_val(string const &line, short &val) {
     val = stos(line);
 }
-
-void planet::readvariable(ifstream& infile, float& val)
-{
-    string line;
-
-    getline(infile, line);
+void read_val(string const &line, float &val) {
     val = stof(line);
 }
-
-void planet::readvariable(ifstream& infile, long& val)
-{
-    string line;
-
-    getline(infile, line);
+void read_val(string const &line, long &val) {
     val = stol(line);
+}
+
+template<typename T> void planet::readvariable(ifstream& infile, T &val)
+{
+    getline(infile, line_for_file_read);
+    read_val(line_for_file_read, val);
 }
 
 // Functions for loading member arrays.
 
-void planet::readdata(ifstream& infile, int(arr)[ARRAYWIDTH][ARRAYHEIGHT])
+template<typename T> void planet::readdata(ifstream& infile, T arr[ARRAYWIDTH][ARRAYHEIGHT])
 {
-    string line;
-    
     for (int i = 0; i < ARRAYWIDTH; i++)
     {
         for (int j = 0; j < ARRAYHEIGHT; j++)
         {
-            getline(infile, line);
-            arr[i][j] = stoi(line);
+            getline(infile, line_for_file_read);
+            read_val(line_for_file_read, arr[i][j]);
         }
     }
 }
 
-void planet::readdata(ifstream& infile, bool(arr)[ARRAYWIDTH][ARRAYHEIGHT])
-{
-    string line;
-    
-    for (int i = 0; i < ARRAYWIDTH; i++)
-    {
-        for (int j = 0; j < ARRAYHEIGHT; j++)
-        {
-            getline(infile, line);
-            arr[i][j] = stob(line);
-        }
-    }
-}
-
-void planet::readdata(ifstream& infile, short(arr)[ARRAYWIDTH][ARRAYHEIGHT])
-{
-    string line;
-    
-    for (int i = 0; i < ARRAYWIDTH; i++)
-    {
-        for (int j = 0; j < ARRAYHEIGHT; j++)
-        {
-            getline(infile, line);
-            arr[i][j] = stos(line);
-        }
-    }
-}
-
-void planet::readdata(ifstream& infile, float(arr)[ARRAYWIDTH][ARRAYHEIGHT])
-{
-    string line;
-
-    for (int i = 0; i < ARRAYWIDTH; i++)
-    {
-        for (int j = 0; j < ARRAYHEIGHT; j++)
-        {
-            getline(infile, line);
-            arr[i][j] = stof(line);
-        }
-    }
-}

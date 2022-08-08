@@ -83,8 +83,8 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
 
 // Declare functions that are in misc.cpp
 
-bool stob(string instring);
-short stos(string instring);
+bool stob(string const &instring);
+short stos(string const &instring);
 void savesettings(planet& world, string filename);
 bool loadsettings(planet& world, string filename);
 void createriftblob(vector<vector<float>> &riftblob, int size);

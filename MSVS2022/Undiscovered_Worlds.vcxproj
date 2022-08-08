@@ -164,6 +164,7 @@
     <ClCompile Include="..\main.cpp" />
     <ClCompile Include="..\misc.cpp" />
     <ClCompile Include="..\planet.cpp" />
+    <ClCompile Include="..\profiler.cpp" />
     <ClCompile Include="..\region.cpp" />
     <ClCompile Include="..\regionalmap.cpp" />
   </ItemGroup>
@@ -171,6 +172,7 @@
     <ClInclude Include="..\classes.hpp" />
     <ClInclude Include="..\functions.hpp" />
     <ClInclude Include="..\planet.hpp" />
+    <ClInclude Include="..\profiler.h" />
     <ClInclude Include="..\region.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

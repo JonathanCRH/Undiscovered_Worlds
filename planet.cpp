@@ -807,7 +807,7 @@ void planet::setmaxriverflow()
 void planet::saveworld(string filename)
 {
 #ifdef ENABLE_PROFILER
-    highres_timer_t timer("Save World"); // 26.5s
+    highres_timer_t timer("Save World"); // 26.5s => 10.9s
 #endif
     ofstream outfile;
     outfile.open(filename, ios::out);
@@ -1252,9 +1252,27 @@ template<typename T> void planet::shift(T arr[][ARRAYHEIGHT], int offset)
 
 // Functions for saving member variables.
 
+template<typename T> void write_val(T const val, ostream &out) { // default
+    out << val;
+}
+void write_int_val(int val, ostream &out) {
+    if      (val < 0   ) {out.put('-'); val = -val;} // negative
+    if      (val < 10  ) {out.put('0' + char(val));} // 1 digit
+    else if (val < 100 ) {out.put('0' + char(val/10 )); out.put('0' + char(val%10));} // 2 digits
+    else if (val < 1000) {out.put('0' + char(val/100)); out.put('0' + char((val/10)%10)); out.put('0' + char(val%10));} // 3 digits
+    else {out << val;} // 4+ digits
+}
+void write_val(int   const val, ostream &out) {write_int_val(val, out);}
+void write_val(short const val, ostream &out) {write_int_val(val, out);}
+
+void write_val(bool const val, ostream &out) {
+    out.put(val ? '1' : '0');
+}
+
 template<typename T> void planet::writevariable(ofstream& outfile, T val)
 {
-    outfile << val << '\n';
+    write_val(val, outfile);
+    outfile.put('\n');
 }
 
 // Functions for saving member arrays.
@@ -1264,7 +1282,10 @@ template<typename T> void planet::writedata(ofstream& outfile, T const arr[ARRAY
     for (int i = 0; i < ARRAYWIDTH; i++)
     {
         for (int j = 0; j < ARRAYHEIGHT; j++)
-            outfile << arr[i][j] << '\n';
+        {
+            write_val(arr[i][j], outfile);
+            outfile.put('\n');
+        }
     }
 }
 

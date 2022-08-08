@@ -14,6 +14,11 @@
 #include "planet.hpp"
 #include "functions.hpp"
 
+//#define ENABLE_PROFILER
+#ifdef ENABLE_PROFILER
+#include "profiler.h"
+#endif
+
 planet::planet() //constructor
 {
     itswidth=1024;
@@ -801,6 +806,9 @@ void planet::setmaxriverflow()
 
 void planet::saveworld(string filename)
 {
+#ifdef ENABLE_PROFILER
+    highres_timer_t timer("Save World"); // 26.5s
+#endif
     ofstream outfile;
     outfile.open(filename, ios::out);
 
@@ -950,6 +958,9 @@ void planet::saveworld(string filename)
 
 void planet::loadworld(string filename)
 {
+#ifdef ENABLE_PROFILER
+    highres_timer_t timer("Load World"); // 9.1s
+#endif
     ifstream infile;
     infile.open(filename, ios::in);
 

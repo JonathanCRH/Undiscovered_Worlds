@@ -63,6 +63,9 @@
     <ClCompile Include="..\imgui-sfml\imgui-SFML.cpp">
       <Filter>imgGUI</Filter>
     </ClCompile>
+    <ClCompile Include="..\profiler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\classes.hpp">
@@ -75,6 +78,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\region.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\profiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -941,6 +941,11 @@ void planet::saveworld(string filename)
         for (int j = 0; j < 6; j++)
             writevariable(outfile,horselats[i][j]);
     }
+
+    if (!outfile.good())
+    {
+        cerr << "Error writing world '" << filename << "'" << endl;
+    }
 }
 
 void planet::loadworld(string filename)
@@ -1086,6 +1091,11 @@ void planet::loadworld(string filename)
     }
 
     setmaxriverflow();
+
+    if (!infile.good())
+    {
+        cerr << "Error reading world '" << filename << "'" << endl;
+    }
 }
 
 // Private member functions.

@@ -730,6 +730,9 @@ private:
     int testmap[ARRAYWIDTH][ARRAYHEIGHT];
     
     int horselats[ARRAYWIDTH][6];
+
+    // reused temporary state
+    string line_for_file_read;
     
     // Private functions.
     

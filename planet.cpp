@@ -959,7 +959,7 @@ void planet::saveworld(string filename)
 void planet::loadworld(string filename)
 {
 #ifdef ENABLE_PROFILER
-    highres_timer_t timer("Load World"); // 9.1s
+    highres_timer_t timer("Load World"); // 9.1s => 8.8s
 #endif
     ifstream infile;
     infile.open(filename, ios::in);
@@ -1288,23 +1288,20 @@ void read_val(string const &line, long &val) {
 
 template<typename T> void planet::readvariable(ifstream& infile, T &val)
 {
-    string line;
-    getline(infile, line);
-    read_val(line, val);
+    getline(infile, line_for_file_read);
+    read_val(line_for_file_read, val);
 }
 
 // Functions for loading member arrays.
 
 template<typename T> void planet::readdata(ifstream& infile, T arr[ARRAYWIDTH][ARRAYHEIGHT])
 {
-    string line;
-
     for (int i = 0; i < ARRAYWIDTH; i++)
     {
         for (int j = 0; j < ARRAYHEIGHT; j++)
         {
-            getline(infile, line);
-            read_val(line, arr[i][j]);
+            getline(infile, line_for_file_read);
+            read_val(line_for_file_read, arr[i][j]);
         }
     }
 }

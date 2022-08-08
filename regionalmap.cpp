@@ -5577,7 +5577,7 @@ twointegers nearestlowerriver(region &region, int dx, int dy, int i, int j, int 
     while (distance==-1)
     {
         checkdist++; // Increase the size of circle that we're checking
-        int rr=pow(checkdist,2);
+        int rr = checkdist * checkdist;
         
         for (int x=i-checkdist; x<=i+checkdist; x++)
         {
@@ -5585,7 +5585,7 @@ twointegers nearestlowerriver(region &region, int dx, int dy, int i, int j, int 
             {
                 if (x>=dx+1 && x<=dx+15 && y>=dy+1 && y<=dy+15)
                 {
-                    if (pow(x-i,2)+pow(y-j,2)==rr) // If this point is on the circle we're checking
+                    if ((x-i)*(x-i)+(y-j)*(y-j)==rr) // If this point is on the circle we're checking
                     {
                         if (region.riverdir(x,y)!=0 && region.map(x,y)<landlevel) // If this is a river and it's lower than our starting point
                         {
@@ -12893,9 +12893,9 @@ void addbarrierislands(planet &world, region &region, int dx, int dy, int sx, in
     int sealevel=world.sealevel();
     
     fast_srand((sy*width+sx)+world.map(sx,sy)+world.summerrain(sx,sy)+world.riverjul(sx,sy));
-    
-    int prob=pow(world.tide(sx,sy),2)+1; // Probability of barrier islands is based on tides. Make it *much* more unlikely if there is a high tidal range.
-    
+
+    int prob = world.tide(sx, sy) * world.tide(sx, sy) + 1; // Probability of barrier islands is based on tides. Make it *much* more unlikely if there is a high tidal range.
+
     if (random(1,prob)!=1)
         return;
     

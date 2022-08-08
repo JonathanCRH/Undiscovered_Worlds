@@ -4703,8 +4703,8 @@ void createlakedepression(planet &world, int centrex, int centrey, int origlevel
                     if (up==1 || world.nom(ii,j)>currentlevel) // If this cell is higher than the current limit (or if we're raising cells as well as lowering them)
                     {
                         if (basins[ii][j]==0 && avoid[ii][j]==0 && world.sea(ii,j)==0 && world.truelake(ii,j)==0 && world.mountainheight(ii,j)<maxmountains)
-                        {
-                            if (pow(ii-centrex,2)+pow(j-centrey,2)<=pow(radius,2)) // If this cell is within the current radius
+                        {                            
+                            if ((ii-centrex)*(ii-centrex)+(j-centrey)*(j-centrey) <= radius * radius) // If this cell is within the current radius
                             {
                                 int thislevel=currentlevel; // The level of this particular cell, which will be a variation on the current level of the whole radius.
                                 

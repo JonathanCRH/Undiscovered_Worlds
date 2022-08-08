@@ -1514,7 +1514,7 @@ void newfractal(vector<vector<int>> &arr, int awidth, int aheight, int grain, fl
                 
                 if (simple==0)
                 {
-                    int focaldistance=sqrt(pow((focalx-ii),2)+pow((focaly-jj),2));
+                    int focaldistance = sqrt((focalx - ii) * (focalx - ii) + (focaly - jj) * (focaly - jj));
                     int perc=increment*focaldistance;
                     
                     int newval=tilt(valuemod,valuemod2,perc);
@@ -1552,7 +1552,8 @@ void newfractal(vector<vector<int>> &arr, int awidth, int aheight, int grain, fl
                 
                 if (simple==0)
                 {
-                    int focaldistance=sqrt(pow((focalx-ii),2)+pow((focaly-jj),2));
+                    int focaldistance = sqrt((focalx - ii) * (focalx - ii) + (focaly - jj) * (focaly - jj));
+
                     int perc=increment*focaldistance;
                     
                     int newval=tilt(valuemod,valuemod2,perc);
@@ -1939,8 +1940,8 @@ void smallcontinents(planet &world, int baseheight, int conheight, vector<vector
         xdiff=xdiff/100;
         ydiff=ydiff/100;
         
-        xdiff=pow(xdiff,2);
-        ydiff=pow(ydiff,2);
+        xdiff = xdiff * xdiff;
+        ydiff = ydiff * ydiff;
         
         xdiff=xdiff*focaldistance;
         ydiff=ydiff*focaldistance;
@@ -3669,9 +3670,9 @@ void createchains(planet &world, int baseheight, int conheight, vector<vector<in
             
             xdiff=xdiff/100;
             ydiff=ydiff/100;
-            
-            xdiff=pow(xdiff,2);
-            ydiff=pow(ydiff,2);
+
+            xdiff = xdiff * xdiff;
+            ydiff = ydiff * ydiff;
             
             xdiff=xdiff*focaldistance;
             ydiff=ydiff*focaldistance;
@@ -5983,8 +5984,29 @@ int getcode(int dir)
 {
     if (dir==1)
         return(1);
-    
-    return(pow(2,dir-1));
+
+    if (dir == 2)
+        return(2);
+
+    if (dir == 3)
+        return(4);
+
+    if (dir == 4)
+        return(8);
+
+    if (dir == 5)
+        return(16);
+
+    if (dir == 6)
+        return(32);
+
+    if (dir == 7)
+        return(64);
+
+    if (dir == 8)
+        return(128);
+  
+    return(0);
 }
 
 // This function tells whether a ridge goes from the specified tile in the specified direction.
@@ -9052,9 +9074,19 @@ void createoceanridges(planet &world, vector<vector<bool>> &shelves)
                 {
                     mult++;
                     
-                    float thisheightperthousand=pow(1.1037,mult);
-                    
-                    float thisheight=riftheightdiv*thisheightperthousand;
+                    //float thisheightperthousand=pow(1.1037,mult);
+
+                    float thisheightperthousand = 1.1037;
+
+                    if (mult > 1)
+                    {
+                        float origheightperthousand = thisheightperthousand;
+                        
+                        for (int n = 1; n < mult; n++)
+                            thisheightperthousand = thisheightperthousand * origheightperthousand;
+                    }
+
+                    float thisheight = riftheightdiv * thisheightperthousand;
                     
                     for (int k=-radius; k<=radius; k++)
                     {

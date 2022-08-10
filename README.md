@@ -121,3 +121,5 @@ It occasionally crashes when exporting area maps. The cause is as yet unknown. B
 Continents occasionally appear with straight sides. The cause of this is unknown too, but it is rare.
 
 The climate simulation is imperfect. Climate regions are more jumbled together than they should be. There is too much monsoon (Am) and not enough savannah (Aw/As). There is less warm-summer humid continental (Dfb) than there should be. However, a perfect climate simulation would require a lot more processing power and time than I have available!
+
+Lakes occasionally go haywire. Known cause: lakes are the work of the devil - https://undiscoveredworlds.blogspot.com/2019/02/grappling-with-lakes.html

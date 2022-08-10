@@ -2051,6 +2051,19 @@ int main()
 
             if (standardbutton("Done"))
             {
+                for (int n = 0; n < 2; n++)
+                {
+                    ImGui::SFML::Update(window, deltaClock.restart());
+                    ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
+                    ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                    ImGui::Begin("Please wait!");
+                    ImGui::Text("Finishing world...");
+                    ImGui::End();
+                    window.clear();
+                    ImGui::SFML::Render(window);
+                    window.display();
+                }
+                              
                 updatereport("Generating world from imported maps:");
                 updatereport("");
 

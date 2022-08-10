@@ -109,3 +109,13 @@ Also, the land map doesn't have to be very detailed. If you want, you could simp
 "Generate" - once you have imported your own maps, you can use these buttons to add features to your world.
 
 When you have finished, click the "done" button. This finalises the terrain and then calculates rainfall, temperature, rivers, lakes, etc. When it is finished, the custom world will be displayed in the global map screen as usual, and you can view or save it like any other.
+
+* Known issues
+
+Saving and loading worlds is slow, but it works.
+
+It occasionally crashes when exporting area maps. The cause is as yet unknown. Be sure to save worlds/settings before using this.
+
+Continents occasionally appear with straight sides. The cause of this is unknown too, but it is rare.
+
+The climate simulation is imperfect. Climate regions are more jumbled together than they should be. There is too much monsoon (Am) and not enough savannah (Aw/As). There is less warm-summer humid continental (Dfb) than there should be. However, a perfect climate simulation would require a lot more processing power and time than I have available!

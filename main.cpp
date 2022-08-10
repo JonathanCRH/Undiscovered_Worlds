@@ -43,7 +43,7 @@ using namespace std;
 // Random number generator. From https://stackoverflow.com/questions/26237419/faster-than-rand
 // It uses a global variable. But this is the only one in the program, honest!
 
-static long g_seed;
+static long g_seed = 1;
 
 // Used to seed the generator.
 void fast_srand(long seed)

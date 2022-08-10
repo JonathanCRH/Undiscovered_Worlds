@@ -16,11 +16,13 @@
 #include "planet.hpp"
 #include "region.hpp"
 #include "functions.hpp"
+//#include "profiler.h"
 
 using namespace std;
 
 void generateglobalterrain(planet& world, short terraintype, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves)
 {
+    //highres_timer_t timer("Generate Global Terrain"); // 22.1s => 17.6s
     switch (terraintype)
     {
     case 1:

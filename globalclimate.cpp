@@ -15,6 +15,7 @@
 #include "planet.hpp"
 #include "region.hpp"
 #include "functions.hpp"
+//#include "profiler.h"
 
 using namespace std;
 
@@ -22,6 +23,7 @@ using namespace std;
 
 void generateglobalclimate(planet& world, boolshapetemplate smalllake[], boolshapetemplate largelake[], boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves)
 {
+    //highres_timer_t timer("Generate Global Climate"); // 9.4s => 8.2s
     long seed = world.seed();
     fast_srand(seed);
 

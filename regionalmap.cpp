@@ -22,7 +22,7 @@
 
 // This function creates the region.
 
-void generateregionalmap(planet& world, region& region, boolshapetemplate smalllake[], boolshapetemplate island[], peaktemplate& peaks, vector<vector<float>>& riftblob, int riftblobsize, int partial, byteshapetemplate smudge[], byteshapetemplate smallsmudge[])
+void generateregionalmap(const planet& world, region& region, boolshapetemplate smalllake[], boolshapetemplate island[], peaktemplate& peaks, vector<vector<float>>& riftblob, int riftblobsize, int partial, byteshapetemplate smudge[], byteshapetemplate smallsmudge[])
 {
     int xleft = 0;
     int xright = 35;
@@ -87,7 +87,7 @@ void generateregionalmap(planet& world, region& region, boolshapetemplate smalll
 
 // This does the regional rivers and lakes.
 
-void makeregionalwater(planet& world, region& region, vector<vector<bool>>& safesaltlakes, vector<vector<bool>>& disruptpoints, vector<vector<int>>& rriverscarved, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, boolshapetemplate smalllake[], boolshapetemplate island[], vector<vector<float>>& riftblob, int riftblobsize, int xleft, int xright, int ytop, int ybottom)
+void makeregionalwater(const planet& world, region& region, vector<vector<bool>>& safesaltlakes, vector<vector<bool>>& disruptpoints, vector<vector<int>>& rriverscarved, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, boolshapetemplate smalllake[], boolshapetemplate island[], vector<vector<float>>& riftblob, int riftblobsize, int xleft, int xright, int ytop, int ybottom)
 {
     int xstart = xleft * 16;
     int xend = xright * 16 + 16;
@@ -412,7 +412,7 @@ void makeregionalwater(planet& world, region& region, vector<vector<bool>>& safe
 
 // This does the regional physical terrain.
 
-void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& disruptpoints, vector<vector<bool>>& riverinlets, vector<vector<int>>& rriverscarved, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, boolshapetemplate smalllake[], peaktemplate& peaks, byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom)
+void makeregionalterrain(const planet& world, region& region, vector<vector<bool>>& disruptpoints, vector<vector<bool>>& riverinlets, vector<vector<int>>& rriverscarved, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, boolshapetemplate smalllake[], peaktemplate& peaks, byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom)
 {
     int xstart = xleft * 16;
     int xend = xright * 16 + 16;
@@ -1057,7 +1057,7 @@ void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& di
 
 // This does the regional undersea terrain.
 
-void makeregionalunderseaterrain(planet& world, region& region, peaktemplate& peaks, byteshapetemplate smudge[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom)
+void makeregionalunderseaterrain(const planet& world, region& region, peaktemplate& peaks, byteshapetemplate smudge[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom)
 {
     int xstart = xleft * 16;
     int xend = xright * 16 + 16;
@@ -1332,7 +1332,7 @@ void makeregionalunderseaterrain(planet& world, region& region, peaktemplate& pe
 
 // This does some miscellaneous stuff to the regional map.
 
-void makeregionalmiscellanies(planet& world, region& region, vector<vector<bool>>& safesaltlakes, vector<vector<bool>>& riverinlets, boolshapetemplate smalllake[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom)
+void makeregionalmiscellanies(const planet& world, region& region, vector<vector<bool>>& safesaltlakes, vector<vector<bool>>& riverinlets, boolshapetemplate smalllake[], byteshapetemplate smallsmudge[], int xleft, int xright, int ytop, int ybottom)
 {
     int xstart = xleft * 16;
     int xend = xright * 16 + 16;
@@ -1356,9 +1356,50 @@ void makeregionalmiscellanies(planet& world, region& region, vector<vector<bool>
         region.setleftx(leftx);
     }
 
+    vector<vector<int>> source(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<int>> destination(RARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
     vector<vector<int>> rotatearray(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
 
-    //int coords[4][2];
+    int coords[4][2];
+
+    // Work out the tidal ranges. (Turned off for now as it's not yet being used for anything interesting.)
+
+    /*
+    for (int i = 0; i < RARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < RARRAYHEIGHT; j++)
+            destination[i][j] = -5000;
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            source[i][j] = world.tide(i, j);
+    }
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            float valuemod = 0.04; //0.02;
+
+            makegenerictile(world, x * 16, y * 16, xx, yy, valuemod, coords, source, destination, 80, 0, 1);
+        }
+    }
+    */
+
+    for (int i = xstart; i <= xend; i++)
+    {
+        for (int j = ystart; j <= yend; j++)
+            region.settide(i, j, destination[i][j]);
+    }
 
     // Make wetlands.
 
@@ -1524,7 +1565,7 @@ void makeregionalmiscellanies(planet& world, region& region, vector<vector<bool>
 
 // This does the regional climates.
 
-void makeregionalclimates(planet& world, region& region, vector<vector<bool>>& safesaltlakes, boolshapetemplate smalllake[], int xleft, int xright, int ytop, int ybottom)
+void makeregionalclimates(const planet& world, region& region, vector<vector<bool>>& safesaltlakes, boolshapetemplate smalllake[], int xleft, int xright, int ytop, int ybottom)
 {
     int xstart = xleft * 16;
     int xend = xright * 16 + 16;
@@ -2119,7 +2160,7 @@ void makeregionalclimates(planet& world, region& region, vector<vector<bool>>& s
 
 // This returns the global coordinate of the tile that a regional coordinate is in.
 
-twointegers convertregionaltoglobal(planet &world, region &region, int x, int y)
+twointegers convertregionaltoglobal(const planet &world, region &region, int x, int y)
 {
     twointegers global;
     
@@ -2142,7 +2183,7 @@ twointegers convertregionaltoglobal(planet &world, region &region, int x, int y)
 
 // This removes any lake cells that border sea cells.
 
-void removesealakes(planet &world, region &region, int leftx, int lefty, int rightx, int righty)
+void removesealakes(const planet &world, region &region, int leftx, int lefty, int rightx, int righty)
 {
     int sealevel=world.sealevel();
     
@@ -2174,7 +2215,7 @@ void removesealakes(planet &world, region &region, int leftx, int lefty, int rig
 
 // This adds rivers to tiles on the regional map.
 
-void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rriverscarved, boolshapetemplate smalllake[], vector<vector<bool>> &rivercurves)
+void makerivertile(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rriverscarved, boolshapetemplate smalllake[], vector<vector<bool>> &rivercurves)
 {
     int riverdir=world.riverdir(sx,sy);
     
@@ -3527,7 +3568,7 @@ void makerivertile(planet &world, region &region, int dx, int dy, int sx, int sy
 
 // This finds a junction point for the river tile.
 
-twointegers getjunctionpoint (planet &world, region &region, int dx, int dy, int sx, int sy, bool lakepresent, bool goingtolake, bool diag, int maininflow, int inx, int iny, int outx, int outy)
+twointegers getjunctionpoint (const planet &world, region &region, int dx, int dy, int sx, int sy, bool lakepresent, bool goingtolake, bool diag, int maininflow, int inx, int iny, int outx, int outy)
 {
     int width=world.width();
     int height=world.height();
@@ -3694,7 +3735,7 @@ twointegers getjunctionpoint (planet &world, region &region, int dx, int dy, int
 
 // This adds delta branches to tiles on the regional map.
 
-void makedeltatile(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rriverscarved)
+void makedeltatile(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rriverscarved)
 {
     int deltajan=world.deltajan(sx,sy);
     int deltajul=world.deltajul(sx,sy);
@@ -4571,7 +4612,7 @@ void makedeltatile(planet &world, region &region, int dx, int dy, int sx, int sy
 
 // This draws a section of river on a tile of the regional map.
 
-threeintegers calculateregionalriver(planet &world, region &region, int dx, int dy, int sx, int sy, twofloats pt, twofloats mm1, twofloats mm2, twofloats mm3, int janinflow, int julinflow, int riverlength, int isittributary, int goingtolake, bool delta)
+threeintegers calculateregionalriver(const planet &world, region &region, int dx, int dy, int sx, int sy, twofloats pt, twofloats mm1, twofloats mm2, twofloats mm3, int janinflow, int julinflow, int riverlength, int isittributary, int goingtolake, bool delta)
 {
     threeintegers rinfo;
     
@@ -4825,7 +4866,7 @@ threeintegers calculateregionalriver(planet &world, region &region, int dx, int 
 
 // This checks for weird elevations. If it finds any it gives all rivers in the tile the basic tile elevation.
 
-void removeweirdelevations(planet &world, region &region, int dx, int dy, int sx, int sy)
+void removeweirdelevations(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     int sealevel=world.sealevel();
     int maxelev=world.maxelevation();
@@ -4956,7 +4997,7 @@ void removelowflow(region &region, int dx, int dy)
 
 // This function adds the flow from one river to another that it's just joined on the regional map.
 
-void addtoexistingregionalriver(planet &world, region &region, int dx, int dy, int sx, int sy, int x, int y, int janinflow, int julinflow, bool delta)
+void addtoexistingregionalriver(const planet &world, region &region, int dx, int dy, int sx, int sy, int x, int y, int janinflow, int julinflow, bool delta)
 {
     int finaloutflow;
     
@@ -4996,7 +5037,7 @@ void addtoexistingregionalriver(planet &world, region &region, int dx, int dy, i
 
 // This function lowers the land underneath a river to ensure that it flows downhill all the way.
 
-void carveriver(planet &world, region &region, int dx, int dy, int sx, int sy, int riverlength, int riverstartx, int riverstarty, int riverendx, int riverendy, int startlandlevel, int endlandlevel, bool goingtolake, vector<vector<int>> &rriverscarved)
+void carveriver(const planet &world, region &region, int dx, int dy, int sx, int sy, int riverlength, int riverstartx, int riverstarty, int riverendx, int riverendy, int startlandlevel, int endlandlevel, bool goingtolake, vector<vector<int>> &rriverscarved)
 {
     int sealevel=world.sealevel();
     
@@ -5117,7 +5158,7 @@ void carveriver(planet &world, region &region, int dx, int dy, int sx, int sy, i
 
 // This does the same thing, but for a tributary.
 
-void carverivertributary(planet &world, region &region, int dx, int dy, int sx, int sy, int thisriverlength, int thisriverstartx, int thisriverstarty, int thisriverendx, int thisriverendy, int thisstartlandlevel, int thisendlandlevel, int riverendx, int riverendy, int endlandlevel, vector<vector<int>> &rriverscarved)
+void carverivertributary(const planet &world, region &region, int dx, int dy, int sx, int sy, int thisriverlength, int thisriverstartx, int thisriverstarty, int thisriverendx, int thisriverendy, int thisstartlandlevel, int thisendlandlevel, int riverendx, int riverendy, int endlandlevel, vector<vector<int>> &rriverscarved)
 {
     int sealevel=world.sealevel();
     
@@ -5359,7 +5400,7 @@ twointegers gettributaryendpoint(region &region, int startx, int starty)
 
 // This function adds springs to a tile.
 
-void addsprings(planet &world, region &region, int sx, int sy, int dx, int dy, int junctionpointx, int junctionpointy, int riverendx, int riverendy, int maxmidvar, vector<vector<int>> &rriverscarved)
+void addsprings(const planet &world, region &region, int sx, int sy, int dx, int dy, int junctionpointx, int junctionpointy, int riverendx, int riverendy, int maxmidvar, vector<vector<int>> &rriverscarved)
 {
     float janload=world.janrain(sx,sy);
     float julload=world.julrain(sx,sy);
@@ -5671,7 +5712,7 @@ bool riverdircheck(region &region, int x, int y, int x2, int y2, int delta)
 
 // This function goes through a river tile and removes any orphans (odd tiles that flow into rivers out of nowhere).
 
-int removeriverorphans(planet &world, region &region, int sx, int sy, int dx, int dy, int riverlength)
+int removeriverorphans(const planet &world, region &region, int sx, int sy, int dx, int dy, int riverlength)
 {
     if (checkwaterinflow(world,sx,sy)==1) // Don't do this check if there really is a river actually starting in this tile.
     {
@@ -5707,7 +5748,7 @@ int removeriverorphans(planet &world, region &region, int sx, int sy, int dx, in
 
 // This function goes through a river tile and removes any widows (odd tiles where rivers just stop flowing).
 
-void removeriverwidows(planet &world, region &region, int sx, int sy, int dx, int dy, int junctionpointx, int junctionpointy)
+void removeriverwidows(const planet &world, region &region, int sx, int sy, int dx, int dy, int junctionpointx, int junctionpointy)
 {
     twofloats pt, mm1, mm2, mm3;
     
@@ -6068,7 +6109,7 @@ void removenegativeflow(region &region, int dx, int dy)
 
 // This function creates a small lake within a given tile of the regional map.
 
-void createsmalllake(planet &world, region &region, int dx, int dy, int sx, int sy, int centrex, int centrey, vector<vector<int>> &mainriver, boolshapetemplate smalllake[])
+void createsmalllake(const planet &world, region &region, int dx, int dy, int sx, int sy, int centrex, int centrey, vector<vector<int>> &mainriver, boolshapetemplate smalllake[])
 {
     int width=world.width();
     int sealevel=world.sealevel();
@@ -6275,7 +6316,7 @@ void createsmalllake(planet &world, region &region, int dx, int dy, int sx, int 
 
 // This does the same thing, but a salt lake.
 
-void createsmallsaltlake (planet &world, region &region, int dx, int dy, int sx, int sy, int centrex, int centrey, int surfacelevel, vector<vector<bool>> &safesaltlakes, boolshapetemplate smalllake[])
+void createsmallsaltlake (const planet &world, region &region, int dx, int dy, int sx, int sy, int centrex, int centrey, int surfacelevel, vector<vector<bool>> &safesaltlakes, boolshapetemplate smalllake[])
 {
     int width=world.width();
     int rwidth=region.rwidth();
@@ -6394,7 +6435,7 @@ void createsmallsaltlake (planet &world, region &region, int dx, int dy, int sx,
 
 // This does the same thing, but a glacial-style lake.
 
-void createsmallglaciallake(planet &world, region &region, int dx, int dy, int sx, int sy, int centrex, int centrey, vector<vector<int>> &mainriver)
+void createsmallglaciallake(const planet &world, region &region, int dx, int dy, int sx, int sy, int centrex, int centrey, vector<vector<int>> &mainriver)
 {
     int sealevel=world.sealevel();
     int maxelev=world.maxelevation();
@@ -6494,7 +6535,7 @@ void createsmallglaciallake(planet &world, region &region, int dx, int dy, int s
 
 // This function goes through the tile and expands the rivers to their correct widths.
 
-void expandrivers(planet &world, region &region, int dx, int dy, int sx, int sy, bool delta, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey)
+void expandrivers(const planet &world, region &region, int dx, int dy, int sx, int sy, bool delta, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey)
 {
     int pixelmetres=region.pixelmetres();
     
@@ -6650,7 +6691,7 @@ void pasterivercircle(region &region, int centrex, int centrey, int pixels, bool
 
 // This function turns all river cells that are near lakes into lakes, and widens them.
 
-void turnriverstolakes(planet &world, region &region, int dx, int dy, int sx, int sy)
+void turnriverstolakes(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     int surfacelevel=world.lakesurface(sx,sy);
     
@@ -6703,7 +6744,7 @@ void turnriverstolakes(planet &world, region &region, int dx, int dy, int sx, in
 
 // This function checks for rivers that don't quite meet the sea, and completes them
 
-void finishrivers(planet &world, region &region, int leftx, int lefty, int rightx, int righty)
+void finishrivers(const planet &world, region &region, int leftx, int lefty, int rightx, int righty)
 {
     twointegers seapoint;
     
@@ -6817,7 +6858,7 @@ void drawriverline (region &region, int leftx, int lefty, int rightx, int righty
 
 // This function creates a tile of the elevation regional map.
 
-void makeelevationtile(planet &world, region &region, int dx, int dy, int sx, int sy, int coords[4][2], boolshapetemplate smalllake[])
+void makeelevationtile(const planet &world, region &region, int dx, int dy, int sx, int sy, int coords[4][2], boolshapetemplate smalllake[])
 {
     int width=world.width();
     int height=world.height();
@@ -7670,7 +7711,7 @@ int rlakediamond(region &region, int dx, int dy, int s, int x, int y, int value,
 
 // This goes over the current tile on the regional map and removes straight lines on the coasts.
 
-void removestraights(planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[])
+void removestraights(const planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[])
 {
     int width=world.width();
     int rwidth=region.rwidth();
@@ -7912,7 +7953,7 @@ void removestraights(planet &world, region &region, int dx, int dy, int sx, int 
 
 // This function pastes a small lake template over the coastline, to try to make it more interesting.
 
-void disruptseacoastline(planet &world, region &region, int dx, int dy, int centrex, int centrey, int avedepth, bool raise, int maxsize, bool stayintile, boolshapetemplate smalllake[])
+void disruptseacoastline(const planet &world, region &region, int dx, int dy, int centrex, int centrey, int avedepth, bool raise, int maxsize, bool stayintile, boolshapetemplate smalllake[])
 {
     int width=world.width();
     int sealevel=world.sealevel();
@@ -8049,7 +8090,7 @@ void disruptseacoastline(planet &world, region &region, int dx, int dy, int cent
 
 // This function pastes a small lake template over a large lake coastline, to try to make it more interesting.
 
-void disruptlakecoastline(planet &world, region &region, int dx, int dy, int centrex, int centrey, int surfacelevel, int avedepth, bool raise, int maxsize, bool stayintile, int special, boolshapetemplate smalllake[])
+void disruptlakecoastline(const planet &world, region &region, int dx, int dy, int centrex, int centrey, int surfacelevel, int avedepth, bool raise, int maxsize, bool stayintile, int special, boolshapetemplate smalllake[])
 {
     int width=world.width();
     int sealevel=world.sealevel();
@@ -8177,7 +8218,7 @@ void disruptlakecoastline(planet &world, region &region, int dx, int dy, int cen
 
 // This function removes odd bits of river sticking up out of the sea.
 
-void removesearivers(planet &world, region &region, int dx, int dy)
+void removesearivers(const planet &world, region &region, int dx, int dy)
 {
     int maxelev=world.maxelevation();
     int rwidth=region.rwidth();
@@ -8217,7 +8258,7 @@ void removesearivers(planet &world, region &region, int dx, int dy)
 
 // This one gets rid of odd stringy spits of land with rivers on them.
 
-void removeextrasearivers(planet &world, region &region, int dx, int dy, int sx, int sy)
+void removeextrasearivers(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     if (world.sea(sx,sy)==0 && world.outline(sx,sy)==0)
         return;
@@ -8268,7 +8309,7 @@ void removeextrasearivers(planet &world, region &region, int dx, int dy, int sx,
 
 // This function removes rivers that come out of the sea (for where a river goes into the sea and then comes out of it again a little further on).
 
-void removeriverscomingfromsea(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey)
+void removeriverscomingfromsea(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &fakesourcex, vector<vector<int>> &fakesourcey)
 {
     if (world.sea(sx,sy)==0 && world.outline(sx,sy)==0)
         return;
@@ -8478,7 +8519,7 @@ int checknearbyriver(region &region, int x, int y)
 
 // This function removes rivers on the regional map that come out of lakes and then return to the same lakes.
 
-void removeriverlakeloops(planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[])
+void removeriverlakeloops(const planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[])
 {
     int width=world.width();
     int height=world.height();
@@ -8673,7 +8714,7 @@ void removeriverlakeloops(planet &world, region &region, int dx, int dy, int sx,
 
 // This adds mountains to tiles on the regional map.
 
-void makemountaintile(planet &world, region &region, int dx, int dy, int sx, int sy, peaktemplate &peaks, vector<vector<int>> &rmountainmap, vector<vector<int>> &ridgeids, short markgap)
+void makemountaintile(const planet &world, region &region, int dx, int dy, int sx, int sy, peaktemplate &peaks, vector<vector<int>> &rmountainmap, vector<vector<int>> &ridgeids, short markgap)
 {
     if (world.mountainheight(sx,sy)==0)
         return;
@@ -8963,7 +9004,7 @@ void makemountaintile(planet &world, region &region, int dx, int dy, int sx, int
 
 // This function calculates and draws the mountain ridges on the regional map.
 
-void calculateridges(planet &world, region &region, int dx, int dy, int sx, int sy, twofloats pt, twofloats mm1, twofloats mm2, twofloats mm3, int newheight, int midheight, int destheight, peaktemplate &peaks, vector<vector<int>> &rmountainmap, int ridgedir, vector<vector<int>> &ridgeids, short markgap)
+void calculateridges(const planet &world, region &region, int dx, int dy, int sx, int sy, twofloats pt, twofloats mm1, twofloats mm2, twofloats mm3, int newheight, int midheight, int destheight, peaktemplate &peaks, vector<vector<int>> &rmountainmap, int ridgedir, vector<vector<int>> &ridgeids, short markgap)
 {
     short markcount=markgap/(random(2,6));
     
@@ -9010,7 +9051,7 @@ void calculateridges(planet &world, region &region, int dx, int dy, int sx, int 
 
 // This function works out which points on the regional map are closest to which mountain ridges.
 
-void assignridgeregions(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rmountainmap, vector<vector<int>> &ridgeids, vector<vector<int>> &nearestridgepointdist, vector<vector<int>> &nearestridgepointx, vector<vector<int>> &nearestridgepointy, int smallermaxdist, int maxdist)
+void assignridgeregions(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rmountainmap, vector<vector<int>> &ridgeids, vector<vector<int>> &nearestridgepointdist, vector<vector<int>> &nearestridgepointx, vector<vector<int>> &nearestridgepointy, int smallermaxdist, int maxdist)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -9055,7 +9096,7 @@ void assignridgeregions(planet &world, region &region, int dx, int dy, int sx, i
 
 // This function identifies the edges of mountainous regions, where buttresses can form.
 
-void findmountainedges(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &nearestridgepointdist, vector<vector<int>> &nearestridgepointx, vector<vector<int>> &nearestridgepointy, vector<vector<bool>> &mountainedges)
+void findmountainedges(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &nearestridgepointdist, vector<vector<int>> &nearestridgepointx, vector<vector<int>> &nearestridgepointy, vector<vector<bool>> &mountainedges)
 {
     int width=world.width();
     int height=world.height();
@@ -9192,7 +9233,7 @@ void findmountainedges(planet &world, region &region, int dx, int dy, int sx, in
 
 // This function identifies the points where buttresses will end.
 
-void findbuttresspoints(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &ridgeids, vector<vector<int>> &nearestridgepointdist, vector<vector<int>> &nearestridgepointx, vector<vector<int>> &nearestridgepointy, vector<vector<bool>> &mountainedges, vector<vector<bool>> &buttresspoints, int maxdist, int spacing)
+void findbuttresspoints(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &ridgeids, vector<vector<int>> &nearestridgepointdist, vector<vector<int>> &nearestridgepointx, vector<vector<int>> &nearestridgepointy, vector<vector<bool>> &mountainedges, vector<vector<bool>> &buttresspoints, int maxdist, int spacing)
 {
     int width=world.width();
     int height=world.height();
@@ -9274,7 +9315,7 @@ void findbuttresspoints(planet &world, region &region, int dx, int dy, int sx, i
 
 // This function draws the buttresses onto the mountain map.
 
-void makebuttresses(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rmountainmap, peaktemplate &peaks, vector<vector<int>> &nearestridgepointx, vector<vector<int>> &nearestridgepointy, vector<vector<int>> &nearestridgepointdist, int maxdist, vector<vector<bool>> &buttresspoints, vector<vector<int>> &ridgeids, short markgap, bool minibuttresses)
+void makebuttresses(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rmountainmap, peaktemplate &peaks, vector<vector<int>> &nearestridgepointx, vector<vector<int>> &nearestridgepointy, vector<vector<int>> &nearestridgepointdist, int maxdist, vector<vector<bool>> &buttresspoints, vector<vector<int>> &ridgeids, short markgap, bool minibuttresses)
 {
     int width=world.width();
     int height=world.height();
@@ -9408,7 +9449,7 @@ void makebuttresses(planet &world, region &region, int dx, int dy, int sx, int s
 
 // This function draws a mountain peak onto the regional map.
 
-void drawpeak(planet &world, region &region, int sx, int sy, int dx, int dy, int x, int y, int peakheight, peaktemplate &peaks, vector<vector<int>> &rmountainmap, bool buttress)
+void drawpeak(const planet &world, region &region, int sx, int sy, int dx, int dy, int x, int y, int peakheight, peaktemplate &peaks, vector<vector<int>> &rmountainmap, bool buttress)
 {
     if (buttress==0 && random(1,10)!=1) // Only draw peaks for some of the points in the line.
         return;
@@ -9443,7 +9484,7 @@ void drawpeak(planet &world, region &region, int sx, int sy, int dx, int dy, int
 
 // This function actually pastes the peak onto the regional map.
 
-void pastepeak(planet &world, region &region, int x, int y, float peakheight, int templateno, bool leftr, bool downr, peaktemplate &peaks, vector<vector<int>> &rmountainmap)
+void pastepeak(const planet &world, region &region, int x, int y, float peakheight, int templateno, bool leftr, bool downr, peaktemplate &peaks, vector<vector<int>> &rmountainmap)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -9566,7 +9607,7 @@ void pastepeak(planet &world, region &region, int x, int y, float peakheight, in
 
 // This looks at each tile of the regional map and removes any bits of sea that are not connected to the ocean.
 
-void removepools(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &pathchecked, int &checkno)
+void removepools(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &pathchecked, int &checkno)
 {
     int width=world.width();
     int height=world.height();
@@ -11006,7 +11047,7 @@ bool findpath(region &region, int &leftx, int &lefty, int &rightx, int &righty, 
 
 // This identifies any more pools that are on the map and turns them into land (originally it changed them into lakes but I changed it!). (This is because the removepools routine checks only near coastlines, and may miss some that are further inland, especially where fjords are nearby.)
 
-void turnpoolstolakes(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &pathchecked, int &checkno)
+void turnpoolstolakes(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &pathchecked, int &checkno)
 {
     int width=world.width();
     int height=world.height();
@@ -11285,7 +11326,7 @@ void removelakesbysea(region &region, int leftx, int lefty, int rightx, int righ
 
 // This function removes sinks - areas of very low elevation - from the regional map.
 
-void removesinks(planet &world, region &region, int dx, int dy, int sx, int sy)
+void removesinks(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     int sealevel=world.sealevel();
     
@@ -11503,7 +11544,7 @@ void filldepression(region &region, int dx, int dy, int x, int y, int elev)
 
 // This function adds inlets to the mouths of rivers.
 
-void addinlets(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &riverinlets)
+void addinlets(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &riverinlets)
 {
     if (world.riverdir(sx,sy)==0)
         return;
@@ -11679,7 +11720,7 @@ void pasteinletcircle(region &region, int centrex, int centrey, int depth, int p
 
 // This function puts the wetlands in a tile.
 
-void makewetlandtile(planet &world ,region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[])
+void makewetlandtile(const planet &world ,region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[])
 {
     int width=world.width();
     int height=world.height();
@@ -11828,7 +11869,7 @@ void pasteregionalwetlands(region &region, int centrex, int centrey, int special
 
 // This ensures that any lakes in the tile are special lakes, if they should be.
 
-void convertlakestospecials(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &safesaltlakes)
+void convertlakestospecials(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &safesaltlakes)
 {
     int width=world.width();
     int height=world.height();
@@ -11949,7 +11990,7 @@ void convertlakestospecials(planet &world, region &region, int dx, int dy, int s
 
 // This function removes sea from river delta tiles.
 
-void removedeltasea(planet &world, region &region, int dx, int dy, int sx, int sy)
+void removedeltasea(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     int width=world.width();
     int height=world.height();
@@ -12015,7 +12056,7 @@ void removedeltasea(planet &world, region &region, int dx, int dy, int sx, int s
 
 // This function puts the delta branches onto the normal river map.
 
-void adddeltamap(planet &world, region &region, int leftx, int lefty, int rightx, int righty)
+void adddeltamap(const planet &world, region &region, int leftx, int lefty, int rightx, int righty)
 {
     int sealevel=world.sealevel();
     
@@ -12063,7 +12104,7 @@ void adddeltamap(planet &world, region &region, int leftx, int lefty, int rightx
 
 // This function creates a tile of the various regional maps.
 
-void makegenerictile(planet &world, int dx, int dy, int sx, int sy, float valuemod, int coords[4][2], vector<vector<int>> &source, vector<vector<int>> &dest, int max, int min, bool interpolate)
+void makegenerictile(const planet &world, int dx, int dy, int sx, int sy, float valuemod, int coords[4][2], vector<vector<int>> &source, vector<vector<int>> &dest, int max, int min, bool interpolate)
 {
     int width=world.width();
     int height=world.height();
@@ -12527,7 +12568,7 @@ void smoothprecipitation(region &region, int leftx, int lefty, int rightx, int r
 
 // This function returns the value of the ice at this point and surrounding points, or -1 if it's mixed.
 
-int getsurroundingice(planet &world, int x, int y)
+int getsurroundingice(const planet &world, int x, int y)
 {
     int width=world.width();
     int height=world.height();
@@ -12584,7 +12625,7 @@ int getsurroundingice(planet &world, int x, int y)
 
 // This makes small salt pans, sometimes, on desert tiles.
 
-void makesmallsaltpans(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &safesaltlakes, boolshapetemplate smalllake[])
+void makesmallsaltpans(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &safesaltlakes, boolshapetemplate smalllake[])
 {
     if (world.climate(sx,sy)!=5)
         return;
@@ -12724,7 +12765,7 @@ void makesmallsaltpans(planet &world, region &region, int dx, int dy, int sx, in
 
 // This function adds salt pans around any salt lakes that are on the tile.
 
-void makesaltpantile(planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[])
+void makesaltpantile(const planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[])
 {
     int surfacelevel=world.lakesurface(sx,sy);
     
@@ -12884,7 +12925,7 @@ void removewetsaltpans(region &region, int leftx, int lefty, int rightx, int rig
 
 // This function does the barrier islands for a regional map tile.
 
-void addbarrierislands(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &riverinlets)
+void addbarrierislands(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &riverinlets)
 {
     if (world.avetemp(sx,sy)<world.glaciertemp()) // No barrier islands in glacial areas.
         return;
@@ -13544,9 +13585,661 @@ void addbarrierislands(planet &world, region &region, int dx, int dy, int sx, in
     }
 }
 
+// This function adds coast details for a regional map tile.
+
+void addcoastdetails(const planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& riverinlets)
+{
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+
+    fast_srand((sy * width + sx) + world.map(sx, sy) + world.summerrain(sx, sy) + world.riverjul(sx, sy));
+
+    // First, check that we have both land and sea present on this tile.
+
+    bool landfound = 0;
+    bool seafound = 0;
+
+    for (int i = dx; i <= dx + 16; i++)
+    {
+        for (int j = dy; j <= dy + 16; j++)
+        {
+            if (region.sea(i, j) == 1)
+                seafound = 1;
+            else
+                landfound = 1;
+
+            if (seafound == 1 && landfound == 1)
+            {
+                i = dx + 16;
+                j = dy + 16;
+            }
+        }
+    }
+
+    int northcount = 0;
+    int southcount = 0;
+    int eastcount = 0;
+    int westcount = 0;
+
+    for (int n = 1; n <= 14; n++)
+    {
+        if (region.map(dx + n, dy) > sealevel)
+            northcount++;
+
+        if (region.map(dx + n, dy + 14) > sealevel)
+            southcount++;
+
+        if (region.map(dx, dy + n) > sealevel)
+            westcount++;
+
+        if (region.map(dx + 14, dy + n) > sealevel)
+            eastcount++;
+    }
+
+    int maxcount = 8;
+
+    if (northcount > maxcount && southcount > maxcount)
+        return;
+
+    if (eastcount > maxcount && westcount > maxcount)
+        return;
+
+
+
+
+
+
+    bool barrier[17][17]; // This will hold the barrier islands. We'll paste them onto the elevation map at the end.
+
+    for (int i = 0; i <= 16; i++)
+    {
+        for (int j = 0; j <= 16; j++)
+            barrier[i][j] = 0;
+    }
+
+    int rwidth = region.rwidth();
+    int rheight = region.rheight();
+
+    int spitchance = 5; // Chance of sending a spit towards the mainland. Higher=less likely.
+    int breakchance = 5; // Chance of having no island at this point. Higher=less likely.
+
+    // Land to the north.
+
+    bool opensea = 0; // If this is 0 it means the lagoon might be closed off to the sea (i.e. we've had a spit). If it's 1 it means we've had a break so we know it's open to the sea.
+
+    for (int i = 0; i <= 15; i++)
+    {
+        int ii = dx + i;
+        int jj = -1;
+        int j = -1;
+
+        if (region.sea(ii, dy) == 0)
+        {
+            bool foundsea = 0;
+            bool noisland = 0;
+
+            do // Go down from the land edge of the tile until we hit some sea
+            {
+                j++;
+                jj = dy + j;
+
+                if (j > 13)
+                {
+                    noisland = 1;
+                    foundsea = 1;
+                }
+
+                if (region.sea(ii, jj) == 1)
+                {
+                    foundsea = 1;
+
+                    // Now keep going if putting an island here would make awkward diagonals with the land
+
+                    if (ii > 0)
+                    {
+                        if (region.sea(ii - 1, jj) == 0 && region.sea(ii - 1, jj + 1) == 1)
+                            foundsea = 0;
+
+                        if (region.sea(ii + 1, jj) == 0 && region.sea(ii + 1, jj + 1) == 1)
+                            foundsea = 0;
+                    }
+                }
+            } while (foundsea == 0);
+
+            if (noisland == 0)
+            {
+                if (region.sea(ii, jj + 1) == 1 && region.sea(ii, jj + 2) == 1) // If there's room to do an island here
+                {
+                    if (random(1, breakchance) == 1) // If in fact we're going to have a gap
+                        opensea = 1;
+                    else
+                    {
+                        int islandx = i;
+                        int islandy = j + 1;
+
+                        if (region.riverdir(dx + islandx, dy + islandy) == 0)
+                        {
+                            bool goodtogo = 1;
+
+                            for (int n = islandy; n <= 15; n++) // Check that there's no further land beyond this island
+                            {
+                                if (region.sea(dx + islandx, dy + n) == 0)
+                                {
+                                    goodtogo = 0;
+                                    n = 15;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                if (islandx > 0 && dx + islandx < rwidth)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy) == 0 && region.sea(dx + islandx + 1, dy + islandy) == 0)
+                                        goodtogo = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                barrier[islandx][islandy] = 1;
+
+                                // Add extra bits of island to join up with previous ones if there are diagonals.
+
+                                if (islandx > 0 && islandy > 0 && islandy < 16)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy - 1) == 0 || region.sea(dx + islandx - 1, dy + islandy) == 0 || region.sea(dx + islandx - 1, dy + islandy + 1) == 0)
+                                        opensea = 0;
+
+                                    if (random(1, 2) == 1) // Don't always do this
+                                    {
+                                        if (barrier[islandx - 1][islandy + 1] == 1 && barrier[islandx - 1][islandy] == 0)
+                                            barrier[islandx][islandy + 1] = 1;
+
+                                        if (barrier[islandx - 1][islandy - 1] == 1)
+                                            barrier[islandx - 1][islandy] = 1;
+                                    }
+                                }
+
+                                if (opensea == 1 && random(1, spitchance) == 1 && region.riverdir(dx + islandx, dy + islandy - 1) == 0) // If the sea is currently open we could put a spit here.
+                                {
+                                    if (dx + islandx > 0 && dx + islandx < rwidth && dy + islandy - 2 >= 0)
+                                    {
+                                        if (region.sea(dx + islandx - 1, dy + islandy - 2) == 1 || region.sea(dx + islandx + 1, dy + islandy - 2) == 1) // Be careful not to enclose some sea with the spit
+                                        {
+                                            barrier[islandx][islandy - 1] = 1;
+                                            opensea = 0;
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    if (region.map(ii, jj) < sealevel - 3) // Make sure the sea between the island and the mainland is shallow
+                                        region.setmap(ii, jj, sealevel - random(1, 3));
+                                }
+                            }
+                            else
+                                opensea = 1;
+                        }
+                        else
+                            opensea = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Land to the south.
+
+    opensea = 0; // If this is 0 it means the lagoon might be closed off to the sea (i.e. we've had a spit). If it's 1 it means we've had a break so we know it's open to the sea.
+
+    for (int i = 0; i <= 15; i++)
+    {
+        int ii = dx + i;
+        int jj = -1;
+        int j = 16;
+
+        if (region.sea(ii, dy + 16) == 0)
+        {
+            bool foundsea = 0;
+            bool noisland = 0;
+
+            do // Go up from the land edge of the tile until we hit some sea
+            {
+                j--;
+                jj = dy + j;
+
+                if (j < 2)
+                {
+                    noisland = 1;
+                    foundsea = 1;
+                }
+
+                if (region.sea(ii, jj) == 1)
+                {
+                    foundsea = 1;
+
+                    // Now keep going if putting an island here would make awkward diagonals with the land
+
+                    if (ii > 0)
+                    {
+                        if (region.sea(ii - 1, jj) == 0 && region.sea(ii - 1, jj - 1) == 1)
+                            foundsea = 0;
+
+                        if (region.sea(ii + 1, jj) == 0 && region.sea(ii + 1, jj - 1) == 1)
+                            foundsea = 0;
+                    }
+                }
+            } while (foundsea == 0);
+
+            /*
+
+             if (opensea==0 || region.sea(ii+1,jj+1)==0) // Avoid closing off lagoons by going into the land
+             noisland=1;
+             */
+
+            if (noisland == 0)
+            {
+                if (region.sea(ii, jj - 1) == 1 && region.sea(ii, jj - 2) == 1) // If there's room to do an island here
+                {
+                    if (random(1, breakchance) == 1) // If in fact we're going to have a gap
+                        opensea = 1;
+                    else
+                    {
+                        int islandx = i;
+                        int islandy = j - 1;
+
+                        if (region.riverdir(dx + islandx, dy + islandy) == 0)
+                        {
+                            bool goodtogo = 1;
+
+                            for (int n = islandy; n >= 0; n--) // Check that there's no further land beyond this island
+                            {
+                                if (region.sea(dx + islandx, dy + n) == 0)
+                                {
+                                    goodtogo = 0;
+                                    n = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                if (islandx > 0 && dx + islandx < rwidth)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy) == 0 && region.sea(dx + islandx + 1, dy + islandy) == 0)
+                                        goodtogo = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                barrier[islandx][islandy] = 1;
+
+                                // Add extra bits of island to join up with previous ones if there are diagonals.
+
+                                if (islandx > 0 && islandy > 0 && islandy < 16)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy - 1) == 0 || region.sea(dx + islandx - 1, dy + islandy) == 0 || region.sea(dx + islandx - 1, dy + islandy + 1) == 0)
+                                        opensea = 0;
+
+                                    if (random(1, 2) == 1) // Don't always do this
+                                    {
+                                        if (barrier[islandx - 1][islandy - 1] == 1 && barrier[islandx - 1][islandy] == 0)
+                                            barrier[islandx][islandy - 1] = 1;
+
+                                        if (barrier[islandx - 1][islandy + 1] == 1)
+                                            barrier[islandx - 1][islandy] = 1;
+                                    }
+                                }
+
+                                if (opensea == 1 && random(1, spitchance) == 1 && region.riverdir(dx + islandx, dy + islandy + 1) == 0) // If the sea is currently open we could put a spit here.
+                                {
+                                    if (dx + islandx > 0 && dx + islandx < rwidth && dy + islandy + 2 <= rheight)
+                                    {
+                                        if (region.sea(dx + islandx - 1, dy + islandy + 2) == 1 || region.sea(dx + islandx + 1, dy + islandy + 2) == 1) // Be careful not to enclose some sea with the spit
+                                        {
+                                            barrier[islandx][islandy + 1] = 1;
+                                            opensea = 0;
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    if (region.map(ii, jj) < sealevel - 3) // Make sure the sea between the island and the mainland is shallow
+                                        region.setmap(ii, jj, sealevel - random(1, 3));
+                                }
+                            }
+                            else
+                                opensea = 1;
+                        }
+                        else
+                            opensea = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Now put the new islands onto the elevation map and clear the island map.
+
+    for (short i = 0; i <= 16; i++)
+    {
+        int ii = dx + i;
+
+        for (short j = 0; j <= 16; j++)
+        {
+            int jj = dy + j;
+
+            if (barrier[i][j] == 1)
+            {
+                if (riverinlets[ii][jj] == 0)
+                {
+                    region.setmap(ii, jj, sealevel + 1);
+
+                    region.setriverdir(ii, jj, 0);
+                    region.setriverjan(ii, jj, 0);
+                    region.setriverjul(ii, jj, 0);
+                }
+                barrier[i][j] = 0;
+            }
+        }
+    }
+
+    // Land to the west.
+
+    opensea = 0; // If this is 0 it means the lagoon might be closed off to the sea (i.e. we've had a spit). If it's 1 it means we've had a break so we know it's open to the sea.
+
+    for (int j = 0; j <= 15; j++)
+    {
+        int jj = dy + j;
+        int ii = -1;
+        int i = -1;
+
+        if (region.sea(dx, jj) == 0)
+        {
+            bool foundsea = 0;
+            bool noisland = 0;
+
+            do // Go down from the land edge of the tile until we hit some sea
+            {
+                i++;
+                ii = dx + i;
+
+                if (i > 13)
+                {
+                    noisland = 1;
+                    foundsea = 1;
+                }
+
+                if (region.sea(ii, jj) == 1)
+                {
+                    foundsea = 1;
+
+                    // Now keep going if putting an island here would make awkward diagonals with the land
+
+                    if (jj > 0)
+                    {
+                        if (region.sea(ii, jj - 1) == 0 && region.sea(ii + 1, jj - 1) == 1)
+                            foundsea = 0;
+
+                        if (region.sea(ii, jj + 1) == 0 && region.sea(ii + 1, jj + 1) == 1)
+                            foundsea = 0;
+                    }
+                }
+            } while (foundsea == 0);
+
+            /*
+
+             if (opensea==0 || region.sea(ii+1,jj+1)==0) // Avoid closing off lagoons by going into the land
+             noisland=1;
+             */
+
+            if (noisland == 0)
+            {
+                if (region.sea(ii + 1, jj) == 1 && region.sea(ii + 2, jj) == 1) // If there's room to do an island here
+                {
+                    if (random(1, breakchance) == 1) // If in fact we're going to have a gap
+                        opensea = 1;
+                    else
+                    {
+                        int islandx = i + 1;
+                        int islandy = j;
+
+                        if (region.riverdir(dx + islandx, dy + islandy) == 0)
+                        {
+                            bool goodtogo = 1;
+
+                            for (int n = islandx; n <= 15; n++) // Check that there's no further land beyond this island
+                            {
+                                if (region.sea(dx + n, dy + islandy) == 0)
+                                {
+                                    goodtogo = 0;
+                                    n = 15;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                if (islandy > 0 && dy + islandy < rheight)
+                                {
+                                    if (region.sea(dx + islandx, dy + islandy - 1) == 0 && region.sea(dx + islandx, dy + islandy + 1) == 0)
+                                        goodtogo = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                barrier[islandx][islandy] = 1;
+
+                                // Add extra bits of island to join up with previous ones if there are diagonals.
+
+                                if (islandx > 0 && islandx < 16 && islandy>0)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy - 1) == 0 || region.sea(dx + islandx, dy + islandy - 1) == 0 || region.sea(dx + islandx + 1, dy + islandy - 1) == 0)
+                                        opensea = 0;
+
+                                    if (random(1, 2) == 1) // Don't always do this
+                                    {
+                                        if (barrier[islandx + 1][islandy - 1] == 1 && barrier[islandx][islandy - 1] == 0)
+                                            barrier[islandx + 1][islandy] = 1;
+
+                                        if (barrier[islandx - 1][islandy - 1] == 1)
+                                            barrier[islandx][islandy - 1] = 1;
+                                    }
+                                }
+
+                                if (opensea == 1 && random(1, spitchance) == 1 && region.riverdir(dx + islandx - 1, dy + islandy) == 0) // If the sea is currently open we could put a spit here.
+                                {
+                                    if (dx + islandx - 2 > 0 && dy + islandy > 0 && dy + islandy < rheight)
+                                    {
+                                        if (region.sea(dx + islandx - 2, dy + islandy - 1) == 1 || region.sea(dx + islandx - 2, dy + islandy + 1) == 1) // Be careful not to enclose some sea with the spit
+                                        {
+                                            barrier[islandx - 1][islandy] = 1;
+                                            opensea = 0;
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    if (region.map(ii, jj) < sealevel - 3) // Make sure the sea between the island and the mainland is shallow
+                                        region.setmap(ii, jj, sealevel - random(1, 3));
+                                }
+                            }
+                            else
+                                opensea = 1;
+                        }
+                        else
+                            opensea = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Land to the east.
+
+    opensea = 0; // If this is 0 it means the lagoon might be closed off to the sea (i.e. we've had a spit). If it's 1 it means we've had a break so we know it's open to the sea.
+
+    for (int j = 0; j <= 15; j++)
+    {
+        int jj = dy + j;
+        int ii = -1;
+        int i = 16;
+
+        if (region.sea(dx + 16, jj) == 0)
+        {
+            bool foundsea = 0;
+            bool noisland = 0;
+
+            do // Go up from the land edge of the tile until we hit some sea
+            {
+                i--;
+                ii = dx + i;
+
+                if (i < 2)
+                {
+                    noisland = 1;
+                    foundsea = 1;
+                }
+
+                if (region.sea(ii, jj) == 1)
+                {
+                    foundsea = 1;
+
+                    // Now keep going if putting an island here would make awkward diagonals with the land
+
+                    if (jj > 0)
+                    {
+                        if (region.sea(ii, jj - 1) == 0 && region.sea(ii - 1, jj - 1) == 1)
+                            foundsea = 0;
+
+                        if (region.sea(ii, jj + 1) == 0 && region.sea(ii - 1, jj + 1) == 1)
+                            foundsea = 0;
+                    }
+                }
+            } while (foundsea == 0);
+
+            /*
+
+             if (opensea==0 || region.sea(ii+1,jj+1)==0) // Avoid closing off lagoons by going into the land
+             noisland=1;
+             */
+
+            if (noisland == 0)
+            {
+                if (region.sea(ii - 1, jj) == 1 && region.sea(ii - 2, jj) == 1) // If there's room to do an island here
+                {
+                    if (random(1, breakchance) == 1) // If in fact we're going to have a gap
+                        opensea = 1;
+                    else
+                    {
+                        int islandx = i - 1;
+                        int islandy = j;
+
+                        if (region.riverdir(dx + islandx, dy + islandy) == 0)
+                        {
+                            bool goodtogo = 1;
+
+                            for (int n = islandx; n >= 0; n--) // Check that there's no further land beyond this island
+                            {
+                                if (region.sea(dx + n, dy + islandy) == 0)
+                                {
+                                    goodtogo = 0;
+                                    n = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                if (islandy > 0 && dy + islandy < rheight)
+                                {
+                                    if (region.sea(dx + islandx, dy + islandy - 1) == 0 && region.sea(dx + islandx, dy + islandy + 1) == 0)
+                                        goodtogo = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                barrier[islandx][islandy] = 1;
+
+                                // Add extra bits of island to join up with previous ones if there are diagonals.
+
+                                if (islandx > 0 && islandx < 16 && islandy>0)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy - 1) == 0 || region.sea(dx + islandx, dy + islandy - 1) == 0 || region.sea(dx + islandx + 1, dy + islandy - 1) == 0)
+                                        opensea = 0;
+
+                                    if (random(1, 2) == 1) // Don't always do this
+                                    {
+                                        if (barrier[islandx - 1][islandy - 1] == 1 && barrier[islandx][islandy - 1] == 0)
+                                            barrier[islandx - 1][islandy] = 1;
+
+                                        if (barrier[islandx + 1][islandy - 1] == 1)
+                                            barrier[islandx][islandy - 1] = 1;
+                                    }
+                                }
+
+                                if (opensea == 1 && random(1, spitchance) == 1 && region.riverdir(dx + islandx + 1, dy + islandy) == 0) // If the sea is currently open we could put a spit here.
+                                {
+                                    if (dy + islandy > 0 && dy + islandy < rheight && dx + islandx + 2 < rwidth)
+                                    {
+                                        if (region.sea(dx + islandx + 2, dy + islandy - 1) == 1 || region.sea(dx + islandx + 2, dy + islandy + 1) == 1) // Be careful not to enclose some sea with the spit
+                                        {
+                                            barrier[islandx + 1][islandy] = 1;
+                                            opensea = 0;
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    if (region.map(ii, jj) < sealevel - 3) // Make sure the sea between the island and the mainland is shallow
+                                        region.setmap(ii, jj, sealevel - random(1, 3));
+                                }
+                            }
+                            else
+                                opensea = 1;
+                        }
+                        else
+                            opensea = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Now put the new islands onto the elevation map.
+
+    for (short i = 0; i <= 16; i++)
+    {
+        int ii = dx + i;
+
+        for (short j = 0; j <= 16; j++)
+        {
+            int jj = dy + j;
+
+            if (barrier[i][j] == 1)
+            {
+                if (riverinlets[ii][jj] == 0)
+                {
+                    region.setmap(ii, jj, sealevel + 1);
+
+                    region.setriverdir(ii, jj, 0);
+                    region.setriverjan(ii, jj, 0);
+                    region.setriverjul(ii, jj, 0);
+                }
+            }
+        }
+    }
+}
+
+
 // This function adds glaciers to the regional specials map.
 
-void addregionalglaciers(planet &world, region &region, int dx, int dy, int sx, int sy)
+void addregionalglaciers(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     int width=world.width();
     int height=world.height();
@@ -13584,7 +14277,7 @@ void addregionalglaciers(planet &world, region &region, int dx, int dy, int sx, 
 
 // This function creates templates for the rift lakes.
 
-void makeriftlaketemplates(planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &riftlakemap)
+void makeriftlaketemplates(const planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &riftlakemap)
 {
     fast_srand(sy*world.width()+sx+world.map(sx,sy)+world.summerrain(sx,sy));
     
@@ -14375,7 +15068,7 @@ void makeriftlaketemplates(planet &world, region &region, int dx, int dy, int sx
 
 // This function puts the rift lakes on the regional map tiles.
 
-void makeriftlaketile(planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &riftlakemap, vector<vector<float>> &riftblob, int riftblobsize)
+void makeriftlaketile(const planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &riftlakemap, vector<vector<float>> &riftblob, int riftblobsize)
 {
     int surfacelevel=world.riftlakesurface(sx,sy);
     
@@ -14758,7 +15451,7 @@ void makeriftlaketile(planet &world, region &region, int dx, int dy, int sx, int
 
 // This function does preliminary work for the normal large lake templates.
 
-void marklakeedges(planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &lakemap)
+void marklakeedges(const planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &lakemap)
 {
     int width=world.width();
     int height=world.height();
@@ -14837,7 +15530,7 @@ void marklakeedges(planet &world, region &region, int dx, int dy, int sx, int sy
 
 // This function creates templates for the normal large lakes.
 
-void makelaketemplates(planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &lakemap)
+void makelaketemplates(const planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &lakemap)
 {
     fast_srand(sy*world.width()+sx+world.map(sx,sy)+world.summerrain(sx,sy));
     
@@ -15341,7 +16034,7 @@ void makelaketemplates(planet &world, region &region, int dx, int dy, int sx, in
 
 // This function puts the large lakes on the regional map tiles.
 
-void makelaketile(planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &lakemap, int surfacelevel, int coords[4][2], vector<vector<int>> &source, vector<vector<int>> &dest, vector<vector<bool>> &safesaltlakes, boolshapetemplate smalllake[])
+void makelaketile(const planet &world, region &region, int dx, int dy, int sx, int sy, int extra, vector<vector<bool>> &lakemap, int surfacelevel, int coords[4][2], vector<vector<int>> &source, vector<vector<int>> &dest, vector<vector<bool>> &safesaltlakes, boolshapetemplate smalllake[])
 {
     int width=world.width();
     int height=world.height();
@@ -15461,7 +16154,7 @@ void makelaketile(planet &world, region &region, int dx, int dy, int sx, int sy,
 
 // This function puts islands in the large lakes.
 
-void makelakeislands(planet &world, region &region, int dx, int dy, int sx, int sy, int surfacelevel, boolshapetemplate island[], vector<vector<bool>> &lakeislands)
+void makelakeislands(const planet &world, region &region, int dx, int dy, int sx, int sy, int surfacelevel, boolshapetemplate island[], vector<vector<bool>> &lakeislands)
 {
     fast_srand((sy*world.width()+sx)+world.nom(sx,sy)+world.summerrain(sx,sy)+world.riverjul(sx,sy));
     
@@ -15560,7 +16253,7 @@ void makelakeislands(planet &world, region &region, int dx, int dy, int sx, int 
 
 // This function creates an island in a large lake.
 
-void createlakeisland(planet &world, region &region, int centrex, int centrey, int surfacelevel, boolshapetemplate island[], vector<vector<bool>> &lakeislands, bool nooverlap, int special)
+void createlakeisland(const planet &world, region &region, int centrex, int centrey, int surfacelevel, boolshapetemplate island[], vector<vector<bool>> &lakeislands, bool nooverlap, int special)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -15687,7 +16380,7 @@ void createlakeisland(planet &world, region &region, int centrex, int centrey, i
 
 // This function makes the coastlines in the given tile more interesting. (Used for single-tile islands.)
 
-void complicatecoastlines(planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[], int chance)
+void complicatecoastlines(const planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[], int chance)
 {
     int sealevel=world.sealevel();
     //int chance=8; // Probability of this happening on any given cell.
@@ -15741,7 +16434,7 @@ void complicatecoastlines(planet &world, region &region, int dx, int dy, int sx,
 
 // This function adds extra precipitation to mountains, to match what's assigned to them in the global map.
 
-void addregionalmountainprecipitation(planet &world, region &region, int dx, int dy, int sx, int sy, bool summer)
+void addregionalmountainprecipitation(const planet &world, region &region, int dx, int dy, int sx, int sy, bool summer)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -15826,7 +16519,7 @@ void addregionalmountainprecipitation(planet &world, region &region, int dx, int
 
 // This function removes any remaining straight lines of rivers.
 
-void removeregionalstraightrivers(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &rivercurves)
+void removeregionalstraightrivers(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &rivercurves)
 {
     fast_srand((sy*world.width()+sx)+world.nom(sx,sy)+world.summerrain(sx,sy));
     
@@ -17459,7 +18152,7 @@ void makenewrivercurve(region &region, twofloats pt, twofloats mm1, twofloats mm
 
 // This tries to remove straight lines from the elevation by adding sort of terrace-like patterns to it.
 
-void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[], byteshapetemplate smudge[])
+void addterraces(const planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[], byteshapetemplate smudge[])
 {
     fast_srand((sy*world.width()+sx)+world.nom(sx,sy)+world.summerrain(sx,sy));
     
@@ -17606,7 +18299,7 @@ void addterraces(planet &world, region &region, int dx, int dy, int sx, int sy, 
 
 // Same thing, but for lake beds.
 
-void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[], byteshapetemplate smudge[])
+void addlaketerraces(const planet &world, region &region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[], byteshapetemplate smudge[])
 {
     fast_srand((sy*world.width()+sx)+world.nom(sx,sy)+world.summerrain(sx,sy));
     
@@ -17781,7 +18474,7 @@ void addlaketerraces(planet &world, region &region, int dx, int dy, int sx, int 
 
 // This disrupts a long straight cliff on the regional map by making a sort of terrace on it.
 
-void disruptcliff(planet &world, region &region, int dx, int dy, int sx, int sy, int startx, int starty, int endx, int endy, boolshapetemplate smalllake[], byteshapetemplate smudge[])
+void disruptcliff(const planet &world, region &region, int dx, int dy, int sx, int sy, int startx, int starty, int endx, int endy, boolshapetemplate smalllake[], byteshapetemplate smudge[])
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -17914,7 +18607,7 @@ void disruptcliff(planet &world, region &region, int dx, int dy, int sx, int sy,
 
 // Same thing, but for lake beds.
 
-void disruptlakecliff(planet &world, region &region, int dx, int dy, int sx, int sy, int startx, int starty, int endx, int endy, boolshapetemplate smalllake[], byteshapetemplate smudge[])
+void disruptlakecliff(const planet &world, region &region, int dx, int dy, int sx, int sy, int startx, int starty, int endx, int endy, boolshapetemplate smalllake[], byteshapetemplate smudge[])
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -18099,7 +18792,7 @@ void disruptlakebed(region &region, int centrex, int centrey, int newheight, boo
 
 // This function makes a tile of undersea elevation.
 
-void makesubmarineelevationtile(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &underseamap, int coords[4][2], int extra)
+void makesubmarineelevationtile(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &underseamap, int coords[4][2], int extra)
 {
     int width=world.width();
     int height=world.height();
@@ -18558,7 +19251,7 @@ int submarinediamond(vector<vector<int>> &underseamap, int dx, int dy, int s, in
 
 // This disrupts the underwater terrain.
 
-int disruptsubmarineelevationtile(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &underseamap, byteshapetemplate smudge[], int extra)
+int disruptsubmarineelevationtile(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &underseamap, byteshapetemplate smudge[], int extra)
 {
     int width=world.width();
     int height=world.height();
@@ -18628,7 +19321,7 @@ int disruptsubmarineelevationtile(planet &world, region &region, int dx, int dy,
 
 // This smudges an area of underwater terrain.
 
-void smudgesubmarineterrain(planet &world, region &region, int centrex, int centrey, int searchdist, vector<vector<int>> &underseamap, byteshapetemplate smudge[])
+void smudgesubmarineterrain(const planet &world, region &region, int centrex, int centrey, int searchdist, vector<vector<int>> &underseamap, byteshapetemplate smudge[])
 {
     int sealevel=world.sealevel();
     
@@ -18708,7 +19401,7 @@ void smudgesubmarineterrain(planet &world, region &region, int centrex, int cent
 
 // The same thing, but on land.
 
-void smudgeterrain(planet &world, region &region, int centrex, int centrey, int searchdist, byteshapetemplate smudge[])
+void smudgeterrain(const planet &world, region &region, int centrex, int centrey, int searchdist, byteshapetemplate smudge[])
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -18794,7 +19487,7 @@ void smudgeterrain(planet &world, region &region, int centrex, int centrey, int 
 
 // This draws the submarine ridges
 
-void makesubmarineridgelines(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &undersearidgelines)
+void makesubmarineridgelines(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &undersearidgelines)
 {
     int width=world.width();
     int height=world.height();
@@ -18932,7 +19625,7 @@ void marksubmarineridgeline(region &region, vector<vector<bool>> &undersearidgel
 
 // This draws the actual undersea ridges themselves.
 
-void drawsubmarineridges(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &undersearidgelines, peaktemplate &peaks, vector<vector<int>> &undersearidges)
+void drawsubmarineridges(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &undersearidgelines, peaktemplate &peaks, vector<vector<int>> &undersearidges)
 {
     int width=world.width();
     int height=world.height();
@@ -19012,7 +19705,7 @@ void drawsubmarineridges(planet &world, region &region, int dx, int dy, int sx, 
 
 // This pastes a peak onto the underseamap.
 
-void pastesubmarinepeak(planet &world, region &region, int x, int y, float peakheight, int templateno, peaktemplate &peaks, vector<vector<int>> &undersearidges, int rwidth, int rheight)
+void pastesubmarinepeak(const planet &world, region &region, int x, int y, float peakheight, int templateno, peaktemplate &peaks, vector<vector<int>> &undersearidges, int rwidth, int rheight)
 {
     int sealevel=world.sealevel();
     int maxelev=world.maxelevation();
@@ -19101,7 +19794,7 @@ void pastesubmarinepeak(planet &world, region &region, int x, int y, float peakh
 
 // This draws the radiating spines away from the central rift.
 
-void makesubmarineriftradiations(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &underseaspikes, peaktemplate &peaks, int extra)
+void makesubmarineriftradiations(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &underseaspikes, peaktemplate &peaks, int extra)
 {
     int width=world.width();
     int height=world.height();
@@ -19190,7 +19883,7 @@ void makesubmarineriftradiations(planet &world, region &region, int dx, int dy, 
 // This draws a line radiating across the sea bed.
 // Uses Bresenham's line algorithm - http://rosettacode.org/wiki/Bitmap/Bresenham%27s_line_algorithm#C.2B.2B
 
-void drawriftspine(planet &world, region &region, int dx, int dy, int sx, int sy, int x1, int y1, int x2, int y2, float peakheight, float heightstep, vector<vector<int>> &underseaspikes, peaktemplate &peaks, bool lower)
+void drawriftspine(const planet &world, region &region, int dx, int dy, int sx, int sy, int x1, int y1, int x2, int y2, float peakheight, float heightstep, vector<vector<int>> &underseaspikes, peaktemplate &peaks, bool lower)
 {
     int width=world.width();
     int height=world.height();
@@ -19298,7 +19991,7 @@ void drawriftspine(planet &world, region &region, int dx, int dy, int sx, int sy
 
 // This draws the central submarine rift mountains.
 
-void makesubmarineriftmountains(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &undersearidges, peaktemplate &peaks)
+void makesubmarineriftmountains(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &undersearidges, peaktemplate &peaks)
 {
     int width=world.width();
     int height=world.height();
@@ -19396,7 +20089,7 @@ void makesubmarineriftmountains(planet &world, region &region, int dx, int dy, i
 
 // This draws the mountains around the central oceanic rifts.
 
-void makeoceanicriftmountains(planet &world, region &region, int sx, int sy, int fromx, int fromy, int tox, int toy, vector<vector<int>> &undersearidges, peaktemplate &peaks)
+void makeoceanicriftmountains(const planet &world, region &region, int sx, int sy, int fromx, int fromy, int tox, int toy, vector<vector<int>> &undersearidges, peaktemplate &peaks)
 {
     int width=world.width();
     int height=world.height();
@@ -19481,7 +20174,7 @@ void makeoceanicriftmountains(planet &world, region &region, int sx, int sy, int
 
 // This puts the rift itself into the oceanic rifts.
 
-void makesubmarinerift(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &undersearidges, byteshapetemplate smudge[])
+void makesubmarinerift(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &undersearidges, byteshapetemplate smudge[])
 {
     int width=world.width();
     int height=world.height();
@@ -19584,7 +20277,7 @@ void makesubmarinerift(planet &world, region &region, int dx, int dy, int sx, in
 
 // This draws the oceanic rifts.
 
-void makesubmarineriftvalley(planet &world, region &region, int sx, int sy, int fromx, int fromy, int tox, int toy, int tileriftheight, vector<vector<int>> &undersearidges, byteshapetemplate smudge[])
+void makesubmarineriftvalley(const planet &world, region &region, int sx, int sy, int fromx, int fromy, int tox, int toy, int tileriftheight, vector<vector<int>> &undersearidges, byteshapetemplate smudge[])
 {
     int width=world.width();
     int height=world.height();
@@ -19699,7 +20392,7 @@ void makesubmarineriftvalley(planet &world, region &region, int sx, int sy, int 
 
 // This removes extra land around Aegean-style islands.
 
-void trimmountainislands(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rmountainmap)
+void trimmountainislands(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rmountainmap)
 {
     int width=world.width();
     int height=world.height();
@@ -19768,7 +20461,7 @@ void trimmountainislands(planet &world, region &region, int dx, int dy, int sx, 
 
 // This removes any weirdly high elevation.
 
-void removetoohighelevations(planet &world, region &region, int dx, int dy, int sx, int sy)
+void removetoohighelevations(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     int maxelev=world.maxelevation();
     
@@ -19820,7 +20513,7 @@ void removetoohighelevations(planet &world, region &region, int dx, int dy, int 
 
 // This puts a single isolated peak onto the map.
 
-void makevolcano(planet &world, region &region, int dx, int dy, int sx, int sy, peaktemplate &peaks, vector<vector<int>> &rmountainmap, vector<vector<int>> &ridgeids, int templateno)
+void makevolcano(const planet &world, region &region, int dx, int dy, int sx, int sy, peaktemplate &peaks, vector<vector<int>> &rmountainmap, vector<vector<int>> &ridgeids, int templateno)
 {
     int width=world.width();
     int rheight=region.rheight();
@@ -19906,7 +20599,7 @@ void makevolcano(planet &world, region &region, int dx, int dy, int sx, int sy, 
 
 // Same thing, but on the sea bed.
 
-void makesubmarinevolcano(planet &world, region &region, int dx, int dy, int sx, int sy, peaktemplate &peaks, vector<vector<int>> &undersearidges)
+void makesubmarinevolcano(const planet &world, region &region, int dx, int dy, int sx, int sy, peaktemplate &peaks, vector<vector<int>> &undersearidges)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -19952,7 +20645,7 @@ void makesubmarinevolcano(planet &world, region &region, int dx, int dy, int sx,
 
 // This goes through the regional map and tries to fill in any missing river sections.
 
-void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, int righty)
+void fixrivers(const planet &world, region &region, int leftx, int lefty, int rightx, int righty)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -20266,7 +20959,7 @@ void fixrivers(planet &world, region &region, int leftx, int lefty, int rightx, 
 
 // This notes down too-long diagonals on the coastlines.
 
-void findcoastdiagonals(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &disruptpoints)
+void findcoastdiagonals(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &disruptpoints)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -20336,7 +21029,7 @@ void findcoastdiagonals(planet &world, region &region, int dx, int dy, int sx, i
 
 // This removes the diagonals.
 
-void removecoastdiagonals(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &disruptpoints, boolshapetemplate smalllake[])
+void removecoastdiagonals(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &disruptpoints, boolshapetemplate smalllake[])
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -20378,7 +21071,7 @@ void removecoastdiagonals(planet &world, region &region, int dx, int dy, int sx,
 
 // This notes down too-long diagonals on the lake coastlines.
 
-void findlakecoastdiagonals(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &disruptpoints)
+void findlakecoastdiagonals(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &disruptpoints)
 {
     int width=world.width();
     int height=world.height();
@@ -20477,7 +21170,7 @@ void findlakecoastdiagonals(planet &world, region &region, int dx, int dy, int s
 
 // This removes the diagonals.
 
-void removelakecoastdiagonals(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &disruptpoints, boolshapetemplate smalllake[])
+void removelakecoastdiagonals(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<bool>> &disruptpoints, boolshapetemplate smalllake[])
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -20529,7 +21222,7 @@ void removelakecoastdiagonals(planet &world, region &region, int dx, int dy, int
 
 // This adds rotations to the terrain at the northern and western edges of each tile.
 
-void rotatetileedges(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rotatearray, bool lakes)
+void rotatetileedges(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &rotatearray, bool lakes)
 {
     int width=world.width();
     int height=world.height();
@@ -20601,7 +21294,7 @@ void rotatetileedges(planet &world, region &region, int dx, int dy, int sx, int 
 
 // This rotates an area of land elevation and blends it in, to remove grid artefacts.
 
-void rotateland(planet &world, region &region, int centrex, int centrey, int maxradius, int angle, vector<vector<int>> &rotatearray)
+void rotateland(const planet &world, region &region, int centrex, int centrey, int maxradius, int angle, vector<vector<int>> &rotatearray)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -20763,7 +21456,7 @@ void rotateland(planet &world, region &region, int centrex, int centrey, int max
 
 // The same, but lake beds.
 
-void rotatelakes(planet &world, region &region, int centrex, int centrey, int maxradius, int angle, vector<vector<int>> &rotatearray)
+void rotatelakes(const planet &world, region &region, int centrex, int centrey, int maxradius, int angle, vector<vector<int>> &rotatearray)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -20844,7 +21537,7 @@ void rotatelakes(planet &world, region &region, int centrex, int centrey, int ma
 
 // This adds rotations to a generic array at the northern and western edges of each tile.
 
-void rotatetileedgesarray(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &destarray, vector<vector<int>> &rotatearray, int min)
+void rotatetileedgesarray(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &destarray, vector<vector<int>> &rotatearray, int min)
 {
     int width=world.width();
     int height=world.height();
@@ -20896,7 +21589,7 @@ void rotatetileedgesarray(planet &world, region &region, int dx, int dy, int sx,
     }
 }
 
-void rotatelandarray(planet &world, region &region, int centrex, int centrey, int maxradius, int angle, vector<vector<int>> &destarray, vector<vector<int>> &rotatearray, int min)
+void rotatelandarray(const planet &world, region &region, int centrex, int centrey, int maxradius, int angle, vector<vector<int>> &destarray, vector<vector<int>> &rotatearray, int min)
 {
     int rwidth=region.rwidth();
     int rheight=region.rheight();
@@ -20975,7 +21668,7 @@ void rotatelandarray(planet &world, region &region, int centrex, int centrey, in
 
 // This removes small islands from a sea tile.
 
-void removesmallislands(planet &world, region &region, int dx, int dy, int sx, int sy)
+void removesmallislands(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     if (world.sea(sx,sy)==0)
         return;
@@ -21163,7 +21856,7 @@ void smoothlakebeds(region &region)
 
 // This removes too-low areas of elevation (occasionally can occur in lakes).
 
-void removetoolow(planet &world, region &region, int dx, int dy, int sx, int sy)
+void removetoolow(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     int maxelev=world.maxelevation();
     int minelev=3;
@@ -21182,7 +21875,7 @@ void removetoolow(planet &world, region &region, int dx, int dy, int sx, int sy)
 
 // This removes any sea cells that may appear in lakes.
 
-void removelakeseas(planet &world, region &region, int dx, int dy, int sx, int sy)
+void removelakeseas(const planet &world, region &region, int dx, int dy, int sx, int sy)
 {
     if (world.sea(sx,sy)==1)
         return;

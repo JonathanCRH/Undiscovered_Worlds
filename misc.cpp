@@ -39,7 +39,7 @@ short stos(string const& instring)
 
 // This function saves settings.
 
-void savesettings(planet& world, string filename)
+void savesettings(const planet& world, string filename)
 {
     ofstream outfile;
     outfile.open(filename, ios::out);
@@ -990,7 +990,7 @@ void fillcontinent(vector<vector<bool>>& arr, vector<vector<short>>& mask, short
 
 // This function adds the elevation element to a temperature.
 
-int tempelevadd(planet& world, int temp, int i, int j)
+int tempelevadd(const planet& world, int temp, int i, int j)
 {
     int elevation = world.map(i, j) - world.sealevel();
 
@@ -1026,7 +1026,7 @@ int tempelevadd(region& region, int temp, int i, int j)
 
 // This function removes the elevation element of a temperature.
 
-int tempelevremove(planet& world, int temp, int i, int j)
+int tempelevremove(const planet& world, int temp, int i, int j)
 {
     int elevation = world.map(i, j) - world.sealevel();
 
@@ -1161,7 +1161,7 @@ twointegers getdestination(int x, int y, int dir)
 
 // This function finds the direction of the lowest neighbouring tile.
 
-int findlowestdir(planet& world, int neighbours[8][2], int x, int y)
+int findlowestdir(const planet& world, int neighbours[8][2], int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -1201,7 +1201,7 @@ int findlowestdir(planet& world, int neighbours[8][2], int x, int y)
 
 // Same thing, but for river directions.
 
-int findlowestdirriver(planet& world, int neighbours[8][2], int x, int y, vector<vector<int>>& mountaindrainage)
+int findlowestdirriver(const planet& world, int neighbours[8][2], int x, int y, vector<vector<int>>& mountaindrainage)
 {
     int width = world.width();
     int height = world.height();
@@ -1278,7 +1278,7 @@ int findlowestdirriver(planet& world, int neighbours[8][2], int x, int y, vector
 
 // This gets the amount the land is sloping between two points.
 
-int getslope(planet& world, int x, int y, int xx, int yy)
+int getslope(const planet& world, int x, int y, int xx, int yy)
 {
     int width = world.width();
     int height = world.height();
@@ -1326,7 +1326,7 @@ int getslope(region& region, int x, int y, int xx, int yy)
 
 // This function checks how flat the land is at a given point.
 
-int getflatness(planet& world, int x, int y)
+int getflatness(const planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -1387,7 +1387,7 @@ int getflatness(planet& world, int x, int y)
 
 // This function gets the elevation of a point, incorporating water level.
 
-int getflatelevation(planet& world, int x, int y)
+int getflatelevation(const planet& world, int x, int y)
 {
     int elev;
 
@@ -1408,7 +1408,7 @@ int getflatelevation(planet& world, int x, int y)
 
 // This finds the distance to the nearest land in the direction of the equator.
 
-int landdistance(planet& world, int x, int y)
+int landdistance(const planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -1438,7 +1438,7 @@ int landdistance(planet& world, int x, int y)
 
 // This finds the coordinates of the nearest sea (or land, if land=1) to the point specified. Note that it does not wrap the x coordinate, i.e. it could return one lower than 0 or higher than width.
 
-twointegers nearestsea(planet& world, int i, int j, bool land, int limit, int grain)
+twointegers nearestsea(const planet& world, int i, int j, bool land, int limit, int grain)
 {
     int width = world.width();
     int height = world.height();
@@ -1566,7 +1566,7 @@ twointegers nearestsea(region& region, int leftx, int lefty, int rightx, int rig
 
 // This function checks whether a global tile is either sea next to land or land next to sea.
 
-bool vaguelycoastal(planet& world, int x, int y)
+bool vaguelycoastal(const planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -1651,7 +1651,7 @@ bool vaguelycoastal(region& region, int x, int y)
 
 // This function checks to see if a global tile is land, bordered by sea to the east, south, and southeast.
 
-bool northwestlandonly(planet& world, int x, int y)
+bool northwestlandonly(const planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -1786,7 +1786,7 @@ bool lakenorthwestlandonly(region& region, int x, int y)
 
 // This function checks to see if a global tile is land, bordered by sea to the west, south, and southwest.
 
-bool northeastlandonly(planet& world, int x, int y)
+bool northeastlandonly(const planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -1921,7 +1921,7 @@ bool lakenortheastlandonly(region& region, int x, int y)
 
 // This function checks to see if a global tile is land, bordered by sea to the east, north, and northeast.
 
-bool southwestlandonly(planet& world, int x, int y)
+bool southwestlandonly(const planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -2056,7 +2056,7 @@ bool lakesouthwestlandonly(region& region, int x, int y)
 
 // This function checks to see if a global tile is land, bordered by sea to the west, north, and northwest.
 
-bool southeastlandonly(planet& world, int x, int y)
+bool southeastlandonly(const planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -2191,7 +2191,7 @@ bool lakesoutheastlandonly(region& region, int x, int y)
 
 // This function finds a neighbouring sea tile that isn't the one we just came from.
 
-twointegers findseatile(planet& world, int x, int y, int dir)
+twointegers findseatile(const planet& world, int x, int y, int dir)
 {
     int width = world.width();
     int height = world.height();
@@ -2267,7 +2267,7 @@ twointegers findseatile(planet& world, int x, int y, int dir)
 
 // This returns the coordinate that the river in the given tile is flowing into.
 
-twointegers getflowdestination(planet& world, int x, int y, int dir)
+twointegers getflowdestination(const planet& world, int x, int y, int dir)
 {
     int width = world.width();
     int height = world.height();
@@ -2344,7 +2344,7 @@ twointegers getregionalflowdestination(region& region, int x, int y, int dir)
 
 // This function finds the cell with the largest flow into the current one.
 
-twointegers getupstreamcell(planet& world, int x, int y)
+twointegers getupstreamcell(const planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -2393,7 +2393,7 @@ twointegers getupstreamcell(planet& world, int x, int y)
 
 // This function checks to see whether a tile on the global map has any water flowing into it.
 
-int checkwaterinflow(planet& world, int x, int y)
+int checkwaterinflow(const planet& world, int x, int y)
 {
     int i, j;
 
@@ -2554,7 +2554,7 @@ int checkregionalwaterinflow(region& region, int x, int y)
 
 // This function gets the total water inflow into a given tile on the global map.
 
-twointegers gettotalinflow(planet& world, int x, int y)
+twointegers gettotalinflow(const planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -2715,7 +2715,7 @@ twointegers findlowesthigher(region& region, int dx, int dy, int x, int y, int j
 
 // This function tells whether a given point on the world map is in or next to a lake.
 
-int nearlake(planet& world, int x, int y, int dist, bool rift)
+int nearlake(const planet& world, int x, int y, int dist, bool rift)
 {
     int width = world.width();
     int height = world.height();
@@ -2744,7 +2744,7 @@ int nearlake(planet& world, int x, int y, int dist, bool rift)
 
 // This function tells us whether a tile is a lake tile on the edge.
 
-int getlakeedge(planet& world, int x, int y)
+int getlakeedge(const planet& world, int x, int y)
 {
     if (world.lakesurface(x, y) == 0)
         return 0;
@@ -3114,7 +3114,7 @@ void initialisemapcolours(planet& world)
 
 // This function sets up the always-used variables in the region.
 
-void initialiseregion(planet& world, region& region)
+void initialiseregion(const planet& world, region& region)
 {
     int tilewidth = REGIONALTILEWIDTH + 4;//34;
     int tileheight = REGIONALTILEHEIGHT + 4; //34;

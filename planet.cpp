@@ -894,6 +894,12 @@ void planet::saveworld(string filename)
     writevariable(outfile, itsglacier1);
     writevariable(outfile, itsglacier2);
     writevariable(outfile, itsglacier3);
+    writevariable(outfile, itsbeach1);
+    writevariable(outfile, itsbeach2);
+    writevariable(outfile, itsbeach3);
+    writevariable(outfile, itsmud1);
+    writevariable(outfile, itsmud2);
+    writevariable(outfile, itsmud2);
     writevariable(outfile, itshighlight1);
     writevariable(outfile, itshighlight2);
     writevariable(outfile, itshighlight3);
@@ -1045,6 +1051,12 @@ void planet::loadworld(string filename)
     readvariable(infile, itsglacier1);
     readvariable(infile, itsglacier2);
     readvariable(infile, itsglacier3);
+    readvariable(infile, itsbeach1);
+    readvariable(infile, itsbeach2);
+    readvariable(infile, itsbeach3);
+    readvariable(infile, itsmud1);
+    readvariable(infile, itsmud2);
+    readvariable(infile, itsmud2);
     readvariable(infile, itshighlight1);
     readvariable(infile, itshighlight2);
     readvariable(infile, itshighlight3);

@@ -282,6 +282,24 @@ public:
     int glacier3() const { return itsglacier3; };
     void setglacier3(int amount) { itsglacier3 = amount; };
 
+    int beach1() const { return itsbeach1; };
+    void setbeach1(int amount) { itsbeach1 = amount; };
+
+    int beach2() const { return itsbeach2; };
+    void setbeach2(int amount) { itsbeach2 = amount; };
+
+    int beach3() const { return itsbeach3; };
+    void setbeach3(int amount) { itsbeach3 = amount; };
+
+    int mud1() const { return itsmud1; };
+    void setmud1(int amount) { itsmud1 = amount; };
+
+    int mud2() const { return itsmud2; };
+    void setmud2(int amount) { itsmud2 = amount; };
+
+    int mud3() const { return itsmud3; };
+    void setmud3(int amount) { itsmud3 = amount; };
+
     int highlight1() const { return itshighlight1; };
     void sethighlight1(int amount) { itshighlight1 = amount; };
 
@@ -683,6 +701,14 @@ private:
     int itsglacier1;
     int itsglacier2;
     int itsglacier3;
+
+    int itsbeach1;
+    int itsbeach2;
+    int itsbeach3;
+
+    int itsmud1;
+    int itsmud2;
+    int itsmud3;
 
     int itshighlight1;
     int itshighlight2;

@@ -160,6 +160,12 @@ public:
     void setroughness(int x, int y, float amount);
     
     bool rivervalley(int x, int y) const; // Whether this is a river valley.
+
+    int tide(int x, int y) const; // Information about tides
+    void settide(int x, int y, int amount);
+
+    short coast(int x, int y) const; // Information about coasts
+    void setcoast(int x, int y, short amount);
     
     bool mountainsdone(int x, int y) const; // Whether this cell has had mountains applied to it.
     void setmountainsdone(int x, int y, bool amount);
@@ -238,6 +244,8 @@ private:
     float rroughnessmap[RARRAYWIDTH][RARRAYHEIGHT];
     bool rmountainsdone[RARRAYWIDTH][RARRAYHEIGHT];
     bool rvolcanomap[RARRAYWIDTH][RARRAYHEIGHT];
+    short rcoastmap[RARRAYWIDTH][RARRAYHEIGHT]; // This isn't actually used for anything yet.
+    int rtidalmap[RARRAYWIDTH][RARRAYHEIGHT];
     
     int testmap[RARRAYWIDTH][RARRAYHEIGHT];
     int testmap2[RARRAYWIDTH][RARRAYHEIGHT];
@@ -809,6 +817,38 @@ inline bool region::rivervalley(int x, int y) const
     
     return 0;
 }
+
+inline int region::tide(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rtidalmap[x][y];
+} // The tidal range.
+
+inline void region::settide(int x, int y, int amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rtidalmap[x][y] = amount;
+};
+
+inline short region::coast(int x, int y) const
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return 0;
+
+    return rcoastmap[x][y];
+} // What sort of coastline there is here.
+
+inline void region::setcoast(int x, int y, short amount)
+{
+    if (x < 0 || x >= RARRAYWIDTH || y < 0 || y >= RARRAYHEIGHT)
+        return;
+
+    rcoastmap[x][y] = amount;
+};
 
 inline int region::test(int x, int y) const
 {

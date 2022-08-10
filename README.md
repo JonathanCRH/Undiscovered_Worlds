@@ -110,6 +110,8 @@ Also, the land map doesn't have to be very detailed. If you want, you could simp
 
 When you have finished, click the "done" button. This finalises the terrain and then calculates rainfall, temperature, rivers, lakes, etc. When it is finished, the custom world will be displayed in the global map screen as usual, and you can view or save it like any other.
 
+----
+
 * Known issues
 
 Saving and loading worlds is slow, but it works.

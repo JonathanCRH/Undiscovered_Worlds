@@ -2051,6 +2051,7 @@ int main()
 
             if (standardbutton("Done"))
             {
+                /*
                 for (int n = 0; n < 2; n++)
                 {
                     ImGui::SFML::Update(window, deltaClock.restart());
@@ -2063,6 +2064,7 @@ int main()
                     ImGui::SFML::Render(window);
                     window.display();
                 }
+                */
                               
                 updatereport("Generating world from imported maps:");
                 updatereport("");

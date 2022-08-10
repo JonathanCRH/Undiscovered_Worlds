@@ -6708,7 +6708,7 @@ int lakeoutline(planet& world, vector<vector<int>>& thislake, int lakeno, int x,
 
 // This function tells us whether a tile is next to a lake.
 
-int nexttolake(const planet& world, int x, int y)
+int nexttolake(planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();
@@ -6733,7 +6733,7 @@ int nexttolake(const planet& world, int x, int y)
 
 // The same thing, but ignores diagonals.
 
-int nexttolakenodiag(const planet& world, int x, int y)
+int nexttolakenodiag(planet& world, int x, int y)
 {
     int width = world.width();
     int height = world.height();

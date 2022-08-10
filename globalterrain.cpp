@@ -6013,7 +6013,7 @@ int getcode(int dir)
 
 // This function tells whether a ridge goes from the specified tile in the specified direction.
 
-int getridge(const planet& world, int x, int y, int dir)
+int getridge(planet& world, int x, int y, int dir)
 {
     bool check = (world.mountainridge(x, y) & (1 << (dir - 1))) != 0;
 
@@ -6037,7 +6037,7 @@ int getridge(vector<vector<int>>& arr, int x, int y, int dir)
 
 // Same thing, but for an ocean ridge.
 
-int getoceanridge(const planet& world, int x, int y, int dir)
+int getoceanridge(planet& world, int x, int y, int dir)
 {
     bool check = (world.oceanridges(x, y) & (1 << (dir - 1))) != 0;
 

@@ -2077,6 +2077,7 @@ void createprevailinglandrain(planet &world, vector<vector<int>> &inland, int ma
 
 void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
 {
+    //highres_timer_t timer("Create Monsoons"); // 666: 7753 / 999: 6658 => 666: 6311, 999: 5189
     int width=world.width();
     int height=world.height();
     int sealevel=world.sealevel();
@@ -2109,6 +2110,17 @@ void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
     vector<vector<short>> raindir(ARRAYWIDTH,vector<short>(ARRAYHEIGHT,0));
     vector<vector<float>> monsoonstrength(ARRAYWIDTH,vector<float>(ARRAYHEIGHT,0));
     vector<vector<int>> monsoonmap(ARRAYWIDTH,vector<int>(ARRAYHEIGHT,0));
+
+    // precompute and cache the value of world.sea()
+    vector<vector<uint8_t>> is_sea(ARRAYWIDTH,vector<uint8_t>(ARRAYHEIGHT));
+
+    for (int i=0; i<=width; i++)
+    {
+        for (int j=0; j<=height; j++)
+        {
+            is_sea[i][j] = world.sea(i,j);
+        }
+    }
     
     // First, set the initial seeds along the coasts.
     
@@ -2118,7 +2130,7 @@ void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
         {
             if (j<height/2-monsoonminequatordist || j>height/2+monsoonminequatordist)
             {
-                if (world.sea(i,j)==1 && j>=world.horse(i,2) && j<=world.horse(i,3))
+                if (/*world.sea(i,j)*/is_sea[i][j]==1 && j>=world.horse(i,2) && j<=world.horse(i,3))
                 {
                     bool found=0;
                     
@@ -2133,7 +2145,7 @@ void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
                         {
                             if (l>=0 && l<=height)
                             {
-                                if (world.sea(kk,l)==0)
+                                if (/*world.sea(kk,l)*/is_sea[kk][l]==0)
                                 {
                                     found=1;
                                     k=i+1;
@@ -2184,7 +2196,7 @@ void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
                 int x=a;
                 int y=b; // This is so we can move them later without messing up the loop.
                 
-                if (world.sea(x,y)==0 && raintick[x][y]==0) // && random(1,maxelev)<spreadfractal[x][y])
+                if (/*world.sea(x,y)*/is_sea[x][y]==0 && raintick[x][y]==0) // && random(1,maxelev)<spreadfractal[x][y])
                 {
                     bool nearby=0;
                     
@@ -2606,7 +2618,7 @@ void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
             
             for (int j=0; j<=height; j++)
             {
-                if (world.sea(i,j)==1)
+                if (/*world.sea(i,j)*/is_sea[i][j]==1)
                     monsoonmap[i][j]=0;
                 else
                 {
@@ -2803,7 +2815,7 @@ void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
             
             for (int j=0; j<=height; j++)
             {
-                if (world.sea(i,j)==0)
+                if (/*world.sea(i,j)*/is_sea[i][j]==0)
                 {
                     if (world.mountainheight(i,j)<maxmountainheight)
                     {
@@ -2821,7 +2833,7 @@ void createmonsoons(planet &world, int maxmountainheight, int slopewaterreduce)
                             {
                                 if (l>=0 && l<=height)
                                 {
-                                    if (world.sea(kk,l)==0 && world.mountainheight(kk,l)<maxmountainheight)
+                                    if (/*world.sea(kk,l)*/is_sea[kk][l]==0 && world.mountainheight(kk,l)<maxmountainheight)
                                     {
                                         summertotal=summertotal+summermonsoon[kk][l];
                                         crount++;

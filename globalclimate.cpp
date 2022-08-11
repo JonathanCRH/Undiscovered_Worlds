@@ -11306,6 +11306,7 @@ void divertdeltarivers(planet &world, vector<vector<int>> &deltarivers)
 
 void checkrivers(planet &world)
 {
+    //highres_timer_t timer("Check Rivers"); // 666: 4156, 999: 6442 => 666: 2926, 999: 2907
     int width=world.width();
     int height=world.height();
     
@@ -11355,7 +11356,8 @@ void checkrivers(planet &world)
                     {
                         if (l>=0 && l<=height)
                         {
-                            if (world.deltadir(kk,l)!=0)
+                            //if (world.deltadir(kk,l)!=0)
+                            if (world.deltadir_no_bounds_check(kk,l)!=0)
                             {
                                 neardelta=1;
                                 k=i+amount;

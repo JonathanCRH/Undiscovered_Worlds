@@ -747,6 +747,8 @@ int main()
 
             short terraintype = 2; // This terrain type gives large continents.
 
+            fast_srand(world->seed());
+
             if (random(1, 10) == 1) // Rarely, do the terrain type that gives fragmented land masses.
                 terraintype = 1;
 

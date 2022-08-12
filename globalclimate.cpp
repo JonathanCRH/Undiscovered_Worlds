@@ -2112,13 +2112,13 @@ void createmonsoons(planet& world, int maxmountainheight, int slopewaterreduce)
     vector<vector<int>> monsoonmap(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
 
     // precompute and cache the value of world.sea()
-    vector<vector<uint8_t>> is_sea(ARRAYWIDTH,vector<uint8_t>(ARRAYHEIGHT));
+    vector<vector<uint8_t>> is_sea(ARRAYWIDTH, vector<uint8_t>(ARRAYHEIGHT));
 
-    for (int i=0; i<=width; i++)
+    for (int i = 0; i <= width; i++)
     {
-        for (int j=0; j<=height; j++)
+        for (int j = 0; j <= height; j++)
         {
-            is_sea[i][j] = world.sea(i,j);
+            is_sea[i][j] = world.sea(i, j);
         }
     }
 

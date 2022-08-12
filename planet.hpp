@@ -440,7 +440,7 @@ public:
     void setspecial(int x, int y, int amount);
 
     int deltadir(int x, int y) const;    // delta branch flow direction (reversed)
-    int deltadir_no_bounds_check(int x, int y) const {return deltamapdir[x][y];}
+    int deltadir_no_bounds_check(int x, int y) const { return deltamapdir[x][y]; }
     void setdeltadir(int x, int y, int amount);
 
     int deltajan(int x, int y) const;    // January delta branch flow volume

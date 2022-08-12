@@ -1360,7 +1360,7 @@ void makeregionalmiscellanies(planet& world, region& region, vector<vector<bool>
     vector<vector<int>> destination(RARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
     vector<vector<int>> rotatearray(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
 
-    int coords[4][2];
+    //int coords[4][2];
 
     // Work out the tidal ranges. (Turned off for now as it's not yet being used for anything interesting.)
 

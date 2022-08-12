@@ -68,6 +68,8 @@ void region::clear()
             rdeltamapjul[i][j]=0;
             rmountainsdone[i][j]=0;
             rvolcanomap[i][j]=0;
+            rtidalmap[i][j] = 0;
+            rcoastmap[i][j] = 0;
             testmap[i][j]=0;
             testmap2[i][j]=0;
             testmapfloat[i][j]=0;

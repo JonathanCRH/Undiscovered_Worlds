@@ -1356,9 +1356,50 @@ void makeregionalmiscellanies(planet& world, region& region, vector<vector<bool>
         region.setleftx(leftx);
     }
 
+    vector<vector<int>> source(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+    vector<vector<int>> destination(RARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
     vector<vector<int>> rotatearray(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, 0));
 
-    //int coords[4][2];
+    int coords[4][2];
+
+    // Work out the tidal ranges. (Turned off for now as it's not yet being used for anything interesting.)
+
+    /*
+    for (int i = 0; i < RARRAYWIDTH; i++)
+    {
+        for (int j = 0; j < RARRAYHEIGHT; j++)
+            destination[i][j] = -5000;
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+            source[i][j] = world.tide(i, j);
+    }
+
+    for (int x = xleft; x <= xright; x++)
+    {
+        int xx = leftx + x;
+
+        if (xx<0 || xx>width)
+            xx = wrap(xx, width);
+
+        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
+        {
+            int yy = lefty + y;
+
+            float valuemod = 0.04; //0.02;
+
+            makegenerictile(world, x * 16, y * 16, xx, yy, valuemod, coords, source, destination, 80, 0, 1);
+        }
+    }
+    */
+
+    for (int i = xstart; i <= xend; i++)
+    {
+        for (int j = ystart; j <= yend; j++)
+            region.settide(i, j, destination[i][j]);
+    }
 
     // Make wetlands.
 
@@ -13543,6 +13584,658 @@ void addbarrierislands(planet &world, region &region, int dx, int dy, int sx, in
         }
     }
 }
+
+// This function adds coast details for a regional map tile.
+
+void addcoastdetails(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& riverinlets)
+{
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+
+    fast_srand((sy * width + sx) + world.map(sx, sy) + world.summerrain(sx, sy) + world.riverjul(sx, sy));
+
+    // First, check that we have both land and sea present on this tile.
+
+    bool landfound = 0;
+    bool seafound = 0;
+
+    for (int i = dx; i <= dx + 16; i++)
+    {
+        for (int j = dy; j <= dy + 16; j++)
+        {
+            if (region.sea(i, j) == 1)
+                seafound = 1;
+            else
+                landfound = 1;
+
+            if (seafound == 1 && landfound == 1)
+            {
+                i = dx + 16;
+                j = dy + 16;
+            }
+        }
+    }
+
+    int northcount = 0;
+    int southcount = 0;
+    int eastcount = 0;
+    int westcount = 0;
+
+    for (int n = 1; n <= 14; n++)
+    {
+        if (region.map(dx + n, dy) > sealevel)
+            northcount++;
+
+        if (region.map(dx + n, dy + 14) > sealevel)
+            southcount++;
+
+        if (region.map(dx, dy + n) > sealevel)
+            westcount++;
+
+        if (region.map(dx + 14, dy + n) > sealevel)
+            eastcount++;
+    }
+
+    int maxcount = 8;
+
+    if (northcount > maxcount && southcount > maxcount)
+        return;
+
+    if (eastcount > maxcount && westcount > maxcount)
+        return;
+
+
+
+
+
+
+    bool barrier[17][17]; // This will hold the barrier islands. We'll paste them onto the elevation map at the end.
+
+    for (int i = 0; i <= 16; i++)
+    {
+        for (int j = 0; j <= 16; j++)
+            barrier[i][j] = 0;
+    }
+
+    int rwidth = region.rwidth();
+    int rheight = region.rheight();
+
+    int spitchance = 5; // Chance of sending a spit towards the mainland. Higher=less likely.
+    int breakchance = 5; // Chance of having no island at this point. Higher=less likely.
+
+    // Land to the north.
+
+    bool opensea = 0; // If this is 0 it means the lagoon might be closed off to the sea (i.e. we've had a spit). If it's 1 it means we've had a break so we know it's open to the sea.
+
+    for (int i = 0; i <= 15; i++)
+    {
+        int ii = dx + i;
+        int jj = -1;
+        int j = -1;
+
+        if (region.sea(ii, dy) == 0)
+        {
+            bool foundsea = 0;
+            bool noisland = 0;
+
+            do // Go down from the land edge of the tile until we hit some sea
+            {
+                j++;
+                jj = dy + j;
+
+                if (j > 13)
+                {
+                    noisland = 1;
+                    foundsea = 1;
+                }
+
+                if (region.sea(ii, jj) == 1)
+                {
+                    foundsea = 1;
+
+                    // Now keep going if putting an island here would make awkward diagonals with the land
+
+                    if (ii > 0)
+                    {
+                        if (region.sea(ii - 1, jj) == 0 && region.sea(ii - 1, jj + 1) == 1)
+                            foundsea = 0;
+
+                        if (region.sea(ii + 1, jj) == 0 && region.sea(ii + 1, jj + 1) == 1)
+                            foundsea = 0;
+                    }
+                }
+            } while (foundsea == 0);
+
+            if (noisland == 0)
+            {
+                if (region.sea(ii, jj + 1) == 1 && region.sea(ii, jj + 2) == 1) // If there's room to do an island here
+                {
+                    if (random(1, breakchance) == 1) // If in fact we're going to have a gap
+                        opensea = 1;
+                    else
+                    {
+                        int islandx = i;
+                        int islandy = j + 1;
+
+                        if (region.riverdir(dx + islandx, dy + islandy) == 0)
+                        {
+                            bool goodtogo = 1;
+
+                            for (int n = islandy; n <= 15; n++) // Check that there's no further land beyond this island
+                            {
+                                if (region.sea(dx + islandx, dy + n) == 0)
+                                {
+                                    goodtogo = 0;
+                                    n = 15;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                if (islandx > 0 && dx + islandx < rwidth)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy) == 0 && region.sea(dx + islandx + 1, dy + islandy) == 0)
+                                        goodtogo = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                barrier[islandx][islandy] = 1;
+
+                                // Add extra bits of island to join up with previous ones if there are diagonals.
+
+                                if (islandx > 0 && islandy > 0 && islandy < 16)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy - 1) == 0 || region.sea(dx + islandx - 1, dy + islandy) == 0 || region.sea(dx + islandx - 1, dy + islandy + 1) == 0)
+                                        opensea = 0;
+
+                                    if (random(1, 2) == 1) // Don't always do this
+                                    {
+                                        if (barrier[islandx - 1][islandy + 1] == 1 && barrier[islandx - 1][islandy] == 0)
+                                            barrier[islandx][islandy + 1] = 1;
+
+                                        if (barrier[islandx - 1][islandy - 1] == 1)
+                                            barrier[islandx - 1][islandy] = 1;
+                                    }
+                                }
+
+                                if (opensea == 1 && random(1, spitchance) == 1 && region.riverdir(dx + islandx, dy + islandy - 1) == 0) // If the sea is currently open we could put a spit here.
+                                {
+                                    if (dx + islandx > 0 && dx + islandx < rwidth && dy + islandy - 2 >= 0)
+                                    {
+                                        if (region.sea(dx + islandx - 1, dy + islandy - 2) == 1 || region.sea(dx + islandx + 1, dy + islandy - 2) == 1) // Be careful not to enclose some sea with the spit
+                                        {
+                                            barrier[islandx][islandy - 1] = 1;
+                                            opensea = 0;
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    if (region.map(ii, jj) < sealevel - 3) // Make sure the sea between the island and the mainland is shallow
+                                        region.setmap(ii, jj, sealevel - random(1, 3));
+                                }
+                            }
+                            else
+                                opensea = 1;
+                        }
+                        else
+                            opensea = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Land to the south.
+
+    opensea = 0; // If this is 0 it means the lagoon might be closed off to the sea (i.e. we've had a spit). If it's 1 it means we've had a break so we know it's open to the sea.
+
+    for (int i = 0; i <= 15; i++)
+    {
+        int ii = dx + i;
+        int jj = -1;
+        int j = 16;
+
+        if (region.sea(ii, dy + 16) == 0)
+        {
+            bool foundsea = 0;
+            bool noisland = 0;
+
+            do // Go up from the land edge of the tile until we hit some sea
+            {
+                j--;
+                jj = dy + j;
+
+                if (j < 2)
+                {
+                    noisland = 1;
+                    foundsea = 1;
+                }
+
+                if (region.sea(ii, jj) == 1)
+                {
+                    foundsea = 1;
+
+                    // Now keep going if putting an island here would make awkward diagonals with the land
+
+                    if (ii > 0)
+                    {
+                        if (region.sea(ii - 1, jj) == 0 && region.sea(ii - 1, jj - 1) == 1)
+                            foundsea = 0;
+
+                        if (region.sea(ii + 1, jj) == 0 && region.sea(ii + 1, jj - 1) == 1)
+                            foundsea = 0;
+                    }
+                }
+            } while (foundsea == 0);
+
+            /*
+
+             if (opensea==0 || region.sea(ii+1,jj+1)==0) // Avoid closing off lagoons by going into the land
+             noisland=1;
+             */
+
+            if (noisland == 0)
+            {
+                if (region.sea(ii, jj - 1) == 1 && region.sea(ii, jj - 2) == 1) // If there's room to do an island here
+                {
+                    if (random(1, breakchance) == 1) // If in fact we're going to have a gap
+                        opensea = 1;
+                    else
+                    {
+                        int islandx = i;
+                        int islandy = j - 1;
+
+                        if (region.riverdir(dx + islandx, dy + islandy) == 0)
+                        {
+                            bool goodtogo = 1;
+
+                            for (int n = islandy; n >= 0; n--) // Check that there's no further land beyond this island
+                            {
+                                if (region.sea(dx + islandx, dy + n) == 0)
+                                {
+                                    goodtogo = 0;
+                                    n = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                if (islandx > 0 && dx + islandx < rwidth)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy) == 0 && region.sea(dx + islandx + 1, dy + islandy) == 0)
+                                        goodtogo = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                barrier[islandx][islandy] = 1;
+
+                                // Add extra bits of island to join up with previous ones if there are diagonals.
+
+                                if (islandx > 0 && islandy > 0 && islandy < 16)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy - 1) == 0 || region.sea(dx + islandx - 1, dy + islandy) == 0 || region.sea(dx + islandx - 1, dy + islandy + 1) == 0)
+                                        opensea = 0;
+
+                                    if (random(1, 2) == 1) // Don't always do this
+                                    {
+                                        if (barrier[islandx - 1][islandy - 1] == 1 && barrier[islandx - 1][islandy] == 0)
+                                            barrier[islandx][islandy - 1] = 1;
+
+                                        if (barrier[islandx - 1][islandy + 1] == 1)
+                                            barrier[islandx - 1][islandy] = 1;
+                                    }
+                                }
+
+                                if (opensea == 1 && random(1, spitchance) == 1 && region.riverdir(dx + islandx, dy + islandy + 1) == 0) // If the sea is currently open we could put a spit here.
+                                {
+                                    if (dx + islandx > 0 && dx + islandx < rwidth && dy + islandy + 2 <= rheight)
+                                    {
+                                        if (region.sea(dx + islandx - 1, dy + islandy + 2) == 1 || region.sea(dx + islandx + 1, dy + islandy + 2) == 1) // Be careful not to enclose some sea with the spit
+                                        {
+                                            barrier[islandx][islandy + 1] = 1;
+                                            opensea = 0;
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    if (region.map(ii, jj) < sealevel - 3) // Make sure the sea between the island and the mainland is shallow
+                                        region.setmap(ii, jj, sealevel - random(1, 3));
+                                }
+                            }
+                            else
+                                opensea = 1;
+                        }
+                        else
+                            opensea = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Now put the new islands onto the elevation map and clear the island map.
+
+    for (short i = 0; i <= 16; i++)
+    {
+        int ii = dx + i;
+
+        for (short j = 0; j <= 16; j++)
+        {
+            int jj = dy + j;
+
+            if (barrier[i][j] == 1)
+            {
+                if (riverinlets[ii][jj] == 0)
+                {
+                    region.setmap(ii, jj, sealevel + 1);
+
+                    region.setriverdir(ii, jj, 0);
+                    region.setriverjan(ii, jj, 0);
+                    region.setriverjul(ii, jj, 0);
+                }
+                barrier[i][j] = 0;
+            }
+        }
+    }
+
+    // Land to the west.
+
+    opensea = 0; // If this is 0 it means the lagoon might be closed off to the sea (i.e. we've had a spit). If it's 1 it means we've had a break so we know it's open to the sea.
+
+    for (int j = 0; j <= 15; j++)
+    {
+        int jj = dy + j;
+        int ii = -1;
+        int i = -1;
+
+        if (region.sea(dx, jj) == 0)
+        {
+            bool foundsea = 0;
+            bool noisland = 0;
+
+            do // Go down from the land edge of the tile until we hit some sea
+            {
+                i++;
+                ii = dx + i;
+
+                if (i > 13)
+                {
+                    noisland = 1;
+                    foundsea = 1;
+                }
+
+                if (region.sea(ii, jj) == 1)
+                {
+                    foundsea = 1;
+
+                    // Now keep going if putting an island here would make awkward diagonals with the land
+
+                    if (jj > 0)
+                    {
+                        if (region.sea(ii, jj - 1) == 0 && region.sea(ii + 1, jj - 1) == 1)
+                            foundsea = 0;
+
+                        if (region.sea(ii, jj + 1) == 0 && region.sea(ii + 1, jj + 1) == 1)
+                            foundsea = 0;
+                    }
+                }
+            } while (foundsea == 0);
+
+            /*
+
+             if (opensea==0 || region.sea(ii+1,jj+1)==0) // Avoid closing off lagoons by going into the land
+             noisland=1;
+             */
+
+            if (noisland == 0)
+            {
+                if (region.sea(ii + 1, jj) == 1 && region.sea(ii + 2, jj) == 1) // If there's room to do an island here
+                {
+                    if (random(1, breakchance) == 1) // If in fact we're going to have a gap
+                        opensea = 1;
+                    else
+                    {
+                        int islandx = i + 1;
+                        int islandy = j;
+
+                        if (region.riverdir(dx + islandx, dy + islandy) == 0)
+                        {
+                            bool goodtogo = 1;
+
+                            for (int n = islandx; n <= 15; n++) // Check that there's no further land beyond this island
+                            {
+                                if (region.sea(dx + n, dy + islandy) == 0)
+                                {
+                                    goodtogo = 0;
+                                    n = 15;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                if (islandy > 0 && dy + islandy < rheight)
+                                {
+                                    if (region.sea(dx + islandx, dy + islandy - 1) == 0 && region.sea(dx + islandx, dy + islandy + 1) == 0)
+                                        goodtogo = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                barrier[islandx][islandy] = 1;
+
+                                // Add extra bits of island to join up with previous ones if there are diagonals.
+
+                                if (islandx > 0 && islandx < 16 && islandy>0)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy - 1) == 0 || region.sea(dx + islandx, dy + islandy - 1) == 0 || region.sea(dx + islandx + 1, dy + islandy - 1) == 0)
+                                        opensea = 0;
+
+                                    if (random(1, 2) == 1) // Don't always do this
+                                    {
+                                        if (barrier[islandx + 1][islandy - 1] == 1 && barrier[islandx][islandy - 1] == 0)
+                                            barrier[islandx + 1][islandy] = 1;
+
+                                        if (barrier[islandx - 1][islandy - 1] == 1)
+                                            barrier[islandx][islandy - 1] = 1;
+                                    }
+                                }
+
+                                if (opensea == 1 && random(1, spitchance) == 1 && region.riverdir(dx + islandx - 1, dy + islandy) == 0) // If the sea is currently open we could put a spit here.
+                                {
+                                    if (dx + islandx - 2 > 0 && dy + islandy > 0 && dy + islandy < rheight)
+                                    {
+                                        if (region.sea(dx + islandx - 2, dy + islandy - 1) == 1 || region.sea(dx + islandx - 2, dy + islandy + 1) == 1) // Be careful not to enclose some sea with the spit
+                                        {
+                                            barrier[islandx - 1][islandy] = 1;
+                                            opensea = 0;
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    if (region.map(ii, jj) < sealevel - 3) // Make sure the sea between the island and the mainland is shallow
+                                        region.setmap(ii, jj, sealevel - random(1, 3));
+                                }
+                            }
+                            else
+                                opensea = 1;
+                        }
+                        else
+                            opensea = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Land to the east.
+
+    opensea = 0; // If this is 0 it means the lagoon might be closed off to the sea (i.e. we've had a spit). If it's 1 it means we've had a break so we know it's open to the sea.
+
+    for (int j = 0; j <= 15; j++)
+    {
+        int jj = dy + j;
+        int ii = -1;
+        int i = 16;
+
+        if (region.sea(dx + 16, jj) == 0)
+        {
+            bool foundsea = 0;
+            bool noisland = 0;
+
+            do // Go up from the land edge of the tile until we hit some sea
+            {
+                i--;
+                ii = dx + i;
+
+                if (i < 2)
+                {
+                    noisland = 1;
+                    foundsea = 1;
+                }
+
+                if (region.sea(ii, jj) == 1)
+                {
+                    foundsea = 1;
+
+                    // Now keep going if putting an island here would make awkward diagonals with the land
+
+                    if (jj > 0)
+                    {
+                        if (region.sea(ii, jj - 1) == 0 && region.sea(ii - 1, jj - 1) == 1)
+                            foundsea = 0;
+
+                        if (region.sea(ii, jj + 1) == 0 && region.sea(ii - 1, jj + 1) == 1)
+                            foundsea = 0;
+                    }
+                }
+            } while (foundsea == 0);
+
+            /*
+
+             if (opensea==0 || region.sea(ii+1,jj+1)==0) // Avoid closing off lagoons by going into the land
+             noisland=1;
+             */
+
+            if (noisland == 0)
+            {
+                if (region.sea(ii - 1, jj) == 1 && region.sea(ii - 2, jj) == 1) // If there's room to do an island here
+                {
+                    if (random(1, breakchance) == 1) // If in fact we're going to have a gap
+                        opensea = 1;
+                    else
+                    {
+                        int islandx = i - 1;
+                        int islandy = j;
+
+                        if (region.riverdir(dx + islandx, dy + islandy) == 0)
+                        {
+                            bool goodtogo = 1;
+
+                            for (int n = islandx; n >= 0; n--) // Check that there's no further land beyond this island
+                            {
+                                if (region.sea(dx + n, dy + islandy) == 0)
+                                {
+                                    goodtogo = 0;
+                                    n = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                if (islandy > 0 && dy + islandy < rheight)
+                                {
+                                    if (region.sea(dx + islandx, dy + islandy - 1) == 0 && region.sea(dx + islandx, dy + islandy + 1) == 0)
+                                        goodtogo = 0;
+                                }
+                            }
+
+                            if (goodtogo == 1)
+                            {
+                                barrier[islandx][islandy] = 1;
+
+                                // Add extra bits of island to join up with previous ones if there are diagonals.
+
+                                if (islandx > 0 && islandx < 16 && islandy>0)
+                                {
+                                    if (region.sea(dx + islandx - 1, dy + islandy - 1) == 0 || region.sea(dx + islandx, dy + islandy - 1) == 0 || region.sea(dx + islandx + 1, dy + islandy - 1) == 0)
+                                        opensea = 0;
+
+                                    if (random(1, 2) == 1) // Don't always do this
+                                    {
+                                        if (barrier[islandx - 1][islandy - 1] == 1 && barrier[islandx][islandy - 1] == 0)
+                                            barrier[islandx - 1][islandy] = 1;
+
+                                        if (barrier[islandx + 1][islandy - 1] == 1)
+                                            barrier[islandx][islandy - 1] = 1;
+                                    }
+                                }
+
+                                if (opensea == 1 && random(1, spitchance) == 1 && region.riverdir(dx + islandx + 1, dy + islandy) == 0) // If the sea is currently open we could put a spit here.
+                                {
+                                    if (dy + islandy > 0 && dy + islandy < rheight && dx + islandx + 2 < rwidth)
+                                    {
+                                        if (region.sea(dx + islandx + 2, dy + islandy - 1) == 1 || region.sea(dx + islandx + 2, dy + islandy + 1) == 1) // Be careful not to enclose some sea with the spit
+                                        {
+                                            barrier[islandx + 1][islandy] = 1;
+                                            opensea = 0;
+                                        }
+
+                                    }
+                                }
+                                else
+                                {
+                                    if (region.map(ii, jj) < sealevel - 3) // Make sure the sea between the island and the mainland is shallow
+                                        region.setmap(ii, jj, sealevel - random(1, 3));
+                                }
+                            }
+                            else
+                                opensea = 1;
+                        }
+                        else
+                            opensea = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    // Now put the new islands onto the elevation map.
+
+    for (short i = 0; i <= 16; i++)
+    {
+        int ii = dx + i;
+
+        for (short j = 0; j <= 16; j++)
+        {
+            int jj = dy + j;
+
+            if (barrier[i][j] == 1)
+            {
+                if (riverinlets[ii][jj] == 0)
+                {
+                    region.setmap(ii, jj, sealevel + 1);
+
+                    region.setriverdir(ii, jj, 0);
+                    region.setriverjan(ii, jj, 0);
+                    region.setriverjul(ii, jj, 0);
+                }
+            }
+        }
+    }
+}
+
 
 // This function adds glaciers to the regional specials map.
 

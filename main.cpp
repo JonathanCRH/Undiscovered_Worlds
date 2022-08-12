@@ -235,13 +235,13 @@ int main()
     float globalmapypos = 20.f;
 
     globalmap->setTexture(*globalmaptexture);
-    globalmap->setPosition(sf::Vector2f(globalmapxpos,globalmapypos));
+    globalmap->setPosition(sf::Vector2f(globalmapxpos, globalmapypos));
 
     // And also the minimap, which will use the same texture.
 
     sf::Sprite* minimap = new sf::Sprite;
 
-    float minimapxpos = 190.f+globaltexturesize.x/4;
+    float minimapxpos = 190.f + globaltexturesize.x / 4;
     float minimapypos = 20.f;
 
     minimap->setTexture(*globalmaptexture);
@@ -440,9 +440,9 @@ int main()
 
     ImVec4 oceancolour;
 
-    oceancolour.x = (float)world->ocean1()/255.f;
-    oceancolour.y = (float)world->ocean2()/255.f;
-    oceancolour.z = (float)world->ocean3()/255.f;
+    oceancolour.x = (float)world->ocean1() / 255.f;
+    oceancolour.y = (float)world->ocean2() / 255.f;
+    oceancolour.z = (float)world->ocean3() / 255.f;
     oceancolour.w = 1.f;
 
     ImVec4 deepoceancolour;
@@ -607,8 +607,8 @@ int main()
     if (world->shadingdir() == 8)
         shadingdir = 3;
 
-    int snowchange = world->snowchange()-1;
-    int seaiceappearance = world->seaiceappearance()-1;
+    int snowchange = world->snowchange() - 1;
+    int seaiceappearance = world->seaiceappearance() - 1;
 
     sf::Clock deltaClock;
     while (window.isOpen())
@@ -725,7 +725,7 @@ int main()
         // Creating world screen
 
         if (screenmode == creatingworldscreen)
-        {          
+        {
             for (int n = 0; n < 2; n++)
             {
                 ImGui::SFML::Update(window, deltaClock.restart());
@@ -737,11 +737,11 @@ int main()
                 window.clear();
                 ImGui::SFML::Render(window);
                 window.display();
-            }       
+            }
 
-            updatereport("Generating world from seed: "+to_string(world->seed())+":");
+            updatereport("Generating world from seed: " + to_string(world->seed()) + ":");
             updatereport("");
-            
+
             for (int n = 0; n < GLOBALMAPTYPES; n++) // Set all map types as unviewed, to force them to be redrawn when called up
                 globalmapimagecreated[n] = 0;
 
@@ -783,9 +783,9 @@ int main()
         if (screenmode == globalmapscreen)
         {
             // Main controls.
-            
+
             string title = "Seed: " + to_string(world->seed());
-           
+
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2(160, 431), ImGuiCond_FirstUseEver);
 
@@ -930,7 +930,7 @@ int main()
                     globalmaptexture->loadFromImage(*displayglobalreliefimage);
                     globalmap->setTexture(*globalmaptexture);
                     minimap->setTexture(*globalmaptexture);
-                    
+
                     newx = poix;
                     newy = poiy;
 
@@ -959,14 +959,14 @@ int main()
 
             // Now check to see if the map has been clicked on.
 
-            if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && io.WantCaptureMouse==0)
+            if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && io.WantCaptureMouse == 0)
             {
                 sf::Vector2i mousepos = sf::Mouse::getPosition(window);
 
                 poix = (mousepos.x - globalmapxpos) * 2;
                 poiy = (mousepos.y - globalmapypos) * 2;
 
-                if (poix>=0 && poix<=world->width() && poiy>=0 && poiy<=world->height())
+                if (poix >= 0 && poix <= world->width() && poiy >= 0 && poiy <= world->height())
                 {
                     focused = 1;
 
@@ -1135,7 +1135,7 @@ int main()
             // Main controls.
 
             string title;
-            
+
             if (world->seed() >= 0)
                 title = "Seed: " + to_string(world->seed());
             else
@@ -1162,7 +1162,7 @@ int main()
                 for (int i = 0; i < regionalimagewidth; i++)
                 {
                     for (int j = 0; j < regionalimageheight; j++)
- 
+
                         regionalreliefimage->setPixel(i, j, sf::Color::Black);
                 }
 
@@ -1301,8 +1301,8 @@ int main()
 
                 if (poix >= 0 && poix < regionalmapimagewidth && poiy >= 0 && poiy < regionalmapimageheight)
                 {
-                    poix=poix + region->regwidthbegin();
-                    poiy=poiy + region->regheightbegin();
+                    poix = poix + region->regwidthbegin();
+                    poiy = poiy + region->regheightbegin();
 
                     focused = 1;
 
@@ -1440,7 +1440,7 @@ int main()
                 int minipoix = (mousepos.x - minimapxpos) * 4;
                 int minipoiy = (mousepos.y - minimapypos) * 4;
 
-                if (minipoix>=0 && minipoiy<=world->width() && minipoiy>=0 && minipoiy<=world->height())// If the minimap has been clicked on.
+                if (minipoix >= 0 && minipoiy <= world->width() && minipoiy >= 0 && minipoiy <= world->height())// If the minimap has been clicked on.
                 {
                     generatingnewregion = 2;
                     newx = minipoix;
@@ -1454,7 +1454,7 @@ int main()
         if (screenmode == exportareascreen)
         {
             showwarning = 0;
-            
+
             // Main controls.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
@@ -1496,7 +1496,7 @@ int main()
                 areaswy = -1;
                 areanwx = -1;
                 areanwy = -1;
-                         
+
                 if (areafromregional == 1)
                     screenmode = regionalmapscreen;
                 else
@@ -1529,12 +1529,12 @@ int main()
                 {
                     if (areaswx == -1) // If we don't have any corners yet
                     {
-                        areanex = poix+2;
+                        areanex = poix + 2;
                         areaney = poiy;
-                        areasex = poix+2;
-                        areasey = poiy+2;
+                        areasex = poix + 2;
+                        areasey = poiy + 2;
                         areaswx = poix;
-                        areaswy = poiy+2;
+                        areaswy = poiy + 2;
                         areanwx = poix;
                         areanwy = poiy;
                     }
@@ -1927,7 +1927,7 @@ int main()
                 // Also, create extra elevation.
 
                 createextraelev(*world);
-                
+
                 // Now redraw the map.
 
                 for (int n = 0; n < GLOBALMAPTYPES; n++)
@@ -2031,7 +2031,7 @@ int main()
                 twointegers dummy[1];
 
                 createchains(*world, baseheight, conheight, fractal, plateaumap, landshape, chainland, dummy, 0, 0, 5);
-               
+
                 // Now redraw the map.
 
                 for (int n = 0; n < GLOBALMAPTYPES; n++)
@@ -2051,6 +2051,21 @@ int main()
 
             if (standardbutton("Done"))
             {
+                /*
+                for (int n = 0; n < 2; n++)
+                {
+                    ImGui::SFML::Update(window, deltaClock.restart());
+                    ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
+                    ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                    ImGui::Begin("Please wait!");
+                    ImGui::Text("Finishing world...");
+                    ImGui::End();
+                    window.clear();
+                    ImGui::SFML::Render(window);
+                    window.display();
+                }
+                */
+                              
                 updatereport("Generating world from imported maps:");
                 updatereport("");
 
@@ -2101,7 +2116,7 @@ int main()
                 // Now do the climates.
 
                 generateglobalclimate(*world, smalllake, largelake, landshape, mountaindrainage, shelves);
-                
+
                 // Now draw a new map
 
                 for (int n = 0; n < GLOBALMAPTYPES; n++) // Set all map types as unviewed, to force them to be redrawn when called up
@@ -2152,7 +2167,7 @@ int main()
         if (showcolouroptions)
         {
             int colouralign = 360;
-            
+
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 306, main_viewport->WorkPos.y + 33), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2(646, 484), ImGuiCond_FirstUseEver);
 
@@ -2211,7 +2226,7 @@ int main()
             ImGui::SetCursorPosX(20);
             ImGui::SliderFloat("On land", &shadingland, 0.0f, 1.0f, "%.2f");
 
-            ImGui::SameLine(colouralign+20);
+            ImGui::SameLine(colouralign + 20);
 
             const char* lightdiritems[] = { "Southeast","Southwest","Northeast","Northwest" };
             ImGui::Combo("Light", &shadingdir, lightdiritems, 4);
@@ -2221,7 +2236,7 @@ int main()
             ImGui::SetCursorPosX(20);
             ImGui::SliderFloat("On lakes", &shadinglake, 0.0f, 1.0f, "%.2f");
 
-            ImGui::SameLine(colouralign+20);
+            ImGui::SameLine(colouralign + 20);
 
             const char* snowitems[] = { "Sudden","Speckled","Smooth" };
             ImGui::Combo("Snow", &snowchange, snowitems, 3);
@@ -2231,7 +2246,7 @@ int main()
             ImGui::SetCursorPosX(20);
             ImGui::SliderFloat("On sea", &shadingsea, 0.0f, 1.0f, "%.2f");
 
-            ImGui::SameLine(colouralign+20);
+            ImGui::SameLine(colouralign + 20);
 
             const char* seaiceitems[] = { "Permanent","None","All" };
             ImGui::Combo("Sea ice", &seaiceappearance, seaiceitems, 3);
@@ -2253,9 +2268,9 @@ int main()
             ImGui::SetCursorPosX(20);
             ImGui::SliderFloat("On sea ", &marblingsea, 0.0f, 1.0f, " % .2f");
 
-            ImGui::SameLine(colouralign+20);
+            ImGui::SameLine(colouralign + 20);
 
-            if (ImGui::Button("Save",ImVec2(120.0f,0.0f)))
+            if (ImGui::Button("Save", ImVec2(120.0f, 0.0f)))
             {
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".uws", ".");
 
@@ -2266,7 +2281,7 @@ int main()
 
             ImGui::Text("Rivers");
 
-            ImGui::SameLine(colouralign+20);
+            ImGui::SameLine(colouralign + 20);
 
             if (ImGui::Button("Load", ImVec2(120.0f, 0.0f)))
             {
@@ -2285,7 +2300,7 @@ int main()
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Only rivers greater than this size will be displayed on the global relief map.");
 
-            ImGui::SameLine(colouralign+20);
+            ImGui::SameLine(colouralign + 20);
 
             if (ImGui::Button("Default", ImVec2(120.0f, 0.0f)))
             {
@@ -2431,7 +2446,7 @@ int main()
 
                 colourschanged = 1;
             }
-            
+
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Restore the default map appearance settings.");
 
@@ -2441,7 +2456,7 @@ int main()
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Only rivers greater than this size will be displayed on the regional relief map.");
 
-            ImGui::SameLine(colouralign+20);
+            ImGui::SameLine(colouralign + 20);
 
             if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
             {
@@ -2456,15 +2471,15 @@ int main()
 
         // Now draw the graphical elements.
 
-        if (screenmode == globalmapscreen || screenmode==exportareascreen || screenmode==importscreen)
+        if (screenmode == globalmapscreen || screenmode == exportareascreen || screenmode == importscreen)
             window.draw(*globalmap);
 
         if (screenmode == exportareascreen) // Area selection rectangle.
         {
             if (areaswx != -1)
             {
-                int sizex = (areanex - areanwx)/2;
-                int sizey = (areaswy - areanwy)/2;
+                int sizex = (areanex - areanwx) / 2;
+                int sizey = (areaswy - areanwy) / 2;
 
                 arearectangle->setSize(sf::Vector2f(sizex, sizey));
                 arearectangle->setOutlineColor(sf::Color(world->highlight1(), world->highlight2(), world->highlight3()));
@@ -3098,7 +3113,7 @@ int main()
                     int width = world->width();
                     int height = world->height();
                     int sealevel = world->sealevel();
-                    
+
                     sf::Image* importimage = new sf::Image;
 
                     importimage->loadFromFile(filepathname);
@@ -3405,7 +3420,7 @@ int main()
         ImGui::SFML::Render(window);
         window.display();
 
-        if (generatingnewregion==2) // This is where we generate a new region.
+        if (generatingnewregion == 2) // This is where we generate a new region.
         {
             ImGui::SFML::Update(window, deltaClock.restart());
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 849, main_viewport->WorkPos.y + 364), ImGuiCond_FirstUseEver);
@@ -3485,7 +3500,7 @@ int main()
         if (shadingdir == 3)
             shadingdircorrected = 8;
 
-        if (world->ocean1() != oceancolour.x*255.f || world->ocean2() != oceancolour.y*255.f || world->ocean3() != oceancolour.z*255.f)
+        if (world->ocean1() != oceancolour.x * 255.f || world->ocean2() != oceancolour.y * 255.f || world->ocean3() != oceancolour.z * 255.f)
             colourschanged = 1;
 
         if (world->deepocean1() != deepoceancolour.x * 255.f || world->deepocean2() != deepoceancolour.y * 255.f || world->deepocean3() != deepoceancolour.z * 255.f)
@@ -3549,7 +3564,7 @@ int main()
             world->sethighlight1(highlightcolour.x * 255.f);
             world->sethighlight2(highlightcolour.y * 255.f);
             world->sethighlight3(highlightcolour.z * 255.f);
-            
+
             drawhighlightobjects(*world, *highlightimage, highlightsize, *minihighlightimage, minihighlightsize);
 
             highlighttexture->loadFromImage(*highlightimage);
@@ -3572,14 +3587,14 @@ int main()
         if (world->minriverflowglobal() != globalriversentry || world->minriverflowregional() != regionalriversentry)
             colourschanged = 1;
 
-        if (world->shadingdir() != shadingdircorrected || world->snowchange() != snowchange+1 || world->seaiceappearance() != seaiceappearance+1)
+        if (world->shadingdir() != shadingdircorrected || world->snowchange() != snowchange + 1 || world->seaiceappearance() != seaiceappearance + 1)
             colourschanged = 1;
 
-        if (showcolouroptions==1 && colourschanged == 1)
+        if (showcolouroptions == 1 && colourschanged == 1)
         {
-            world->setocean1(oceancolour.x*255.f);
-            world->setocean2(oceancolour.y*255.f);
-            world->setocean3(oceancolour.z*255.f);
+            world->setocean1(oceancolour.x * 255.f);
+            world->setocean2(oceancolour.y * 255.f);
+            world->setocean3(oceancolour.z * 255.f);
 
             world->setdeepocean1(deepoceancolour.x * 255.f);
             world->setdeepocean2(deepoceancolour.y * 255.f);
@@ -3665,8 +3680,8 @@ int main()
             world->setminriverflowregional(regionalriversentry);
 
             world->setshadingdir(shadingdircorrected);
-            world->setsnowchange(snowchange+1);
-            world->setseaiceappearance(seaiceappearance+1);
+            world->setsnowchange(snowchange + 1);
+            world->setseaiceappearance(seaiceappearance + 1);
 
             // Copy them back again to ensure that there aren't any stray floating points.
 
@@ -3778,14 +3793,14 @@ int main()
 
 // This draws the highlight objects.
 
-void drawhighlightobjects(planet &world, sf::Image &highlightimage, int highlightsize, sf::Image &minihighlightimage, int minihighlightsize)
+void drawhighlightobjects(planet& world, sf::Image& highlightimage, int highlightsize, sf::Image& minihighlightimage, int minihighlightsize)
 {
     sf::Color currenthighlightcolour;
 
     currenthighlightcolour.r = world.highlight1();
     currenthighlightcolour.g = world.highlight2();
     currenthighlightcolour.b = world.highlight3();
-    
+
     // Do the highlight point
 
 
@@ -4009,7 +4024,7 @@ void drawglobaltemperaturemapimage(planet& world, sf::Image& globaltemperatureim
         {
             int sourcei = i * mapdiv;
             int sourcej = j * mapdiv;
-            
+
             sf::Color thispixel = globaltemperatureimage.getPixel(sourcei, sourcej);
 
             displayglobaltemperatureimage.setPixel(i, j, thispixel);
@@ -4314,14 +4329,14 @@ void drawglobalriversmapimage(planet& world, sf::Image& globalriversimage, sf::I
             if (sourcei > 0 && sourcej > 0)
             {
                 int lowestred = 255;
-                
+
                 for (int k = sourcei - 1; k <= sourcei; k++)
                 {
                     for (int l = sourcej - 1; l <= sourcej; l++)
                     {
                         sf::Color newpixel = globalriversimage.getPixel(k, l);
 
-                        if (newpixel.r < lowestred && newpixel.r==newpixel.g)
+                        if (newpixel.r < lowestred && newpixel.r == newpixel.g)
                             lowestred = newpixel.r;
                     }
                 }
@@ -6348,4 +6363,3 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
         }
     }
 }
-

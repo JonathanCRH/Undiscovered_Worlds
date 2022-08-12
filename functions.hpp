@@ -371,7 +371,7 @@ int rlakesquare(region& region, int dx, int dy, int s, int x, int y, int value, 
 int rlakediamond(region& region, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], int lakesurface);
 int rdiamond(region& region, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], bool onlyup, int negchance, int sealevel, bool nosea);
 int rcoastdiamond(region& region, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], int sealevel);
-//void landfill(planet &world, region &region, int dx, int dy, int sx, int sy, int surfaceleve, boolshapetemplate smalllake[]);
+//void landfill(const planet &world, region &region, int dx, int dy, int sx, int sy, int surfaceleve, boolshapetemplate smalllake[]);
 void removestraights(planet& world, region& region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[]);
 void disruptseacoastline(planet& world, region& region, int dx, int dy, int centrex, int centrey, int avedepth, bool raise, int maxsize, bool stayintile, boolshapetemplate smalllake[]);
 void disruptlakecoastline(planet& world, region& region, int dx, int dy, int centrex, int centrey, int surfacelevel, int avedepth, bool raise, int size, bool stayintile, int special, boolshapetemplate smalllake[]);
@@ -404,7 +404,7 @@ void checkdepression(region& region, int dx, int dy, int x, int y, int elev, boo
 void filldepression(region& region, int dx, int dy, int x, int y, int elev);
 void addinlets(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& riverinlets);
 void pasteinletcircle(region& region, int centrex, int centrey, int depth, int pixels, vector<vector<bool>>& riverinlets);
-//void addmountainsprings(planet &world, region &region, int dx, int dy, int sx, int sy);
+//void addmountainsprings(const planet &world, region &region, int dx, int dy, int sx, int sy);
 void makewetlandtile(planet& world, region& region, int dx, int dy, int sx, int sy, boolshapetemplate smalllake[]);
 void pasteregionalwetlands(region& region, int centrex, int centrey, int special, int elev, int shapenumber, boolshapetemplate smalllake[]);
 void convertlakestospecials(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& safesaltlakes);
@@ -439,7 +439,7 @@ void disruptcliff(planet& world, region& region, int dx, int dy, int sx, int sy,
 void disruptlakecliff(planet& world, region& region, int dx, int dy, int sx, int sy, int startx, int starty, int endx, int endy, boolshapetemplate smalllake[], byteshapetemplate smudge[]);
 void disruptland(region& region, int centrex, int centrey, int newheight, boolshapetemplate smalllake[]);
 void disruptlakebed(region& region, int centrex, int centrey, int newheight, boolshapetemplate smalllake[]);
-//void checkgrid(planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &elevs, vector<vector<int>> &severities);
+//void checkgrid(const planet &world, region &region, int dx, int dy, int sx, int sy, vector<vector<int>> &elevs, vector<vector<int>> &severities);
 void makesubmarineelevationtile(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<int>>& underseamap, int coords[4][2], int extra);
 int submarinesquare(vector<vector<int>>& underseamap, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], bool onlyup);
 int submarinediamond(vector<vector<int>>& underseamap, int dx, int dy, int s, int x, int y, int value, int min, int max, int coords[4][2], bool onlyup);

@@ -7,6 +7,12 @@ For more information, and to complain about bugs, please visit the blog: https:/
 
 ----
 
+* Credits
+
+Undiscovered Worlds is written by Jonathan Hill, with additional contributions and corrections by Frank Gennari. Sections of code that are taken or adapted from other sources are noted in the comments.
+
+----
+
 * The code
 
 Please note that this code requires the following libraries to work:

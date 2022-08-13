@@ -88,7 +88,7 @@ The buttons at the bottom right allow you to save or load settings, restore the 
 
 This window allows you to export maps from a custom-defined area of the world. These maps are at the same scale as the regional map - 1 pixel to 1km - but they can be of larger areas.
 
-Click a point on the map to select a point. Do this again to select a second point, defining a rectangle. You can continue to click or drag te points to re-define the area. When you have the area you want, click on "export maps". There are also buttons to clear your selected area and to return to the global map screen.
+Click a point on the map to select a point. Do this again to select a second point, defining a rectangle. You can continue to click or drag the points to re-define the area. When you have the area you want, click on "export maps". There are also buttons to clear your selected area and to return to the global map screen.
 
 * The import maps screen
 

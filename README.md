@@ -120,6 +120,8 @@ When you have finished, click the "done" button. This finalises the terrain and 
 
 * Known issues
 
+The ability to resize the window is turned off, because it messes up the mouse tracking. (You can minimise it, of course.)
+
 Saving and loading worlds is slow, but it works.
 
 It occasionally crashes when exporting area maps. The cause is as yet unknown. Be sure to save worlds/settings before using this.

@@ -413,9 +413,9 @@ int main()
 
     short regionmargin = 17; // The centre of the regional map can't be closer than this to the northern/southern edges of the global map.
 
-    bool globalmapimagecreated[GLOBALMAPTYPES]; // This will keep track of which global map images have actually been created.
+    bool globalmapimagecreated[GLOBALMAPTYPES] = {}; // This will keep track of which global map images have actually been created.
 
-    bool regionalmapimagecreated[GLOBALMAPTYPES]; // This will keep track of which global map images have actually been created.
+    bool regionalmapimagecreated[GLOBALMAPTYPES] = {}; // This will keep track of which global map images have actually been created.
 
     short generatingnewregion = 0; // If this is 2 then we're about to generate a new region. If it's 1 then we will do so on the next frame.
 
@@ -6290,7 +6290,7 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
 
                 if (goahead == 1 || (region.sea(i, j) == 0))
                 {
-                    int slope1, slope2;
+                    int slope1 = 0, slope2 = 0;
 
                     if (shadingdir == 2)
                     {

@@ -9709,7 +9709,7 @@ void createoceanfault(planet& world, int midx, int midy, int mindist, int maxdis
 
     int dist = random(mindist, maxdist); // Distance from the midpoint that the edge points should be.
 
-    int x1, y1, x2, y2; // Coordinates of the rift points at the ends of the area to be moved.
+    int x1=0, y1=0, x2=0, y2=0; // Coordinates of the rift points at the ends of the area to be moved.
 
     // Clear this area in the checked array.
 
@@ -9783,7 +9783,7 @@ void createoceanfault(planet& world, int midx, int midy, int mindist, int maxdis
 
     int length = 70; //100; // Distance to go out from the central rift.
 
-    int cornerx1, cornery1, cornerx2, cornery2, cornerx3, cornery3, cornerx4, cornery4;
+    int cornerx1=0, cornery1=0, cornerx2=0, cornery2=0, cornerx3=0, cornery3=0, cornerx4=0, cornery4=0;
 
     for (int n = 1; n <= 2; n++) // Do it for each of the two end points
     {

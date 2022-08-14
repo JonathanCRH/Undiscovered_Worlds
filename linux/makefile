@@ -1,13 +1,12 @@
 TARGET=Undiscovered_Worlds
 BUILD=obj
 VPATH=$(BUILD) ../
-NANOGUI=../../nanogui
-INCLUDES=-I../ -I$(NANOGUI)/include -I../../stb
-CXXFLAGS=-g -Wall -O3 -fopenmp $(INCLUDES) -Wno-unused-parameter -Wno-implicit-fallthrough -Wno-sign-compare -Wno-unused-variable -Wno-unused-but-set-variable -std=c++17
+INCLUDES=-I../ -I../../imgui -I../../imgui-sfml -I../../ImGuiFileDialog -I../../stb
+CXXFLAGS=-g -Wall -O3 -fopenmp $(INCLUDES) -Wno-unused-parameter -Wno-implicit-fallthrough -Wno-sign-compare -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unknown-pragmas -std=c++17
 OBJS=$(shell cat obj_list)
 
 LINK=$(CPP) $(INCLUDES)
-LDFLAGS=-lglfw -lsfml-window -lsfml-system -lsfml-graphics -L../$(NANOGUI) -lnanogui
+LDFLAGS=-lglfw -lsfml-window -lsfml-system -lsfml-graphics -lGL
 
 # For creating dependencies files
 DEPFLAGS = -MT $@ -MMD -MP -MF $(BUILD)/$*.Td

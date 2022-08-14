@@ -64,7 +64,7 @@ This screen displays a map of a small area of your world, shown at a scale of ap
 
 "Appearance" - open the settings to change the map appearance (see below).
 
-To the top right of the screen is a minimap showing the current region on a world map. You can click on this map to go directly to another region.
+To the top right of the screen is a minimap showing the current region on a world map. You can click on this map to go directly to another region. You can also use the cursor keys to move to neighbouring regions.
 
 * The map appearance settings
 

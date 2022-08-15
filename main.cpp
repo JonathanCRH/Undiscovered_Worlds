@@ -1449,6 +1449,81 @@ int main()
                     newy = minipoiy;
                 }
             }
+
+            // Check to see if the cursor keys have been pressed.
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            {
+                int regionalmapmove = REGIONALTILEWIDTH;
+
+                newx = region->centrex() - regionalmapmove;
+
+                if (newx > 0)
+                {
+                    newx = newx / 32;
+                    newx = newx * 32;
+                    newx = newx + 16;
+                }
+
+                if (newx < regionalmapmove * 2)
+                    newx = wrap(newx, world->width());
+
+                newy = region->centrey();
+
+                generatingnewregion = 2;
+            }
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+            {
+                int regionalmapmove = REGIONALTILEWIDTH;
+
+                newx = region->centrex() + regionalmapmove;
+
+                newx = newx / 32;
+                newx = newx * 32;
+                newx = newx + 16;
+
+                if (newx > world->width())
+                    newx = wrap(newx, world->width());
+
+                newy = region->centrey();
+
+                generatingnewregion = 2;
+            }
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+            {
+                int regionalmapmove = REGIONALTILEHEIGHT;
+
+                newy = region->centrey() - regionalmapmove;
+
+                newy = newy / 32;
+                newy = newy * 32;
+                newy = newy + 16;
+
+                if (newy > regionalmapmove)
+                {
+                    newx = region->centrex();
+                    generatingnewregion = 2;
+                }
+            }
+
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+            {
+                int regionalmapmove = REGIONALTILEHEIGHT;
+
+                newy = region->centrey() + regionalmapmove;
+
+                newy = newy / 32;
+                newy = newy * 32;
+                newy = newy + 16;
+
+                if (newy < world->height())
+                {
+                    newx = region->centrex();
+                    generatingnewregion = 2;
+                }
+            }
         }
 
         // Area export screen
@@ -2067,7 +2142,7 @@ int main()
                     window.display();
                 }
                 */
-                              
+
                 updatereport("Generating world from imported maps:");
                 updatereport("");
 

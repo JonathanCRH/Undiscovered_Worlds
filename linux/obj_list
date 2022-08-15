@@ -7,4 +7,9 @@ planet.o
 regionalmap.o
 region.o
 misc.o
-
+imgui.o
+imgui_draw.o
+imgui_widgets.o
+imgui_tables.o
+ImGuiFileDialog.o
+imgui-SFML.o

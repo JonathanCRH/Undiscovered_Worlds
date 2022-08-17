@@ -130,6 +130,8 @@ Occasionally, exporting maps doesn't work. Save the world, restart UW, load the 
 
 Continents occasionally appear with straight sides. The cause of this is unknown too, but it is rare.
 
+Gridlike artefacts sometimes appear on the ocean floor of custom worlds created from imported maps. I'm looking into this.
+
 The climate simulation is imperfect. Climate regions are more jumbled together than they should be. There is too much monsoon (Am) and not enough savannah (Aw/As). There is less warm-summer humid continental (Dfb) than there should be. However, a perfect climate simulation would require a lot more processing power and time than I have available!
 
 Lakes occasionally go haywire. Known cause: lakes are the work of the devil - https://undiscoveredworlds.blogspot.com/2019/02/grappling-with-lakes.html

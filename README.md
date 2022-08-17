@@ -94,7 +94,7 @@ Click a point on the map to select a point. Do this again to select a second poi
 
 Please note that this feature is experimental! You may need trial and error to get good results.
 
-This screen allows you to import your own maps - created with an image editor - and turn them into Undiscovered Worlds worlds. In this way, you can create your own terrain, and have Undiscovered Worlds calculate the climates, rivers, lakes, etc. You can then explore maps of your world just like any other.
+This screen allows you to import your own maps - created with an image editor - and turn them into Undiscovered Worlds worlds. In this way, you can create your own terrain, and have Undiscovered Worlds calculate the climates, rivers, lakes, etc. You can then explore maps of your world just like any other. The zip file "Example import files" contains some maps that you can import to recreate Tolkien's Arda, which should give you a good idea of the format they need to be in to create your own.
 
 The buttons to the left are in two main groups:
 

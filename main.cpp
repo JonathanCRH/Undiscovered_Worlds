@@ -417,8 +417,6 @@ int main()
 
     bool regionalmapimagecreated[GLOBALMAPTYPES] = {}; // This will keep track of which global map images have actually been created.
 
-    short generatingnewregion = 0; // If this is 2 then we're about to generate a new region. If it's 1 then we will do so on the next frame.
-
     int newx = -1;
     int newy = -1; // These are used to locate the new region.
 
@@ -435,6 +433,16 @@ int main()
     bool colourschanged = 0; // If this is 1 then the colours have been changed and the maps need to be redrawn.
 
     float linespace = 8.0f; // Gap between groups of buttons.
+
+    string filepathname = "";
+    string filepath = "";
+
+    short creatingworldpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
+    short completingimportpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
+    short loadingworldpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
+    short savingworldpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
+    short exportingareapass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
+    short generatingregionpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
 
     // Now we prepare map colours. We put them into ImVec4 objects, which can be directly manipulated by the colour picker objects.
 
@@ -613,9 +621,6 @@ int main()
     sf::Clock deltaClock;
     while (window.isOpen())
     {
-        if (generatingnewregion == 1)
-            generatingnewregion = 2;
-
         sf::Event event;
         while (window.pollEvent(event))
         {
@@ -726,64 +731,67 @@ int main()
 
         if (screenmode == creatingworldscreen)
         {
-            for (int n = 0; n < 2; n++)
+            if (creatingworldpass<10)
             {
-                ImGui::SFML::Update(window, deltaClock.restart());
                 ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
                 ImGui::Begin("Please wait!");
                 ImGui::Text("Generating world...");
                 ImGui::End();
-                window.clear();
-                ImGui::SFML::Render(window);
-                window.display();
+
+                creatingworldpass++;
             }
+            else
+            {
+                updatereport("Generating world from seed: " + to_string(world->seed()) + ":");
+                updatereport("");
 
-            updatereport("Generating world from seed: " + to_string(world->seed()) + ":");
-            updatereport("");
+                for (int n = 0; n < GLOBALMAPTYPES; n++) // Set all map types as unviewed, to force them to be redrawn when called up
+                    globalmapimagecreated[n] = 0;
 
-            for (int n = 0; n < GLOBALMAPTYPES; n++) // Set all map types as unviewed, to force them to be redrawn when called up
-                globalmapimagecreated[n] = 0;
+                short terraintype = 2; // This terrain type gives large continents.
 
-            short terraintype = 2; // This terrain type gives large continents.
+                fast_srand(world->seed());
 
-            fast_srand(world->seed());
+                if (random(1, 10) == 1) // Rarely, do the terrain type that gives fragmented land masses.
+                    terraintype = 1;
 
-            if (random(1, 10) == 1) // Rarely, do the terrain type that gives fragmented land masses.
-                terraintype = 1;
+                vector<vector<int>> mountaindrainage(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+                vector<vector<bool>> shelves(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
 
-            vector<vector<int>> mountaindrainage(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
-            vector<vector<bool>> shelves(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
+                // Actually generate the world
 
-            // Actually generate the world
+                generateglobalterrain(*world, terraintype, landshape, chainland, mountaindrainage, shelves);
+                generateglobalclimate(*world, smalllake, largelake, landshape, mountaindrainage, shelves);
 
-            generateglobalterrain(*world, terraintype, landshape, chainland, mountaindrainage, shelves);
-            generateglobalclimate(*world, smalllake, largelake, landshape, mountaindrainage, shelves);
+                // Now draw a new map
 
-            // Now draw a new map
+                mapview = relief;
 
-            mapview = relief;
+                drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
 
-            drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
+                globalmaptexture->loadFromImage(*displayglobalreliefimage);
+                globalmap->setTexture(*globalmaptexture);
 
-            globalmaptexture->loadFromImage(*displayglobalreliefimage);
-            globalmap->setTexture(*globalmaptexture);
+                updatereport("");
+                updatereport("World generation completed.");
+                updatereport("");
 
-            updatereport("");
-            updatereport("World generation completed.");
-            updatereport("");
+                infotext = "Welcome to a new world!";
 
-            infotext = "Welcome to a new world!";
+                focused = 0;
 
-            focused = 0;
-
-            screenmode = movingtoglobalmapscreen;
+                creatingworldpass = 0;
+                screenmode = movingtoglobalmapscreen;
+            }
         }
 
         // Global map screen
 
         if (screenmode == globalmapscreen)
         {
+            areafromregional = 0;
+            
             // Main controls.
 
             string title = "Seed: " + to_string(world->seed());
@@ -936,12 +944,10 @@ int main()
                     newx = poix;
                     newy = poiy;
 
-                    generatingnewregion = 1;
-
                     infotext = "";
                     infotext2 = "";
 
-                    screenmode = regionalmapscreen;
+                    screenmode = generatingregionscreen;
                 }
             }
 
@@ -1132,6 +1138,8 @@ int main()
 
         if (screenmode == regionalmapscreen)
         {
+            areafromregional = 1;
+            
             showwarning = 0;
 
             // Main controls.
@@ -1275,7 +1283,6 @@ int main()
             if (standardbutton("Appearance"))
             {
                 showcolouroptions = 1;
-
             }
 
             ImGui::End();
@@ -1291,7 +1298,7 @@ int main()
             ImGui::PushItemWidth(world->width() / 2);
             ImGui::Text(infotext2.c_str(), world->width() / 2);
             ImGui::End();
-#
+
             // Now check to see if the map has been clicked on.
 
             if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && io.WantCaptureMouse == 0)
@@ -1444,7 +1451,7 @@ int main()
 
                 if (minipoix >= 0 && minipoiy <= world->width() && minipoiy >= 0 && minipoiy <= world->height())// If the minimap has been clicked on.
                 {
-                    generatingnewregion = 2;
+                    screenmode = generatingregionscreen;
                     newx = minipoix;
                     newy = minipoiy;
                 }
@@ -1470,7 +1477,7 @@ int main()
 
                 newy = region->centrey();
 
-                generatingnewregion = 2;
+                screenmode = generatingregionscreen;
             }
 
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
@@ -1488,7 +1495,7 @@ int main()
 
                 newy = region->centrey();
 
-                generatingnewregion = 2;
+                screenmode = generatingregionscreen;
             }
 
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
@@ -1504,7 +1511,7 @@ int main()
                 if (newy > regionalmapmove)
                 {
                     newx = region->centrex();
-                    generatingnewregion = 2;
+                    screenmode = generatingregionscreen;
                 }
             }
 
@@ -1521,12 +1528,12 @@ int main()
                 if (newy < world->height())
                 {
                     newx = region->centrex();
-                    generatingnewregion = 2;
+                    screenmode = generatingregionscreen;
                 }
             }
         }
 
-        // Area export screen
+        // Area export screen (this is where the user selects the area to export)
 
         if (screenmode == exportareascreen)
         {
@@ -1590,7 +1597,7 @@ int main()
 
             ImGui::Begin(title.c_str());
             ImGui::PushItemWidth(world->width() / 2);
-            ImGui::Text("This screen allows you to export maps at the same scale as the regional map, but of larger areas. Click on the map to pick the corners of the area you want to export. You can re-select corners to fine-tune the area. When you are done, click on 'export maps'. The program will create the maps and then ask you to specify the filename under which to save them.", world->width() / 2);
+            ImGui::Text("This screen allows you to export maps at the same scale as the regional map, but of larger areas.\n\nClick on the map to pick the corners of the area you want to export. You can re-select corners to fine-tune the area.\n\nWhen you are done, click on 'export maps'. The program will ask you to specify the filename under which to save the maps, and then create them.", world->width() / 2);
             ImGui::End();
 #
             // Now check to see if the map has been clicked on.
@@ -2128,21 +2135,45 @@ int main()
 
             if (standardbutton("Done"))
             {
-                /*
-                for (int n = 0; n < 2; n++)
-                {
-                    ImGui::SFML::Update(window, deltaClock.restart());
-                    ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
-                    ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                    ImGui::Begin("Please wait!");
-                    ImGui::Text("Finishing world...");
-                    ImGui::End();
-                    window.clear();
-                    ImGui::SFML::Render(window);
-                    window.display();
-                }
-                */
+                screenmode = completingimportscreen;
+            }
 
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Calculate climates, lakes, and rivers, and finish the world.");
+
+            ImGui::End();
+
+            // Now the text box.
+
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1023, 140), ImGuiCond_FirstUseEver);
+
+            string title = "            ";
+
+            string importtext = "Use the 'import' buttons to load in your own maps. These must be 2048x1025 pixels, in .png format.\nYou need at least a land map, but the others are optional.\nCheck the tooltips for each button for more details.\n\nAfter you have imported your maps, you can use the 'generate' buttons to tweak them or to add extra features.\n\nWhen you are done, click 'Done' to finish the world.";
+
+            ImGui::Begin(title.c_str());
+            ImGui::PushItemWidth(world->width() / 2);
+            ImGui::Text(importtext.c_str(), world->width() / 2);
+            ImGui::End();
+        }
+
+        // These screens all display a "Please wait" message ten times (for some reason doing it once or twice doesn't actually display it) and then do something time-consuming.
+
+        if (screenmode == completingimportscreen)
+        {
+            if (completingimportpass < 10)
+            {
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait!");
+                ImGui::Text("Finishing world...");
+                ImGui::End();
+
+                completingimportpass++;
+            }
+            else
+            {
                 updatereport("Generating world from imported maps:");
                 updatereport("");
 
@@ -2214,27 +2245,440 @@ int main()
 
                 focused = 0;
 
+                completingimportpass = 0;
                 screenmode = movingtoglobalmapscreen;
             }
+        }
 
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Calculate climates, lakes, and rivers, and finish the world.");
+        if (screenmode == loadingworldscreen)
+        {
+            if (loadingworldpass < 10)
+            {
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait!");
+                ImGui::Text("Loading world...");
+                ImGui::End();
 
-            ImGui::End();
+                loadingworldpass++;
+            }
+            else
+            {
+                world->loadworld(filepathname);
 
-            // Now the text box.
+                for (int n = 0; n < GLOBALMAPTYPES; n++)
+                    globalmapimagecreated[n] = 0;
 
-            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(1023, 140), ImGuiCond_FirstUseEver);
+                mapview = relief;
+                drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
 
-            string title = "            ";
+                globalmaptexture->loadFromImage(*displayglobalreliefimage);
+                globalmap->setTexture(*globalmaptexture);
 
-            string importtext = "Use the 'import' buttons to load in your own maps. These must be 2048x1025 pixels, in .png format.\nYou need at least a land map, but the others are optional.\nCheck the tooltips for each button for more details.\n\nAfter you have imported your maps, you can use the 'generate' buttons to tweak them or to add extra features.\n\nWhen you are done, click 'Done' to finish the world.";
+                focused = 0;
+                infotext = "Welcome to a new world!";
 
-            ImGui::Begin(title.c_str());
-            ImGui::PushItemWidth(world->width() / 2);
-            ImGui::Text(importtext.c_str(), world->width() / 2);
-            ImGui::End();
+                filepathname = "";
+                filepath = "";
+
+                screenmode = globalmapscreen;
+                loadingworld = 0;
+                loadingworldpass = 0;
+            }
+        }
+
+        if (screenmode == savingworldscreen)
+        {
+            if (savingworldpass < 10)
+            {
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait!");
+                ImGui::Text("Saving world...");
+                ImGui::End();
+
+                savingworldpass++;
+            }
+            else
+            {
+                world->saveworld(filepathname);
+
+                filepathname = "";
+                filepath = "";
+
+                savingworld = 0;
+
+                savingworldpass = 0;
+
+                screenmode = movingtoglobalmapscreen;
+            }
+        }
+
+        if (screenmode == exportingareascreen)
+        {
+            if (exportingareapass < 10)
+            {
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 300, main_viewport->WorkPos.y + 200), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait!");
+                ImGui::Text("Generating area maps...");
+                ImGui::End();
+
+                exportingareapass++;
+            }
+            else
+            {
+                int oldregionalcentrex = region->centrex();
+                int oldregionalcentrey = region->centrey();
+
+                mapviewenum oldmapview = mapview;
+
+                initialiseregion(*world, *region); // We'll do all this using the same region object as usual. We could create a new region object for it, but that seems to lead to inexplicable crashes, so we won't.
+
+                float regiontilewidth = REGIONALTILEWIDTH; //30;
+                float regiontileheight = REGIONALTILEHEIGHT; //30; // The width and height of the visible regional map, in tiles.
+
+                int regionwidth = regiontilewidth * 16;
+                int regionheight = regiontileheight * 16; // The width and height of the visible regional map, in pixels.
+
+                int origareanwx = areanwx; // This is because the regions we'll be making will start to the north and west of the defined area.
+                int origareanwy = areanwy;
+
+                int origareanex = areanex;
+                int origareaney = areaney;
+
+                int origareaswx = areaswx;
+                int origareaswy = areaswy;
+
+                areanwx = areanwx / regiontilewidth;
+                areanwx = areanwx * regiontilewidth;
+
+                areanwy = areanwy / regiontileheight;
+                areanwy = areanwy * regiontileheight;
+
+                areaswx = areanwx;
+                areaney = areanwy;
+
+                int woffset = (origareanwx - areanwx) * 16;
+                int noffset = (origareanwy - areanwy) * 16;
+
+                float areatilewidth = areanex - areanwx;
+                float areatileheight = areasey - areaney;
+
+                int areawidth = areatilewidth * 16;
+                int areaheight = areatileheight * 16;
+
+                float imageareatilewidth = origareanex - origareanwx;
+                float imageareatileheight = areasey - origareaney;
+
+                int imageareawidth = imageareatilewidth * 16;
+                int imageareaheight = imageareatileheight * 16;
+
+                float fregionswide = areatilewidth / regiontilewidth;
+                float fregionshigh = areatileheight / regiontileheight;
+
+                int regionswide = fregionswide;
+                int regionshigh = fregionshigh;
+
+                if (regionswide != fregionswide)
+                    regionswide++;
+
+                if (regionshigh != fregionshigh)
+                    regionshigh++;
+
+                int totalregions = regionswide * regionshigh; // This is how many regional maps we're going to have to do.
+
+                if (areafromregional == 1)
+                    totalregions++; // Because we'll have to redo the regional map we came from.
+
+                // Now we need to prepare the images that we're going to copy the regional maps onto.
+
+                sf::Image* areareliefimage = new sf::Image;
+                sf::Image* areaelevationimage = new sf::Image;
+                sf::Image* areatemperatureimage = new sf::Image;
+                sf::Image* areaprecipitationimage = new sf::Image;
+                sf::Image* areaclimateimage = new sf::Image;
+                sf::Image* areariversimage = new sf::Image;
+
+                areareliefimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
+                areaelevationimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
+                areatemperatureimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
+                areaprecipitationimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
+                areaclimateimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
+                areariversimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
+
+                // Now it's time to make the regions, one by one, generate their maps, and copy those maps over onto the area images.
+
+                for (int i = 0; i < regionswide; i++)
+                {
+                    int centrex = i * regiontilewidth + (regiontilewidth / 2) + areanwx;
+
+                    for (int j = 0; j < regionshigh; j++)
+                    {
+                        int centrey = j * regiontileheight + (regiontileheight / 2) + areanwy;
+
+                        // First, create the new region.
+
+                        region->setcentrex(centrex);
+                        region->setcentrey(centrey);
+
+                        generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge);
+
+                        // Now generate the maps.
+
+                        for (int n = 0; n < GLOBALMAPTYPES; n++)
+                            regionalmapimagecreated[n] = 0;
+
+                        mapview = relief;
+                        drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
+
+                        mapview = elevation;
+                        drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
+
+                        mapview = temperature;
+                        drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
+
+                        mapview = precipitation;
+                        drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
+
+                        mapview = climate;
+                        drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
+
+                        mapview = rivers;
+                        drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
+
+                        // Now copy those maps into the images that will be exported.
+
+                        for (int x = 0; x < regionalimagewidth; x++)
+                        {
+                            for (int y = 0; y < regionalimageheight; y++)
+                            {
+                                int thisx = x + i * regionwidth - woffset;
+                                int thisy = y + j * regionheight - noffset; // Coordinates on the export image that correspond to this point on the regional map
+
+                                if (thisx > 0 && thisx < imageareawidth && thisy>0 && thisy < imageareaheight)
+                                {
+                                    sf::Color pixelcolour = regionalreliefimage->getPixel(x, y);
+                                    areareliefimage->setPixel(thisx, thisy, pixelcolour);
+
+                                    pixelcolour = regionalelevationimage->getPixel(x, y);
+                                    areaelevationimage->setPixel(thisx, thisy, pixelcolour);
+
+                                    pixelcolour = regionaltemperatureimage->getPixel(x, y);
+                                    areatemperatureimage->setPixel(thisx, thisy, pixelcolour);
+
+                                    pixelcolour = regionalprecipitationimage->getPixel(x, y);
+                                    areaprecipitationimage->setPixel(thisx, thisy, pixelcolour);
+
+                                    pixelcolour = regionalclimateimage->getPixel(x, y);
+                                    areaclimateimage->setPixel(thisx, thisy, pixelcolour);
+
+                                    pixelcolour = regionalriversimage->getPixel(x, y);
+                                    areariversimage->setPixel(thisx, thisy, pixelcolour);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                region->setcentrex(oldregionalcentrex); // Move the region back to where it started.
+                region->setcentrey(oldregionalcentrey);
+
+                if (areafromregional == 1) // If we're going to go back to the regional map, we need to redo it.
+                    generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge);
+
+                // Now just save the images.
+
+                filepathname.resize(filepathname.size() - 4);
+
+                areareliefimage->saveToFile(filepathname + " Relief.png");
+                areaelevationimage->saveToFile(filepathname + " Elevation.png");
+                areatemperatureimage->saveToFile(filepathname + " Temperature.png");
+                areaprecipitationimage->saveToFile(filepathname + " Precipitation.png");
+                areaclimateimage->saveToFile(filepathname + " Climate.png");
+                areariversimage->saveToFile(filepathname + " Rivers.png");
+
+                // Clean up.
+
+                filepathname = "";
+                filepath = "";
+
+                delete areareliefimage;
+                delete areaelevationimage;
+                delete areatemperatureimage;
+                delete areaprecipitationimage;
+                delete areaclimateimage;
+                delete areariversimage;
+
+                areanex = -1;
+                areaney = -1;
+                areasex = -1;
+                areasey = -1;
+                areaswx = -1;
+                areaswy = -1;
+                areanwx = -1;
+                areanwy = -1;
+
+                mapview = oldmapview;
+
+                for (int n = 0; n < GLOBALMAPTYPES; n++)
+                    regionalmapimagecreated[n] = 0;
+
+                exportingareapass = 0;
+
+                if (areafromregional == 1)
+                    screenmode = regionalmapscreen;
+                else
+                    screenmode = globalmapscreen;
+            }
+        }
+
+        if (screenmode == generatingregionscreen)
+        {
+            if (generatingregionpass < 10) // This one has a non-functioning copy of the regional map screen controls, plus the "Please wait" message.
+            {
+                string title;
+
+                if (world->seed() >= 0)
+                    title = "Seed: " + to_string(world->seed());
+                else
+                    title = "Custom";
+
+                title = title + "##regional";
+
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(160, 346), ImGuiCond_FirstUseEver);
+
+                ImGui::Begin(title.c_str());
+
+                ImGui::Text("World controls:");
+
+                ImGui::PushItemWidth(100.0f);
+
+                standardbutton("World map");
+
+                ImGui::Dummy(ImVec2(0.0f, linespace));
+
+                ImGui::SetNextItemWidth(0);
+
+                ImGui::Text("Export options:");
+
+                ImGui::PushItemWidth(100.0f);
+
+                standardbutton("Regional maps");
+
+                standardbutton("Area maps");
+
+                ImGui::Dummy(ImVec2(0.0f, linespace));
+
+                ImGui::SetNextItemWidth(0);
+
+                ImGui::Text("Display map type:");
+
+                ImGui::PushItemWidth(100.0f);
+
+                standardbutton("Relief");
+
+                standardbutton("Elevation");
+
+                standardbutton("Temperature");
+
+                standardbutton("Precipitation");
+
+                standardbutton("Climate");
+
+                standardbutton("Rivers");
+
+                ImGui::Dummy(ImVec2(0.0f, linespace));
+
+                ImGui::SetNextItemWidth(0);
+
+                ImGui::Text("Other controls:");
+
+                ImGui::PushItemWidth(100.0f);
+
+                standardbutton("Appearance");
+
+                ImGui::End();
+
+                // Now the text box.
+
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(1023, 140), ImGuiCond_FirstUseEver);
+
+                title = "               ";
+
+                ImGui::Begin(title.c_str());
+                ImGui::PushItemWidth(world->width() / 2);
+                ImGui::Text(infotext2.c_str(), world->width() / 2);
+                ImGui::End();
+
+                // Now the additional element.
+
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 849, main_viewport->WorkPos.y + 364), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait...");
+                ImGui::Text("Generating region");
+                ImGui::End();
+
+                generatingregionpass++;
+            }
+            else
+            {
+                infotext2 = "";
+
+                newx = newx / 32;
+                newy = newy / 32;
+
+                newx = newx * 32;
+                newy = newy * 32;
+
+                newx = newx + 16;
+                newy = newy + 16;
+
+                region->setcentrex(newx);
+                region->setcentrey(newy);
+
+                mapview = relief;
+
+                for (int n = 0; n < GLOBALMAPTYPES; n++)
+                    regionalmapimagecreated[n] = 0;
+
+                float progressstep = 1.0 / REGIONALCREATIONSTEPS;
+
+                // Blank the regional map image first
+
+                for (int i = 0; i < regionalimagewidth; i++)
+                {
+                    for (int j = 0; j < regionalimageheight; j++)
+                        regionalreliefimage->setPixel(i, j, sf::Color::Black);
+
+                }
+
+                regionalmaptexture->loadFromImage(*regionalreliefimage);
+                regionalmap->setTexture(*regionalmaptexture);
+
+                // Now generate the regional map
+
+                generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge);
+
+                // Now draw the regional map image
+
+                drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
+
+                regionalmaptexture->loadFromImage(*regionalreliefimage);
+                regionalmap->setTexture(*regionalmaptexture);
+
+                // Sort out the minimap
+
+                globalmaptexture->loadFromImage(*displayglobalreliefimage);
+                minimap->setTexture(*globalmaptexture);
+
+                focused = 0;
+                generatingregionpass = 0;
+
+                screenmode = regionalmapscreen;
+            }
         }
 
         window.clear();
@@ -2572,7 +3016,7 @@ int main()
             }
         }
 
-        if (screenmode == regionalmapscreen)
+        if (screenmode == regionalmapscreen || screenmode == generatingregionscreen)
         {
             window.draw(*regionalmap);
 
@@ -2580,13 +3024,13 @@ int main()
 
             minihighlight->setPosition(sf::Vector2f(minimapxpos + region->centrex() / 4, minimapypos + region->centrey() / 4));
 
-            if (generatingnewregion != 1)
+            if (screenmode != generatingregionscreen)
                 window.draw(*minihighlight);
         }
 
         if (screenmode == globalmapscreen || screenmode == regionalmapscreen)
         {
-            if (focused == 1 && generatingnewregion == 0)
+            if (focused == 1)
                 window.draw(*highlight);
         }
 
@@ -2594,42 +3038,17 @@ int main()
 
         if (loadingworld == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're loading in a new world
         {
+            filepathname = "";
+            filepath = "";
+            
             if (ImGuiFileDialog::Instance()->IsOk())
             {
-                std::string filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
-                std::string filepath = ImGuiFileDialog::Instance()->GetCurrentPath();
+                filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
+                filepath = ImGuiFileDialog::Instance()->GetCurrentPath();
 
                 if (filepathname != "")
                 {
-                    for (int n = 0; n < 2; n++)
-                    {
-                        ImGui::SFML::Update(window, deltaClock.restart());
-                        ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
-                        ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                        ImGui::Begin("Please wait!");
-                        ImGui::Text("Loading world...");
-                        ImGui::End();
-                        window.clear();
-                        ImGui::SFML::Render(window);
-                        window.display();
-                    }
-
-                    world->loadworld(filepathname);
-
-                    for (int n = 0; n < GLOBALMAPTYPES; n++)
-                        globalmapimagecreated[n] = 0;
-
-                    mapview = relief;
-                    drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
-
-                    globalmaptexture->loadFromImage(*displayglobalreliefimage);
-                    globalmap->setTexture(*globalmaptexture);
-
-                    focused = 0;
-                    infotext = "Welcome to a new world!";
-
-                    screenmode = globalmapscreen;
-                    loadingworld = 0;
+                    screenmode = loadingworldscreen;                  
                 }
 
             }
@@ -2638,29 +3057,17 @@ int main()
 
         if (savingworld == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're saving a world
         {
+            filepathname = "";
+            filepath = "";
+            
             if (ImGuiFileDialog::Instance()->IsOk())
             {
-                std::string filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
-                std::string filepath = ImGuiFileDialog::Instance()->GetCurrentPath();
+                filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
+                filepath = ImGuiFileDialog::Instance()->GetCurrentPath();
 
                 if (filepathname != "")
                 {
-                    for (int n = 0; n < 2; n++)
-                    {
-                        ImGui::SFML::Update(window, deltaClock.restart());
-                        ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
-                        ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                        ImGui::Begin("Please wait!");
-                        ImGui::Text("Saving world...");
-                        ImGui::End();
-                        window.clear();
-                        ImGui::SFML::Render(window);
-                        window.display();
-                    }
-
-                    world->saveworld(filepathname);
-
-                    savingworld = 0;
+                    screenmode = savingworldscreen;
                 }
             }
             ImGuiFileDialog::Instance()->Close();
@@ -2668,6 +3075,9 @@ int main()
 
         if (loadingsettings == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're loading in new settings
         {
+            filepathname = "";
+            filepath = "";
+            
             if (ImGuiFileDialog::Instance()->IsOk())
             {
                 std::string filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -2827,6 +3237,9 @@ int main()
 
         if (savingsettings == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're saving a world
         {
+            filepathname = "";
+            filepath = "";
+            
             if (ImGuiFileDialog::Instance()->IsOk())
             {
                 std::string filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -2844,6 +3257,9 @@ int main()
 
         if (exportingworldmaps == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're exporting world maps
         {
+            filepathname = "";
+            filepath = "";
+            
             if (ImGuiFileDialog::Instance()->IsOk())
             {
                 std::string filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -2900,6 +3316,9 @@ int main()
 
         if (exportingregionalmaps == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're exporting world maps
         {
+            filepathname = "";
+            filepath = "";
+            
             if (ImGuiFileDialog::Instance()->IsOk())
             {
                 std::string filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -2956,229 +3375,25 @@ int main()
 
         if (exportingareamaps == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're exporting area maps
         {
+            filepathname = "";
+            filepath = "";
+            
             if (ImGuiFileDialog::Instance()->IsOk())
             {
-                std::string filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
-                std::string filepath = ImGuiFileDialog::Instance()->GetCurrentPath();
+                filepathname = ImGuiFileDialog::Instance()->GetFilePathName();
+                filepath = ImGuiFileDialog::Instance()->GetCurrentPath();
 
                 if (filepathname != "")
                 {
-                    for (int n = 0; n < 2; n++)
-                    {
-                        ImGui::SFML::Update(window, deltaClock.restart());
-                        ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 300, main_viewport->WorkPos.y + 200), ImGuiCond_FirstUseEver);
-                        ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                        ImGui::Begin("Please wait!");
-                        ImGui::Text("Generating area maps...");
-                        ImGui::End();
-                        window.clear();
-                        ImGui::SFML::Render(window);
-                        window.display();
-                    }
-
-                    int oldregionalcentrex = region->centrex();
-                    int oldregionalcentrey = region->centrey();
-
-                    mapviewenum oldmapview = mapview;
-
-                    initialiseregion(*world, *region); // We'll do all this using the same region object as usual. We could create a new region object for it, but that seems to lead to inexplicable crashes, so we won't.
-
-                    float regiontilewidth = REGIONALTILEWIDTH; //30;
-                    float regiontileheight = REGIONALTILEHEIGHT; //30; // The width and height of the visible regional map, in tiles.
-
-                    int regionwidth = regiontilewidth * 16;
-                    int regionheight = regiontileheight * 16; // The width and height of the visible regional map, in pixels.
-
-                    int origareanwx = areanwx; // This is because the regions we'll be making will start to the north and west of the defined area.
-                    int origareanwy = areanwy;
-
-                    int origareanex = areanex;
-                    int origareaney = areaney;
-
-                    int origareaswx = areaswx;
-                    int origareaswy = areaswy;
-
-                    areanwx = areanwx / regiontilewidth;
-                    areanwx = areanwx * regiontilewidth;
-
-                    areanwy = areanwy / regiontileheight;
-                    areanwy = areanwy * regiontileheight;
-
-                    areaswx = areanwx;
-                    areaney = areanwy;
-
-                    int woffset = (origareanwx - areanwx) * 16;
-                    int noffset = (origareanwy - areanwy) * 16;
-
-                    float areatilewidth = areanex - areanwx;
-                    float areatileheight = areasey - areaney;
-
-                    int areawidth = areatilewidth * 16;
-                    int areaheight = areatileheight * 16;
-
-                    float imageareatilewidth = origareanex - origareanwx;
-                    float imageareatileheight = areasey - origareaney;
-
-                    int imageareawidth = imageareatilewidth * 16;
-                    int imageareaheight = imageareatileheight * 16;
-
-                    float fregionswide = areatilewidth / regiontilewidth;
-                    float fregionshigh = areatileheight / regiontileheight;
-
-                    int regionswide = fregionswide;
-                    int regionshigh = fregionshigh;
-
-                    if (regionswide != fregionswide)
-                        regionswide++;
-
-                    if (regionshigh != fregionshigh)
-                        regionshigh++;
-
-                    int totalregions = regionswide * regionshigh; // This is how many regional maps we're going to have to do.
-
-                    if (areafromregional == 1)
-                        totalregions++; // Because we'll have to redo the regional map we came from.
-
-                    // Now we need to prepare the images that we're going to copy the regional maps onto.
-
-                    sf::Image* areareliefimage = new sf::Image;
-                    sf::Image* areaelevationimage = new sf::Image;
-                    sf::Image* areatemperatureimage = new sf::Image;
-                    sf::Image* areaprecipitationimage = new sf::Image;
-                    sf::Image* areaclimateimage = new sf::Image;
-                    sf::Image* areariversimage = new sf::Image;
-
-                    areareliefimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
-                    areaelevationimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
-                    areatemperatureimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
-                    areaprecipitationimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
-                    areaclimateimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
-                    areariversimage->create(imageareawidth + 1, imageareaheight + 1, sf::Color::Black);
-
-                    // Now it's time to make the regions, one by one, generate their maps, and copy those maps over onto the area images.
-
-                    for (int i = 0; i < regionswide; i++)
-                    {
-                        int centrex = i * regiontilewidth + (regiontilewidth / 2) + areanwx;
-
-                        for (int j = 0; j < regionshigh; j++)
-                        {
-                            int centrey = j * regiontileheight + (regiontileheight / 2) + areanwy;
-
-                            // First, create the new region.
-
-                            region->setcentrex(centrex);
-                            region->setcentrey(centrey);
-
-                            generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge);
-
-                            // Now generate the maps.
-
-                            for (int n = 0; n < GLOBALMAPTYPES; n++)
-                                regionalmapimagecreated[n] = 0;
-
-                            mapview = relief;
-                            drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
-
-                            mapview = elevation;
-                            drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
-
-                            mapview = temperature;
-                            drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
-
-                            mapview = precipitation;
-                            drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
-
-                            mapview = climate;
-                            drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
-
-                            mapview = rivers;
-                            drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
-
-                            // Now copy those maps into the images that will be exported.
-
-                            for (int x = 0; x < regionalimagewidth; x++)
-                            {
-                                for (int y = 0; y < regionalimageheight; y++)
-                                {
-                                    int thisx = x + i * regionwidth - woffset;
-                                    int thisy = y + j * regionheight - noffset; // Coordinates on the export image that correspond to this point on the regional map
-
-                                    if (thisx > 0 && thisx < imageareawidth && thisy>0 && thisy < imageareaheight)
-                                    {
-                                        sf::Color pixelcolour = regionalreliefimage->getPixel(x, y);
-                                        areareliefimage->setPixel(thisx, thisy, pixelcolour);
-
-                                        pixelcolour = regionalelevationimage->getPixel(x, y);
-                                        areaelevationimage->setPixel(thisx, thisy, pixelcolour);
-
-                                        pixelcolour = regionaltemperatureimage->getPixel(x, y);
-                                        areatemperatureimage->setPixel(thisx, thisy, pixelcolour);
-
-                                        pixelcolour = regionalprecipitationimage->getPixel(x, y);
-                                        areaprecipitationimage->setPixel(thisx, thisy, pixelcolour);
-
-                                        pixelcolour = regionalclimateimage->getPixel(x, y);
-                                        areaclimateimage->setPixel(thisx, thisy, pixelcolour);
-
-                                        pixelcolour = regionalriversimage->getPixel(x, y);
-                                        areariversimage->setPixel(thisx, thisy, pixelcolour);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    region->setcentrex(oldregionalcentrex); // Move the region back to where it started.
-                    region->setcentrey(oldregionalcentrey);
-
-                    if (areafromregional == 1) // If we're going to go back to the regional map, we need to redo it.
-                        generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge);
-
-                    // Now just save the images.
-
-                    filepathname.resize(filepathname.size() - 4);
-
-                    areareliefimage->saveToFile(filepathname + " Relief.png");
-                    areaelevationimage->saveToFile(filepathname + " Elevation.png");
-                    areatemperatureimage->saveToFile(filepathname + " Temperature.png");
-                    areaprecipitationimage->saveToFile(filepathname + " Precipitation.png");
-                    areaclimateimage->saveToFile(filepathname + " Climate.png");
-                    areariversimage->saveToFile(filepathname + " Rivers.png");
-
-                    // Clean up.
-
-                    delete areareliefimage;
-                    delete areaelevationimage;
-                    delete areatemperatureimage;
-                    delete areaprecipitationimage;
-                    delete areaclimateimage;
-                    delete areariversimage;
-
-                    areanex = -1;
-                    areaney = -1;
-                    areasex = -1;
-                    areasey = -1;
-                    areaswx = -1;
-                    areaswy = -1;
-                    areanwx = -1;
-                    areanwy = -1;
-
-                    mapview = oldmapview;
-
-                    for (int n = 0; n < GLOBALMAPTYPES; n++)
-                        regionalmapimagecreated[n] = 0;
-
-                    if (areafromregional == 1)
-                        screenmode = regionalmapscreen;
-                    else
-                        screenmode = globalmapscreen;
+                    screenmode = exportingareascreen;
                 }
             }
             ImGuiFileDialog::Instance()->Close();
         }
 
-        if (importinglandmap == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're loading in a new world
+        // These sections are for loading in maps in the import screen.
+
+        if (importinglandmap == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're importing a land map
         {
             if (ImGuiFileDialog::Instance()->IsOk())
             {
@@ -3234,7 +3449,7 @@ int main()
             ImGuiFileDialog::Instance()->Close();
         }
 
-        if (importingseamap == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're loading in a new world
+        if (importingseamap == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're importing a sea map
         {
             if (ImGuiFileDialog::Instance()->IsOk())
             {
@@ -3293,7 +3508,7 @@ int main()
             ImGuiFileDialog::Instance()->Close();
         }
 
-        if (importingmountainsmap == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're loading in a new world
+        if (importingmountainsmap == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're importing a mountains map
         {
             if (ImGuiFileDialog::Instance()->IsOk())
             {
@@ -3357,7 +3572,7 @@ int main()
             ImGuiFileDialog::Instance()->Close();
         }
 
-        if (importingvolcanoesmap == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're loading in a new world
+        if (importingvolcanoesmap == 1 && ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey")) // If we're importing a volcanoes map
         {
             if (ImGuiFileDialog::Instance()->IsOk())
             {
@@ -3496,70 +3711,6 @@ int main()
 
         ImGui::SFML::Render(window);
         window.display();
-
-        if (generatingnewregion == 2) // This is where we generate a new region.
-        {
-            ImGui::SFML::Update(window, deltaClock.restart());
-            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 849, main_viewport->WorkPos.y + 364), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Please wait...");
-            ImGui::Text("Generating region");
-            ImGui::End();
-            ImGui::SFML::Render(window);
-            window.display();
-
-            infotext2 = "";
-
-            newx = newx / 32;
-            newy = newy / 32;
-
-            newx = newx * 32;
-            newy = newy * 32;
-
-            newx = newx + 16;
-            newy = newy + 16;
-
-            region->setcentrex(newx);
-            region->setcentrey(newy);
-
-            mapview = relief;
-
-            for (int n = 0; n < GLOBALMAPTYPES; n++)
-                regionalmapimagecreated[n] = 0;
-
-            float progressstep = 1.0 / REGIONALCREATIONSTEPS;
-
-            // Blank the regional map image first
-
-            for (int i = 0; i < regionalimagewidth; i++)
-            {
-                for (int j = 0; j < regionalimageheight; j++)
-                    regionalreliefimage->setPixel(i, j, sf::Color::Black);
-
-            }
-
-            regionalmaptexture->loadFromImage(*regionalreliefimage);
-            regionalmap->setTexture(*regionalmaptexture);
-
-            // Now generate the regional map
-
-            generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge);
-
-            // Now draw the regional map image
-
-            drawregionalmapimage(mapview, *world, *region, regionalmapimagecreated, *regionalelevationimage, *regionaltemperatureimage, *regionalprecipitationimage, *regionalclimateimage, *regionalriversimage, *regionalreliefimage);
-
-            regionalmaptexture->loadFromImage(*regionalreliefimage);
-            regionalmap->setTexture(*regionalmaptexture);
-
-            // Sort out the minimap
-
-            globalmaptexture->loadFromImage(*displayglobalreliefimage);
-            minimap->setTexture(*globalmaptexture);
-
-            focused = 0;
-            generatingnewregion = 0;
-        }
 
         // Now update the colours if necessary.
 

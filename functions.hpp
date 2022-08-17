@@ -55,7 +55,7 @@ using namespace std;
 
 // Define some enums.
 
-enum screenmodeenum { quit, createworldscreen, creatingworldscreen, globalmapscreen, regionalmapscreen, importscreen, movingtoglobalmapscreen, exportareascreen };
+enum screenmodeenum { quit, createworldscreen, creatingworldscreen, globalmapscreen, regionalmapscreen, generatingregionscreen, importscreen, completingimportscreen, movingtoglobalmapscreen, exportareascreen, exportingareascreen, loadingworldscreen, savingworldscreen };
 enum mapviewenum { elevation, temperature, precipitation, climate, rivers, relief };
 
 // Declare functions that are in main.cpp

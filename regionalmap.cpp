@@ -2662,7 +2662,7 @@ void makerivertile(planet& world, region& region, int dx, int dy, int sx, int sy
 
     // Now we draw the first river, from the main inflow to the junction point and then to the outflow.
 
-    int janinflow=0, julinflow=0;
+    int janinflow = 0, julinflow = 0;
     int fromtilelevel = 0;
     int totilelevel = 0;
 
@@ -3169,7 +3169,7 @@ void makerivertile(planet& world, region& region, int dx, int dy, int sx, int sy
                 if (lakepresent != 0)
                     thistilelevel = surfacelevel;
 
-                int janinflow=0, julinflow=0, fromtilelevel=0;
+                int janinflow = 0, julinflow = 0, fromtilelevel = 0;
 
                 if (rivernumber == 1)
                 {
@@ -4177,7 +4177,7 @@ void makedeltatile(planet& world, region& region, int dx, int dy, int sx, int sy
 
     // Now we draw the first river, from the main inflow to the outflow.
 
-    int janinflow=0, julinflow=0;
+    int janinflow = 0, julinflow = 0;
 
     switch (maininflow)
     {
@@ -4450,7 +4450,7 @@ void makedeltatile(planet& world, region& region, int dx, int dy, int sx, int sy
 
                 // First, find its origin point.
 
-                int janinflow=0, julinflow=0;
+                int janinflow = 0, julinflow = 0;
 
                 switch (rivernumber)
                 {
@@ -21961,4 +21961,3 @@ void checklakebeds(region& region, int leftx, int lefty, int rightx, int righty)
         }
     }
 }
-

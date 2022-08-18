@@ -1539,6 +1539,60 @@ int main()
         {
             showwarning = 0;
 
+            // Work out the size of the currently selected area.
+
+            int totalregions = 0;
+            int maxtotalregions = 115; // Don't allow area maps larger than this.
+            
+            if (areanex != -1)
+            {
+                float regiontilewidth = REGIONALTILEWIDTH; //30;
+                float regiontileheight = REGIONALTILEHEIGHT; //30; // The width and height of the visible regional map, in tiles.
+
+                int regionwidth = regiontilewidth * 16;
+                int regionheight = regiontileheight * 16; // The width and height of the visible regional map, in pixels.
+
+                int newareanwx = areanwx; // This is because the regions we'll be making will start to the north and west of the defined area.
+                int newareanwy = areanwy;
+
+                int newareanex = areanex;
+                int newareaney = areaney;
+
+                int newareaswx = areaswx;
+                int newareaswy = areaswy;
+
+                int newareasey = areasey;
+
+                newareanwx = newareanwx / regiontilewidth;
+                newareanwx = newareanwx * regiontilewidth;
+
+                newareanwy = newareanwy / regiontileheight;
+                newareanwy = newareanwy * regiontileheight;
+
+                newareaswx = newareanwx;
+                newareaney = newareanwy;
+
+                float areatilewidth = newareanex - newareanwx;
+                float areatileheight = newareasey - newareaney;
+
+                int areawidth = areatilewidth * 16;
+                int areaheight = areatileheight * 16;
+
+                float fregionswide = areatilewidth / regiontilewidth;
+                float fregionshigh = areatileheight / regiontileheight;
+
+                int regionswide = (int)fregionswide;
+                int regionshigh = (int)fregionshigh;
+
+                if (regionswide != fregionswide)
+                    regionswide++;
+
+                if (regionshigh != fregionshigh)
+                    regionshigh++;
+
+                totalregions = regionswide * regionshigh; // This is how many regional maps we're going to have to do.
+            }
+
             // Main controls.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
@@ -1550,7 +1604,7 @@ int main()
 
             if (standardbutton("Export maps"))
             {
-                if (areanex != -1)
+                if (areanex != -1 && totalregions <= maxtotalregions)
                 {
                     ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".png", ".");
 
@@ -1594,10 +1648,16 @@ int main()
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2(1023, 140), ImGuiCond_FirstUseEver);
             string title = "            ";
+            string areatext = "Total regions: " + to_string(totalregions); // 117 OK; 143 not OK; 132 not OK; 121 not OK; 112 OK; 116 OK; 110
 
             ImGui::Begin(title.c_str());
             ImGui::PushItemWidth(world->width() / 2);
-            ImGui::Text("This screen allows you to export maps at the same scale as the regional map, but of larger areas.\n\nClick on the map to pick the corners of the area you want to export. You can re-select corners to fine-tune the area.\n\nWhen you are done, click on 'export maps'. The program will ask you to specify the filename under which to save the maps, and then create them.", world->width() / 2);
+            areatext="This screen allows you to export maps at the same scale as the regional map, but of larger areas.\n\nClick on the map to pick the corners of the area you want to export. You can re-select corners to fine-tune the area.\n\nWhen you are done, click on 'export maps'. The program will ask you to specify the filename under which to save the maps, and then create them.";
+            
+            if (totalregions > maxtotalregions)
+                areatext = "Area too large! Please select a smaller area.";
+            
+            ImGui::Text(areatext.c_str(), world->width() / 2);
             ImGui::End();
 #
             // Now check to see if the map has been clicked on.
@@ -2333,8 +2393,6 @@ int main()
 
                 mapviewenum oldmapview = mapview;
 
-                initialiseregion(*world, *region); // We'll do all this using the same region object as usual. We could create a new region object for it, but that seems to lead to inexplicable crashes, so we won't.
-
                 float regiontilewidth = REGIONALTILEWIDTH; //30;
                 float regiontileheight = REGIONALTILEHEIGHT; //30; // The width and height of the visible regional map, in tiles.
 
@@ -2390,6 +2448,8 @@ int main()
 
                 if (areafromregional == 1)
                     totalregions++; // Because we'll have to redo the regional map we came from.
+
+                initialiseregion(*world, *region); // We'll do all this using the same region object as usual. We could create a new region object for it, but that seems to lead to inexplicable crashes, so we won't.
 
                 // Now we need to prepare the images that we're going to copy the regional maps onto.
 
@@ -5514,9 +5574,6 @@ void drawregionalelevationmapimage(planet& world, region& region, sf::Image& reg
 
     int div = world.maxelevation() / 255;
     int base = world.maxelevation() / 4;
-
-    //cout << regwidthbegin << ", " << regheightbegin << endl;
-    //cout << regwidthend << ", " << regheightend << endl;
 
     for (int i = regwidthbegin; i <= regwidthend; i++)
     {

@@ -959,11 +959,15 @@ void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& di
 
     int checkno = 0;
 
+    vector<vector<bool>> regionsea(RARRAYWIDTH, vector<bool>(RARRAYHEIGHT, 0)); // This will store info about which cells are sea.
+
     for (int i = 0; i < RARRAYWIDTH; i++)
     {
         for (int j = 0; j < RARRAYHEIGHT; j++)
-
-            pathchecked[i][j] = 0;
+        {
+            if (region.sea(i, j))
+                regionsea[i][j] = 1;
+        }
     }
 
     for (int x = xleft + 1; x < xright; x++) // Note that we don't do the ones on the edges of the regional map.
@@ -977,7 +981,7 @@ void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& di
         {
             int yy = lefty + y;
 
-            turnpoolstolakes(world, region, x * 16, y * 16, xx, yy, pathchecked, checkno);
+            turnpoolstolakes(world, region, x * 16, y * 16, xx, yy, regionsea, pathchecked, checkno);
         }
     }
 
@@ -998,7 +1002,7 @@ void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& di
         {
             int yy = lefty + y;
 
-            removeextrasearivers(world, region, x * 16, y * 16, xx, yy);
+            removeextrasearivers(world, region, x * 16, y * 16, xx, yy, regionsea);
         }
     }
 
@@ -1015,7 +1019,7 @@ void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& di
         {
             int yy = lefty + y;
 
-            removeriverscomingfromsea(world, region, x * 16, y * 16, xx, yy, fakesourcex, fakesourcey);
+            removeriverscomingfromsea(world, region, x * 16, y * 16, xx, yy, fakesourcex, fakesourcey, regionsea);
         }
     }
 
@@ -1183,7 +1187,6 @@ void makeregionalunderseaterrain(planet& world, region& region, peaktemplate& pe
                 region.setmap(i, j, underseamap[i + extra * 16][j + extra * 16]);
         }
     }
-
 
     // Now we find the paths of the submarine ridges.
 
@@ -1848,11 +1851,11 @@ void makeregionalclimates(planet& world, region& region, vector<vector<bool>>& s
             {
                 for (int j = y * 16; j <= y * 16 + 15; j++)
                 {
-                    int amount = tempelevadd(region, destination[i][j], i, j) - destination[i][j];
+                    int amount = tempelevadd(world, region, destination[i][j], i, j) - destination[i][j];
 
                     region.setextramaxtemp(i, j, destination[i][j] + amount * 100);
 
-                    region.setmaxtemp(i, j, tempelevadd(region, destination[i][j] / 100, i, j));
+                    region.setmaxtemp(i, j, tempelevadd(world, region, destination[i][j] / 100, i, j));
                 }
             }
         }
@@ -1942,11 +1945,11 @@ void makeregionalclimates(planet& world, region& region, vector<vector<bool>>& s
             {
                 for (int j = y * 16; j <= y * 16 + 15; j++)
                 {
-                    int amount = tempelevadd(region, destination[i][j], i, j) - destination[i][j];
+                    int amount = tempelevadd(world, region, destination[i][j], i, j) - destination[i][j];
 
                     region.setextramintemp(i, j, destination[i][j] + amount * 100);
 
-                    region.setmintemp(i, j, tempelevadd(region, destination[i][j] / 100, i, j));
+                    region.setmintemp(i, j, tempelevadd(world, region, destination[i][j] / 100, i, j));
                 }
             }
         }
@@ -8258,7 +8261,7 @@ void removesearivers(planet& world, region& region, int dx, int dy)
 
 // This one gets rid of odd stringy spits of land with rivers on them.
 
-void removeextrasearivers(planet& world, region& region, int dx, int dy, int sx, int sy)
+void removeextrasearivers(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& regionsea)
 {
     if (world.sea(sx, sy) == 0 && world.outline(sx, sy) == 0)
         return;
@@ -8277,16 +8280,16 @@ void removeextrasearivers(planet& world, region& region, int dx, int dy, int sx,
                 {
                     int depth = 0;
 
-                    if (region.sea(i - 1, j) == 1 && region.sea(i + 1, j) == 1)
+                    if (region.sea(i - 1, j) == 1 && regionsea[i + 1][ j] == 1)
                         depth = region.map(i - 1, j);
 
-                    if (region.sea(i, j - 1) == 1 && region.sea(i, j + 1) == 1)
+                    if (region.sea(i, j - 1) == 1 && regionsea[i] [j + 1] == 1)
                         depth = region.map(i, j - 1);
 
-                    if (region.sea(i - 1, j - 1) == 1 && region.sea(i + 1, j + 1) == 1)
+                    if (region.sea(i - 1, j - 1) == 1 && regionsea[i + 1][j + 1] == 1)
                         depth = region.map(i - 1, j - 1);
 
-                    if (region.sea(i + 1, j - 1) == 1 && region.sea(i - 1, j + 1) == 1)
+                    if (region.sea(i + 1, j - 1) == 1 && regionsea[i - 1][ j + 1] == 1)
                         depth = region.map(i + 1, j - 1);
 
                     if (depth != 0)
@@ -8309,7 +8312,7 @@ void removeextrasearivers(planet& world, region& region, int dx, int dy, int sx,
 
 // This function removes rivers that come out of the sea (for where a river goes into the sea and then comes out of it again a little further on).
 
-void removeriverscomingfromsea(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey)
+void removeriverscomingfromsea(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, vector<vector<bool>>& regionsea)
 {
     if (world.sea(sx, sy) == 0 && world.outline(sx, sy) == 0)
         return;
@@ -8321,7 +8324,7 @@ void removeriverscomingfromsea(planet& world, region& region, int dx, int dy, in
     {
         for (int j = dy; j <= dy + 16; j++)
         {
-            if (region.sea(i, j) == 0 && region.riverdir(i, j) != 0)
+            if (regionsea[i][ j] == 0 && region.riverdir(i, j) != 0)
             {
                 bool nexttosea = 0;
 
@@ -8331,7 +8334,7 @@ void removeriverscomingfromsea(planet& world, region& region, int dx, int dy, in
                     {
                         if (k >= 0 && k <= rwidth && l >= 0 && l <= rheight)
                         {
-                            if (region.sea(k, l) == 1)
+                            if (regionsea[k][l] == 1)
                             {
                                 nexttosea = 1;
                                 k = i + 1;
@@ -9354,8 +9357,6 @@ void makebuttresses(planet& world, region& region, int dx, int dy, int sx, int s
 
                 mm2.x = ((mm1.x + mm3.x) / 2) + randomsign(random(1, 3));
                 mm2.y = ((mm1.y + mm3.y) / 2) + randomsign(random(1, 3));
-
-                //cout << mm3.x << ", " << mm3.y << endl;
 
                 int lastx = mm1.x;
                 int lasty = mm1.y; // Coordinates of last point done.
@@ -11047,7 +11048,7 @@ bool findpath(region& region, int& leftx, int& lefty, int& rightx, int& righty, 
 
 // This identifies any more pools that are on the map and turns them into land (originally it changed them into lakes but I changed it!). (This is because the removepools routine checks only near coastlines, and may miss some that are further inland, especially where fjords are nearby.)
 
-void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<int>>& pathchecked, int& checkno)
+void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked, int& checkno)
 {
     int width = world.width();
     int height = world.height();
@@ -11061,7 +11062,7 @@ void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int
     {
         for (int j = dy; j <= dy + 16; j++)
         {
-            if (region.sea(i, j) == 1)
+            if (regionsea[i][j] == 1)
                 seapresent = 1;
             else
                 landpresent = 1;
@@ -11086,21 +11087,24 @@ void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int
     {
         for (int starty = dy; starty <= dy + 16; starty++)
         {
-            if (region.sea(startx, starty) == 1) // Bit of sea in the source tile
+            if (regionsea[startx][starty] == 1) // Bit of sea in the source tile
             {
                 checkno++;
                 int tally = 0;
 
-                poolcheck(region, startx, starty, tally, maxtally, checkno, pathchecked);
+                poolcheckrecursive(region, startx, starty, tally, maxtally, checkno, regionsea, pathchecked);
 
                 if (tally < maxtally) // If it's small enough to be a pool
                 {
-                    for (int i = dx - 16; i <= dx + 16; i++) // Turn all the cells that got marked in this pass into lake.
+                    for (int i = dx - 16; i <= dx + 16; i++) // Turn all the cells that got marked in this pass into land.
                     {
                         for (int j = dy - 16; j <= dy + 16; j++)
                         {
                             if (pathchecked[i][j] == checkno)
+                            {
                                 region.setmap(i, j, sealevel + 1);
+                                regionsea[i][j] = 0;
+                            }
                         }
                     }
                 }
@@ -11111,9 +11115,11 @@ void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int
 
 // This finds whether the area of a given bit of sea is smaller than a certain amount. It returns 1 if it's possible to keep searching from this point, and 0 if it isn't. Tally records the number of cells counted.
 
-bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int maxtally, int& checkno, vector<vector<int>>& pathchecked)
+// Recursive version (not elegant, but it works):
+
+bool poolcheckrecursive(region& region, int& currentx, int& currenty, int& tally, int maxtally, int& checkno, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked)
 {
-    if (region.sea(currentx, currenty) == 0)
+    if (regionsea[currentx][currenty] == 0)
         return 0;
 
     if (pathchecked[currentx][currenty] == checkno)
@@ -11141,9 +11147,9 @@ bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int max
         int newx = currentx;
         int newy = currenty - 1;
 
-        if (pathchecked[newx][newy] != checkno && region.sea(newx, newy) == 1)
+        if (pathchecked[newx][newy] != checkno && regionsea[newx][newy] == 1)
         {
-            nn = poolcheck(region, newx, newy, tally, maxtally, checkno, pathchecked);
+            nn = poolcheckrecursive(region, newx, newy, tally, maxtally, checkno, regionsea, pathchecked);
             pathchecked[newx][newy] = checkno;
 
             if (nn == 0)
@@ -11160,9 +11166,9 @@ bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int max
         int newx = currentx + 1;
         int newy = currenty;
 
-        if (pathchecked[newx][newy] != checkno && region.sea(newx, newy) == 1)
+        if (pathchecked[newx][newy] != checkno && regionsea[newx][newy] == 1)
         {
-            nn = poolcheck(region, newx, newy, tally, maxtally, checkno, pathchecked);
+            nn = poolcheckrecursive(region, newx, newy, tally, maxtally, checkno, regionsea, pathchecked);
             pathchecked[newx][newy] = checkno;
 
             if (nn == 0)
@@ -11179,9 +11185,9 @@ bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int max
         int newx = currentx - 1;
         int newy = currenty;
 
-        if (pathchecked[newx][newy] != checkno && region.sea(newx, newy) == 1)
+        if (pathchecked[newx][newy] != checkno && regionsea[newx][newy] == 1)
         {
-            nn = poolcheck(region, newx, newy, tally, maxtally, checkno, pathchecked);
+            nn = poolcheckrecursive(region, newx, newy, tally, maxtally, checkno, regionsea, pathchecked);
             pathchecked[newx][newy] = checkno;
 
             if (nn == 0)
@@ -11198,9 +11204,9 @@ bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int max
         int newx = currentx;
         int newy = currenty + 1;
 
-        if (pathchecked[newx][newy] != checkno && region.sea(newx, newy) == 1)
+        if (pathchecked[newx][newy] != checkno && regionsea[newx][newy] == 1)
         {
-            nn = poolcheck(region, newx, newy, tally, maxtally, checkno, pathchecked);
+            nn = poolcheckrecursive(region, newx, newy, tally, maxtally, checkno, regionsea, pathchecked);
             pathchecked[newx][newy] = checkno;
 
             if (nn == 0)
@@ -11211,6 +11217,81 @@ bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int max
     }
 
     return n;
+}
+
+// Non-recursive version (more elegant, but doesn't seem to work as well - it misses some pools):
+
+bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int maxtally, int& checkno, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked)
+{
+    if (regionsea[currentx][currenty] == 0)
+        return 0;
+
+    if (pathchecked[currentx][currenty] == checkno)
+        return 0;
+
+    queue<twointegers> q;
+
+    twointegers point;
+    point.x = currentx;
+    point.y = currenty;
+
+    q.push(point);
+
+    twointegers newpoint;
+
+    while (!q.empty())
+    {
+        tally++;
+
+        if (tally > maxtally) // We've counted more cells than a pool can be
+            return 0;
+
+        point = q.front();
+
+        if (point.x<1 || point.y<1 || point.x>region.rwidth() - 1 || point.y>region.rheight() - 1) // We've gone out of the search zone, so this might be ocean
+        {
+            tally = maxtally + 1;
+            return 0;
+        }
+
+        q.pop();
+        pathchecked[point.x][point.y] = checkno;
+
+        // Look to the north
+
+        newpoint.x = point.x;
+        newpoint.y = point.y - 1;
+
+        if (pathchecked[newpoint.x][newpoint.y] != checkno && regionsea[newpoint.x][newpoint.y] == 1)
+            q.push(newpoint);
+
+        // Look to the south
+
+        newpoint.x = point.x;
+        newpoint.y = point.y + 1;
+
+        if (pathchecked[newpoint.x][newpoint.y] != checkno && regionsea[newpoint.x][newpoint.y] == 1)
+            q.push(newpoint);
+
+        // Look to the east
+
+        newpoint.x = point.x+1;
+        newpoint.y = point.y;
+
+        if (pathchecked[newpoint.x][newpoint.y] != checkno && regionsea[newpoint.x][newpoint.y] == 1)
+            q.push(newpoint);
+
+        // Look to the west
+
+        newpoint.x = point.x - 1;
+        newpoint.y = point.y;
+
+        if (pathchecked[newpoint.x][newpoint.y] != checkno && regionsea[newpoint.x][newpoint.y] == 1)
+            q.push(newpoint);
+
+    }
+
+    return 0;
 }
 
 // This function turns a river on the regional map into sea from this point downstream.
@@ -14811,9 +14892,6 @@ void makeriftlaketemplates(planet& world, region& region, int dx, int dy, int sx
 
         bordernodes[laternode + 1][0] = new4x;
         bordernodes[laternode + 1][1] = new4y;
-
-        //cout << "Outgoing nodes are: " << bordernodes[thisnode][0] << ", " << bordernodes[thisnode][1] << "; " << bordernodes[thisnode+1][0] << ", " << bordernodes[thisnode+1][1] << endl;
-        //cout << "Incoming nodes are: " << bordernodes[laternode][0] << ", " << bordernodes[laternode][1] << "; " << bordernodes[laternode+1][0] << ", " << bordernodes[laternode+1][1] << endl;
 
         if (x == endx && y == endy)
             keepgoing = 0;

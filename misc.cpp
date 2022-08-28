@@ -112,6 +112,12 @@ void savesettings(planet& world, string filename)
     outfile << world.glacier1() << '\n';
     outfile << world.glacier2() << '\n';
     outfile << world.glacier3() << '\n';
+    outfile << world.beach1() << '\n';
+    outfile << world.beach2() << '\n';
+    outfile << world.beach3() << '\n';
+    outfile << world.mud1() << '\n';
+    outfile << world.mud2() << '\n';
+    outfile << world.mud3() << '\n';
     outfile << world.highlight1() << '\n';
     outfile << world.highlight2() << '\n';
     outfile << world.highlight3() << '\n';
@@ -401,6 +407,30 @@ bool loadsettings(planet& world, string filename)
     getline(infile, line);
     val = stoi(line);
     world.setglacier3(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setbeach1(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setbeach2(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setbeach3(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setmud1(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setmud2(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setmud3(val);
 
     getline(infile, line);
     val = stoi(line);
@@ -3156,6 +3186,14 @@ void initialisemapcolours(planet& world)
     world.setglacier1(209);
     world.setglacier2(222);
     world.setglacier3(251); // Glacier colours.
+
+    world.setbeach1(244);
+    world.setbeach2(231);
+    world.setbeach3(90); // Beach colours. (Currently unused.)
+
+    world.setmud1(117);
+    world.setmud2(120);
+    world.setmud3(62); // Mud colours. (Currently unused.)
 
     world.sethighlight1(0);
     world.sethighlight2(255);

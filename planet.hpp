@@ -41,6 +41,24 @@ public:
     bool rotation() const;   // global rotation
     void setrotation(bool amount);
 
+    float tilt() const; // axial tilt
+    void settilt(float amount);
+
+    float tempdecrease() const; // amount temperatures decrease by per 1000 metres
+    void settempdecrease(float amount);
+
+    int northpolartemperature() const; // average north polar temperature
+    void setnorthpolartemperature(int amount);
+
+    int southpolartemperature() const; // average north polar temperature
+    void setsouthpolartemperature(int amount);
+
+    int eqtemperature() const; // average equatorial temperature
+    void seteqtemperature(int amount);
+
+    int waterpickup() const; // amount of water to pick up over oceans
+    void setwaterpickup(int amount);
+
     float riverfactor() const;   // global factor for calculating flow in cubic metres/second
     void setriverfactor(float amount);
 
@@ -594,8 +612,13 @@ private:
     int itsheight;  // height of global map
 
     long itsseed;    // seed number of this world
-
     bool itsrotation;    // 1 (true) like the Earth, 0 (false) the other way
+    float itstilt; // Axial tilt (affects seasonal differences). Earthlike=22.5
+    float itstempdecrease; // How much temperature decreases with elevation. Earthlike=6.5/km
+    int itsnorthpolartemperature; // Average north polar temperature. Earthlike=-30
+    int itssouthpolartemperature; // Average south polar temperature. Earthlike=-40
+    int itseqtemperature; // Average equatorial temperature. Earthlike=38
+    int itswaterpickup; // How much water to pick up over oceans. Default=200
     float itsriverfactor;   // Divide river flow by this to get it in cubic metres/second
     int itsriverlandreduce; // Rivers will carve channels at the base elevation of the tile, minus this
     int itsestuarylimit;    // Rivers this size or above might have estuaries
@@ -724,7 +747,7 @@ private:
     int summermountainrainmap[ARRAYWIDTH][ARRAYHEIGHT];
     short wintermountainraindirmap[ARRAYWIDTH][ARRAYHEIGHT];
     short summermountainraindirmap[ARRAYWIDTH][ARRAYHEIGHT];
-    int seaicemap[ARRAYWIDTH][ARRAYHEIGHT];
+    int seaicemap[ARRAYWIDTH][ARRAYHEIGHT]; // 1=seasonal, 2=permanent
     int rivermapdir[ARRAYWIDTH][ARRAYHEIGHT];
     int rivermapjan[ARRAYWIDTH][ARRAYHEIGHT];
     int rivermapjul[ARRAYWIDTH][ARRAYHEIGHT];
@@ -786,6 +809,24 @@ inline void planet::setheight(int amount) { itsheight = amount; }
 
 inline bool planet::rotation() const { return itsrotation; }
 inline void planet::setrotation(bool amount) { itsrotation = amount; }
+
+inline float planet::tilt() const { return itstilt; }
+inline void planet::settilt(float amount) { itstilt = amount; }
+
+inline float planet::tempdecrease() const { return itstempdecrease; }
+inline void planet::settempdecrease(float amount) { itstempdecrease = amount; }
+
+inline int planet::northpolartemperature() const { return itsnorthpolartemperature; }
+inline void planet::setnorthpolartemperature(int amount) { itsnorthpolartemperature = amount; }
+
+inline int planet::southpolartemperature() const { return itssouthpolartemperature; }
+inline void planet::setsouthpolartemperature(int amount) { itssouthpolartemperature = amount; }
+
+inline int planet::eqtemperature() const { return itseqtemperature; }
+inline void planet::seteqtemperature(int amount) { itseqtemperature = amount; }
+
+inline int planet::waterpickup() const { return itswaterpickup; }
+inline void planet::setwaterpickup(int amount) { itswaterpickup = amount; }
 
 inline float planet::riverfactor() const { return itsriverfactor; }
 inline void planet::setriverfactor(float amount) { itsriverfactor = amount; }

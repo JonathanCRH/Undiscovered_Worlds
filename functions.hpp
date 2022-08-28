@@ -55,7 +55,7 @@ using namespace std;
 
 // Define some enums.
 
-enum screenmodeenum { quit, createworldscreen, creatingworldscreen, globalmapscreen, regionalmapscreen, generatingregionscreen, importscreen, completingimportscreen, movingtoglobalmapscreen, exportareascreen, exportingareascreen, loadingworldscreen, savingworldscreen };
+enum screenmodeenum { quit, createworldscreen, creatingworldscreen, globalmapscreen, regionalmapscreen, generatingregionscreen, importscreen, completingimportscreen, movingtoglobalmapscreen, exportareascreen, exportingareascreen, loadingworldscreen, savingworldscreen, generatingcontinentsscreen };
 enum mapviewenum { elevation, temperature, precipitation, climate, rivers, relief };
 
 // Declare functions that are in main.cpp
@@ -109,9 +109,9 @@ twofloats curvepos(twofloats p0, twofloats p1, twofloats p2, twofloats p3, float
 void fill(vector<vector<bool>>& arr, int width, int height, int x, int y, int replacement);
 void fillcontinent(vector<vector<bool>>& arr, vector<vector<short>>& mask, short maskcheck, int width, int height, int startx, int starty, int replacement);
 int tempelevadd(planet& world, int temp, int i, int j);
-int tempelevadd(region& region, int temp, int i, int j);
+int tempelevadd(planet& world, region& region, int temp, int i, int j);
 int tempelevremove(planet& world, int temp, int i, int j);
-int tempelevremove(region& region, int temp, int i, int j);
+int tempelevremove(planet& world, region& region, int temp, int i, int j);
 string getdirstring(int dir);
 int getdir(int x, int y, int xx, int yy);
 twointegers getdestination(int x, int y, int dir);
@@ -158,13 +158,14 @@ int countinflows(region& region, int x, int y);
 void initialiseworld(planet& world);
 void initialisemapcolours(planet& world);
 void initialiseregion(planet& world, region& region);
+void changeworldproperties(planet& world);
 
 // Declare functions that are in globalterrain.cpp
 
-void generateglobalterrain(planet& world, short terraintype, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves);
-void generateglobalterraintype1(planet& world, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[]);
-void generateglobalterraintype2(planet& world, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[]);
-void largecontinents(planet& world, int baseheight, int conheight, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& shelves, boolshapetemplate landshape[], boolshapetemplate chainland[]);
+void generateglobalterrain(planet& world, short terraintype, int mergefactor, int clusterno, int clustersize, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves);
+void generateglobalterraintype1(planet& world, int mergefactor, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[]);
+void generateglobalterraintype2(planet& world, int mergefactor, int clusterno, int clustersize, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[]);
+void largecontinents(planet& world, int baseheight, int conheight, int clusterno, int clustersize, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& shelves, boolshapetemplate landshape[], boolshapetemplate chainland[]);
 void createfractal(vector<vector<int>>& arr, int awidth, int aheight, int grain, float valuemod, float valuemod2, int min, int max, bool extreme, bool wrapped);
 void newfractalinit(vector<vector<int>>& arr, int awidth, int aheight, int grain, int min, int max, bool extreme);
 void newfractal(vector<vector<int>>& arr, int awidth, int aheight, int grain, float valuemod, float valuemod2, int min, int max, bool wrapped);
@@ -185,8 +186,8 @@ void drawshape(planet& world, int shapenumber, int centrex, int centrey, bool la
 void drawmarkedshape(planet& world, int shapenumber, int centrex, int centrey, bool land, int baseheight, int conheight, vector<vector<bool>>& markedmap, boolshapetemplate shape[]);
 void drawplateaushape(planet& world, int shapenumber, int centrex, int centrey, int baseheight, int platheight, vector<vector<int>>& plateaumap, boolshapetemplate chainland[]);
 void cuts(planet& world, int cutno, int baseheight, int conheight, boolshapetemplate shape[]);
-void fractalmerge(planet& world, vector<vector<int>>& fractal);
-void fractalmergemodified(planet& world, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& removedland);
+void fractalmerge(planet& world, int adjust, vector<vector<int>>& fractal);
+void fractalmergemodified(planet& world, int adjust, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& removedland);
 void fractalmergeland(planet& world, vector<vector<int>>& fractal, int conheight);
 void fractaladdland(planet& world, vector<vector<int>>& fractal);
 void removeseas(planet& world, int level);
@@ -246,7 +247,7 @@ void checkpoles(planet& world);
 
 // Declare functions that are in globalclimate.cpp
 
-void generateglobalclimate(planet& world, boolshapetemplate smalllake[], boolshapetemplate largelake[], boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves);
+void generateglobalclimate(planet& world, bool dorivers, boolshapetemplate smalllake[], boolshapetemplate largelake[], boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves);
 void createrainmap(planet& world, vector<vector<int>>& fractal, boolshapetemplate smalllake[], boolshapetemplate shape[]);
 void createwindmap(planet& world);
 void createtemperaturemap(planet& world, vector<vector<int>>& fractal);
@@ -376,8 +377,8 @@ void removestraights(planet& world, region& region, int dx, int dy, int sx, int 
 void disruptseacoastline(planet& world, region& region, int dx, int dy, int centrex, int centrey, int avedepth, bool raise, int maxsize, bool stayintile, boolshapetemplate smalllake[]);
 void disruptlakecoastline(planet& world, region& region, int dx, int dy, int centrex, int centrey, int surfacelevel, int avedepth, bool raise, int size, bool stayintile, int special, boolshapetemplate smalllake[]);
 void removesearivers(planet& world, region& region, int dx, int dy);
-void removeextrasearivers(planet& world, region& region, int dx, int dy, int sx, int sy);
-void removeriverscomingfromsea(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey);
+void removeextrasearivers(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& regionsea);
+void removeriverscomingfromsea(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey, vector<vector<bool>>& regionsea);
 void removeregionalriver(region& region, int dx, int dy, int sx, int sy, int startx, int starty, vector<vector<int>>& fakesourcex, vector<vector<int>>& fakesourcey);
 int findsurroundingsea(region& region, int x, int y);
 int findinflowinglandriver(region& region, int x, int y);
@@ -393,8 +394,9 @@ void drawpeak(planet& world, region& region, int sx, int sy, int dx, int dy, int
 void pastepeak(planet& world, region& region, int x, int y, float peakheight, int templateno, bool leftr, bool downr, peaktemplate& peaks, vector<vector<int>>& rmountainmap);
 void removepools(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<int>>& pathchecked, int& checkno);
 bool findpath(region& region, int& leftx, int& lefty, int& rightx, int& righty, int& fromx, int& fromy, int& destx, int& desty, int& checkno, vector<vector<int>>& pathchecked, int& recursion);
-void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<int>>& pathchecked, int& checkno);
-bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int maxtally, int& checkno, vector<vector<int>>& pathchecked);
+void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked, int& checkno);
+bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int maxtally, int& checkno, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked);
+bool poolcheckrecursive(region& region, int& currentx, int& currenty, int& tally, int maxtally, int& checkno, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked);
 void turntosea(region& region, int leftx, int rightx, int lefty, int righty, int x, int y, int newheight, int sealevel);
 void removediagonalwater(region& region, int leftx, int lefty, int rightx, int righty, int sealevel);
 void removelakesbysea(region& region, int leftx, int lefty, int rightx, int righty, int sealevel);

@@ -21,7 +21,7 @@ using namespace std;
 
 // This function creates the global climate.
 
-void generateglobalclimate(planet& world, boolshapetemplate smalllake[], boolshapetemplate largelake[], boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves)
+void generateglobalclimate(planet& world, bool dorivers, boolshapetemplate smalllake[], boolshapetemplate largelake[], boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves)
 {
     //highres_timer_t timer("Generate Global Climate"); // 9.4s => 8.2s
     long seed = world.seed();
@@ -84,107 +84,110 @@ void generateglobalclimate(planet& world, boolshapetemplate smalllake[], boolsha
 
     addfjordmountains(world);
 
-    // Now work out the rivers initially. We do this the first time so that after the first time we can place the salt lakes in appropriate places, and then we work out the rivers again.
-
-    updatereport("Planning river courses");
-
-    createrivermap(world, mountaindrainage);
-
-    // Now create salt lakes.
-
-    updatereport("Placing hydrological basins");
-
-    vector<vector<vector<int>>> saltlakemap(ARRAYWIDTH, vector<vector<int>>(ARRAYHEIGHT, vector<int>(2)));
-    vector<vector<int>> nolake(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
-
-    for (int i = 0; i <= width; i++)
+    if (dorivers)
     {
-        for (int j = 0; j <= height; j++)
+        // Now work out the rivers initially. We do this the first time so that after the first time we can place the salt lakes in appropriate places, and then we work out the rivers again.
+
+        updatereport("Planning river courses");
+
+        createrivermap(world, mountaindrainage);
+
+        // Now create salt lakes.
+
+        updatereport("Placing hydrological basins");
+
+        vector<vector<vector<int>>> saltlakemap(ARRAYWIDTH, vector<vector<int>>(ARRAYHEIGHT, vector<int>(2)));
+        vector<vector<int>> nolake(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+        for (int i = 0; i <= width; i++)
         {
-            saltlakemap[i][j][0] = 0;
-            saltlakemap[i][j][1] = 0;
-            nolake[i][j] = 0;
-        }
-    }
-
-    // First we need to prepare a no-lake template, marking out areas too close to the coasts, where lakes can't go.
-
-    int minseadistance = 15; // Points closer to the shore than this can't be the centre of lakes, normally.
-    int minseadistance2 = 8; // This is for any lake tile, not just the centre.
-
-    for (int i = 0; i <= width; i++)
-    {
-        for (int j = 0; j <= height; j++)
-        {
-            if (world.outline(i, j) == 1)
+            for (int j = 0; j <= height; j++)
             {
-                for (int k = i - minseadistance2; k <= i + minseadistance2; k++)
+                saltlakemap[i][j][0] = 0;
+                saltlakemap[i][j][1] = 0;
+                nolake[i][j] = 0;
+            }
+        }
+
+        // First we need to prepare a no-lake template, marking out areas too close to the coasts, where lakes can't go.
+
+        int minseadistance = 15; // Points closer to the shore than this can't be the centre of lakes, normally.
+        int minseadistance2 = 8; // This is for any lake tile, not just the centre.
+
+        for (int i = 0; i <= width; i++)
+        {
+            for (int j = 0; j <= height; j++)
+            {
+                if (world.outline(i, j) == 1)
                 {
-                    int kk = k;
-
-                    if (kk<0 || kk>width)
-                        kk = wrap(kk, width);
-
-                    for (int l = j - minseadistance2; l <= j + minseadistance2; l++)
+                    for (int k = i - minseadistance2; k <= i + minseadistance2; k++)
                     {
-                        if (l >= 0 && l <= height)
-                            nolake[kk][l] = 1;
+                        int kk = k;
+
+                        if (kk<0 || kk>width)
+                            kk = wrap(kk, width);
+
+                        for (int l = j - minseadistance2; l <= j + minseadistance2; l++)
+                        {
+                            if (l >= 0 && l <= height)
+                                nolake[kk][l] = 1;
+                        }
                     }
-                }
 
-                for (int k = i - minseadistance; k <= i + minseadistance; k++)
-                {
-                    int kk = k;
-
-                    if (kk<0 || kk>width)
-                        kk = wrap(kk, width);
-
-                    for (int l = j - minseadistance; l <= j + minseadistance; l++)
+                    for (int k = i - minseadistance; k <= i + minseadistance; k++)
                     {
-                        if (l >= 0 && l <= height && nolake[kk][l] == 0)
-                            nolake[kk][l] = 2;
+                        int kk = k;
+
+                        if (kk<0 || kk>width)
+                            kk = wrap(kk, width);
+
+                        for (int l = j - minseadistance; l <= j + minseadistance; l++)
+                        {
+                            if (l >= 0 && l <= height && nolake[kk][l] == 0)
+                                nolake[kk][l] = 2;
+                        }
                     }
                 }
             }
         }
-    }
 
-    createsaltlakes(world, saltlakemap, nolake, smalllake);
+        createsaltlakes(world, saltlakemap, nolake, smalllake);
 
-    addlandnoise(world);
-    depressionfill(world);
+        addlandnoise(world);
+        depressionfill(world);
 
-    for (int i = 0; i <= width; i++)
-    {
-        for (int j = 0; j <= height; j++)
+        for (int i = 0; i <= width; i++)
         {
-            world.setriverdir(i, j, 0);
-            world.setriverjan(i, j, 0);
-            world.setriverjul(i, j, 0);
+            for (int j = 0; j <= height; j++)
+            {
+                world.setriverdir(i, j, 0);
+                world.setriverjan(i, j, 0);
+                world.setriverjul(i, j, 0);
+            }
         }
+
+        // Now work out the rivers again.
+
+        updatereport("Generating rivers");
+
+        createrivermap(world, mountaindrainage);
+
+        // Now check river valleys in mountains.
+
+        updatereport("Checking mountain river valleys");
+
+        removerivermountains(world);
+
+        // Now create the lakes.
+
+        updatereport("Generating lakes");
+
+        convertsaltlakes(world, saltlakemap);
+
+        createlakemap(world, nolake, smalllake, largelake);
+
+        createriftlakemap(world, nolake);
     }
-
-    // Now work out the rivers again.
-
-    updatereport("Generating rivers");
-
-    createrivermap(world, mountaindrainage);
-
-    // Now check river valleys in mountains.
-
-    updatereport("Checking mountain river valleys");
-
-    removerivermountains(world);
-
-    // Now create the lakes.
-
-    updatereport("Generating lakes");
-
-    convertsaltlakes(world, saltlakemap);
-
-    createlakemap(world, nolake, smalllake, largelake);
-
-    createriftlakemap(world, nolake);
 
     world.setmaxriverflow();
 
@@ -324,7 +327,6 @@ void createrainmap(planet& world, vector<vector<int>>& fractal, boolshapetemplat
 
     createmountainprecipitation(world);
 }
-
 
 // Wind map creator.
 
@@ -621,9 +623,9 @@ void createwindmap(planet& world)
                 else
                 {
                     if (winddir[zone][0] == 1)
-                        wind = 10; //random(winddir[zone][1],winddir[zone][2]);
+                        wind = 10;
                     else
-                        wind = -10; //0-random(winddir[zone][1],winddir[zone][2]);
+                        wind = -10;
                 }
 
                 world.setwind(i, j, wind);
@@ -741,6 +743,19 @@ void createwindmap(planet& world)
         }
     }
 
+    // Now reverse all the wind if the world is rotating backwards.
+
+    if (world.rotation() == 0)
+    {
+        for (int i = 0; i < width; i++)
+        {
+            for (int j = 9; j < height; j++)
+            {
+                int val = world.wind(i, j);
+                world.setwind(i, j, 0 - val);
+            }
+        }
+    }
 }
 
 // Temperature map creator.
@@ -752,52 +767,79 @@ void createtemperaturemap(planet& world, vector<vector<int>>& fractal)
     int maxelev = world.maxelevation();
 
     int fracrange = 8; // This is the range of variation given by the fractal.
-    float equatorialtemp = 38.0; // This is the average temperature at the equator.
-    float polartemp = -36.0; //-33.0; //-28.0; // Average temperature at the poles.
-    float polarvariation = 70; //85; //52.0; // This is the seasonal variation in temperature at the poles.
+    float equatorialtemp = world.eqtemperature(); // This is the average temperature at the equator.
+    float northpolartemp = world.northpolartemperature(); // Average temperature at the north pole.
+    float southpolartemp = world.southpolartemperature(); // Average temperature at the south pole.
+
+    float polarvariation = world.tilt() * 3.111; // This is the seasonal variation in temperature at the poles.
 
     float fracvar = maxelev / fracrange; // FG: Note that integer division will always return an integer
 
     float equatorlat = height / 2; // FG: Note that integer division will always return an integer
 
-    float globaldiff = equatorialtemp - polartemp; // This is the range in average temperatures from equator to pole.
+    float northglobaldiff = equatorialtemp - northpolartemp; // This is the range in average temperatures from equator to pole, in the northern hemisphere.
+    float southglobaldiff = equatorialtemp - southpolartemp; // This is the range in average temperatures from equator to pole, in the southern hemisphere.
 
-    float diffperlat = globaldiff / equatorlat;
+    float northdiffperlat = northglobaldiff / equatorlat;
+    float southdiffperlat = southglobaldiff / equatorlat;
 
     float variationperlat = polarvariation / equatorlat;
 
     // Now work out the temperatures. We do this in horizontal strips.
 
-    float lattemp = polartemp;
+    float lattemp = northpolartemp;
 
     for (int j = 0; j <= height; j++)
     {
         // First get the base temperature for this latitude.
 
-        float thisdiffperlat = diffperlat;
+        float thisnorthdiffperlat = northdiffperlat;
+        float thissouthdiffperlat = southdiffperlat;
 
-        if (j<equatorlat * 0.05 || j>height - equatorlat * 0.05)
-            thisdiffperlat = thisdiffperlat * 0.6f; //
+        // Northern hemisphere
 
-        if ((j > equatorlat * 0.05 && j < equatorlat * 0.1) || (j<height - equatorlat * 0.05 && j>height - equatorlat * 0.1))
-            thisdiffperlat = thisdiffperlat * 2.5f; // 2.5
+        if (j<equatorlat * 0.05)
+            thisnorthdiffperlat = thisnorthdiffperlat * 0.6f;
 
-        if ((j > equatorlat * 0.1 && j < equatorlat * 0.3) || (j<height - equatorlat * 0.1 && j>height - equatorlat * 0.3))
-            thisdiffperlat = thisdiffperlat * 1.8f; // 1.8
+        if (j > equatorlat * 0.05 && j < equatorlat * 0.1)
+            thisnorthdiffperlat = thisnorthdiffperlat * 2.5f;
 
-        if ((j > equatorlat * 0.3 && j < equatorlat * 0.45) || (j<height - equatorlat * 0.3 && j>height - equatorlat * 0.45))
-            thisdiffperlat = thisdiffperlat * 0.6f; // 0.6
+        if (j > equatorlat * 0.1 && j < equatorlat * 0.3)
+            thisnorthdiffperlat = thisnorthdiffperlat * 1.8f;
 
-        if ((j > equatorlat * 0.45 && j < equatorlat * 0.6) || (j<height - equatorlat * 0.45 && j>height - equatorlat * 0.6))
-            thisdiffperlat = thisdiffperlat * 1.2f; // 1.2
+        if (j > equatorlat * 0.3 && j < equatorlat * 0.45)
+            thisnorthdiffperlat = thisnorthdiffperlat * 0.6f;
 
-        if ((j > equatorlat * 0.6 && j < equatorlat) || (j<height - equatorlat * 0.6 && j>height - equatorlat))
-            thisdiffperlat = thisdiffperlat * 0.7f; //
+        if (j > equatorlat * 0.45 && j < equatorlat * 0.6)
+            thisnorthdiffperlat = thisnorthdiffperlat * 1.2f;
+
+        if (j > equatorlat * 0.6 && j < equatorlat)
+            thisnorthdiffperlat = thisnorthdiffperlat * 0.7f;
+
+        // Southern hemisphere
+
+        if (j>height - equatorlat * 0.05)
+            thisnorthdiffperlat = thisnorthdiffperlat * 0.6f;
+
+        if (j<height - equatorlat * 0.05 && j>height - equatorlat * 0.1)
+            thisnorthdiffperlat = thisnorthdiffperlat * 2.5f;
+
+        if (j<height - equatorlat * 0.1 && j>height - equatorlat * 0.3)
+            thisnorthdiffperlat = thisnorthdiffperlat * 1.8f;
+
+        if (j<height - equatorlat * 0.3 && j>height - equatorlat * 0.45)
+            thisnorthdiffperlat = thisnorthdiffperlat * 0.6f;
+
+        if (j<height - equatorlat * 0.45 && j>height - equatorlat * 0.6)
+            thisnorthdiffperlat = thisnorthdiffperlat * 1.2f;
+
+        if (j<height - equatorlat * 0.6 && j>height - equatorlat)
+            thisnorthdiffperlat = thisnorthdiffperlat * 0.7f;
 
         if (j < equatorlat)
-            lattemp = lattemp + thisdiffperlat;
+            lattemp = lattemp + thisnorthdiffperlat;
         else
-            lattemp = lattemp - thisdiffperlat;
+            lattemp = lattemp - thissouthdiffperlat;
 
         float lat;
 
@@ -828,14 +870,14 @@ void createtemperaturemap(planet& world, vector<vector<int>>& fractal)
 
             var = var / fracvar;
 
-            var = var - (fracrange / 2);
+var = var - (fracrange / 2);
 
-            temperature = temperature + var;
+temperature = temperature + var;
 
-            // Now we add variation based on latitude.
+// Now we add variation based on latitude.
 
-            world.setmintemp(i, j, temperature - latvariation);
-            world.setmaxtemp(i, j, temperature + latvariation);
+world.setmintemp(i, j, temperature - latvariation);
+world.setmaxtemp(i, j, temperature + latvariation);
         }
     }
 
@@ -901,250 +943,142 @@ void createseaicemap(planet& world, vector<vector<int>>& fractal)
     int width = world.width();
     int height = world.height();
     int sealevel = world.sealevel();
+    int maxelev = world.maxelevation();
 
     int permice = -25; // At this average temperature or lower, permanent sea ice.
     int seasice = -16; // At this average temperature or lower, seasonal sea ice.
 
-    int maxdiff = 10; // The maximum amount a node can differ from the previous node.
-    int mingap = 20; // The minimum gap there must be between the edge of seasonal ice and permanent ice.
-    int landfactor = 50; // The higher this is, the more effect land will have on the nodes.
-    int pets = 20; // This is the step width between each node of the icelines.
-    int n = (width + 1) / pets; // This is how many nodes there will be.
-    int equator = height / 2;
+    int maxadjust = 12; // Maximum amount temperatures can be adjusted by
+    int adjustfactor = maxelev / maxadjust;
 
-    vector<vector<int>> icelines(5, vector<int>(n + 1, 0)); // 0 holds the x coordinate of that node. 1 holds the northern permanent ice limit, 2 holds the northern seasonal ice limit. 3 holds the southern seasonal ice limit, 4 holds the southern permanent ice limit.
+    int tempdist = 12; // Distance from the current point where we'll check temperatures
+    float landfactor = 20.0; // The higher this is, the less effect land will have on sea ice
 
-    //short int icelines[5][n+1]; // 0 holds the x coordinate of that node. 1 holds the northern permanent ice limit, 2 holds the northern seasonal ice limit. 3 holds the southern seasonal ice limit, 4 holds the southern permanent ice limit.
+    // First, check that the whole world isn't frozen
 
-    for (int i = 1; i <= 2; i++)
-    {
-        for (int j = 0; j <= n; j++)
-            icelines[i][j] = -1;
-    }
-
-    for (int i = 3; i <= 4; i++)
-    {
-        for (int j = 0; j <= n; j++)
-            icelines[i][j] = height + 1;
-    }
-
-    for (int i = 0; i <= n; i++)
-        icelines[0][i] = i * pets;
-
-    // First we work out the basic y coordinate of each node.
-
-    for (int i = 0; i <= n; i++)
-    {
-        int ii = icelines[0][i]; // The x coordinate of the current node.
-
-        int lasttemp = 0;
-
-        for (int j = 0; j <= equator; j++) // First, the northern hemisphere.
-        {
-            int temp = (world.mintemp(ii, j) + world.maxtemp(ii, j)) / 2;
-
-            if (world.nom(ii, j) > sealevel) // Remove any altitude adjustments
-                temp = tempelevremove(world, temp, ii, j);
-
-            if (temp > seasice && lasttemp <= seasice)
-                icelines[2][i] = j - 1;
-
-            if (temp > permice && lasttemp <= permice)
-                icelines[1][i] = j - 1;
-
-            lasttemp = temp;
-        }
-
-        lasttemp = 0;
-
-        for (int j = height; j >= equator; j--) // Now, the southern hemisphere.
-        {
-            int temp = (world.mintemp(ii, j) + world.maxtemp(ii, j)) / 2;
-
-            if (world.nom(ii, j) > sealevel) // Remove any altitude adjustments
-                temp = tempelevremove(world, temp, ii, j);
-
-            if (temp > seasice && lasttemp <= seasice)
-                icelines[3][i] = j + 1;
-
-            if (temp > permice && lasttemp <= permice)
-                icelines[4][i] = j + 1;
-
-            lasttemp = temp;
-        }
-    }
-
-    // Now we adjust the y coordinate in light of nearby land.
-
-    for (int i = 0; i <= n; i++)
-    {
-        for (int line = 1; line <= 4; line++)
-        {
-            int north = -1;
-
-            if (line == 1 || line == 2)
-                north = 1;
-
-            int ii = icelines[0][i];
-            int iii;
-            int jj = icelines[line][i];
-
-            if (jj >= 0 && jj <= height)
-            {
-                int landdist = landdistance(world, ii, jj);
-
-                if (landdist > 0)
-                {
-                    landdist = landfactor - landdist;
-
-                    if (landdist > 0)
-                    {
-                        if (world.sea(ii, icelines[line][i] + landdist * north) == 0)
-                            icelines[line][i] = icelines[line][i] + landdist * north;
-                        else
-                        {
-                            int a = icelines[line][i];
-                            int b = icelines[0][i];
-                            a = carefuladd(world, b, a, landdist * north);
-                            icelines[line][i] = a;
-                        }
-                        ii = wrap(i - 1, n); // Move the neighbouring nodes by half as much
-                        iii = wrap(i + 1, n);
-
-                        int a = icelines[line][ii];
-                        int b = icelines[0][ii];
-                        a = carefuladd(world, b, a, (landdist * north) / 2);
-                        icelines[line][ii] = a;
-
-                        a = icelines[line][iii];
-                        b = icelines[0][iii];
-                        a = carefuladd(world, b, a, (landdist * north) / 2);
-                        icelines[line][iii] = a;
-                    }
-                }
-            }
-        }
-    }
-
-    // Now prevent nodes from varying too much from each other.
-
-    for (int i = 0; i <= n; i++)
-    {
-        int ii = i - 1; // ii is the previous node.
-
-        if (ii < 0)
-            ii = n;
-
-        for (int line = 1; line <= 4; line++)
-        {
-            if (icelines[line][i] >= 0 && icelines[line][i] <= height && icelines[line][0] >= 0 && icelines[line][ii] <= height)
-            {
-                if (world.sea(icelines[0][i], icelines[line][i] == 1 && world.sea(icelines[0][ii], icelines[line][ii])) == 1)
-                {
-                    int diff = icelines[line][i] - icelines[line][ii];
-
-                    if (diff > maxdiff)
-                        icelines[line][i] = icelines[line][ii] + maxdiff;
-                }
-            }
-        }
-    }
-
-    // Now we make sure that permanent ice doesn't get too close to the edge of the seasonal ice.
-
-    for (int i = 0; i <= n; i++)
-    {
-        if (icelines[1][i] > icelines[2][i] - mingap)
-            icelines[1][i] = icelines[2][i] - mingap;
-
-        if (icelines[4][i] < icelines[3][i] + mingap)
-            icelines[4][i] = icelines[3][i] + mingap;
-    }
-
-    // Now we draw lines between the nodes.
-
-    twofloats pt, mm1, mm2, mm3, mm4;
-    int col;
-
-    for (int m1 = 0; m1 < n; m1++)
-    {
-        int m2 = wrap(m1 + 1, n - 1);
-        int m3 = wrap(m1 + 2, n - 1);
-        int m4 = wrap(m1 + 4, n - 1);
-
-        for (int line = 1; line <= 4; line++)
-        {
-            mm1.x = icelines[0][m1];
-            mm1.y = icelines[line][m1];
-
-            mm2.x = icelines[0][m2];
-            mm2.y = icelines[line][m2];
-
-            mm3.x = icelines[0][m3];
-            mm3.y = icelines[line][m3];
-
-            mm4.x = icelines[0][m4];
-            mm4.y = icelines[line][m4];
-
-            if (mm2.x < mm1.x) // This dewraps them all, so some may extend beyond the eastern edge of the map.
-
-                mm2.x = mm2.x + width;
-
-            if (mm3.x < mm2.x)
-                mm3.x = mm3.x + width;
-
-            if (mm4.x < mm3.x)
-                mm4.x = mm4.x + width;
-
-            for (float t = 0.0; t <= 1.0; t = t + 0.01)
-            {
-                pt = curvepos(mm1, mm2, mm3, mm4, t);
-
-                int x = pt.x;
-                int y = pt.y;
-
-                if (x<0 || x>width)
-                    x = wrap(x, width);
-
-                if (line == 1 || line == 4)
-                    col = 2;
-                else
-                    col = 1;
-
-                if (y >= 0 && y <= height)
-                    world.setseaice(x, y, col);
-            }
-        }
-    }
-
-    // Now we fill in the ice behind the lines.
+    bool foundnoperm = 0;
 
     for (int i = 0; i <= width; i++)
     {
-        col = 0;
-
-        for (int j = equator; j >= 0; j--) // Northern hemisphere
+        for (int j = 0; j <= height; j++)
         {
-            if (world.seaice(i, j) == 1 && col == 0)
-                col = 1;
+            if ((world.mintemp(i, j) + world.maxtemp(i, j)) / 2 > permice && world.maxtemp(i, j) > 10)
+            {
+                foundnoperm = 1;
+                i = width;
+                j = height;
+            }
+        }
+    }
 
-            if (world.seaice(i, j) == 2)
-                col = 2;
-
-            world.setseaice(i, j, col);
+    if (foundnoperm == 0)
+    {
+        for (int i = 0; i <= width; i++)
+        {
+            for (int j = 0; j <= height; j++)
+                world.setseaice(i, j, 2);
         }
 
-        col = 0;
+        return;
+    }
 
-        for (int j = equator; j <= height; j++) // Southern hemisphere
+    // Now work out temperature reductions
+
+    vector<vector<int>> landreduce(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0)); // How much to reduce temperatures by, from nearby land
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
         {
-            if (world.seaice(i, j) == 1 && col == 0)
-                col = 1;
+            int thislanddist = landdistance(world, i, j);
+
+            if (thislanddist > 0)
+            {
+                float flanddist = (float)thislanddist;
+
+                flanddist = 200.0 - flanddist;
+
+                if (flanddist < 0.0)
+                    flanddist = 0.0;
+
+                if (flanddist > 200.0)
+                    flanddist = 200.0;
+
+                flanddist = flanddist / landfactor;
+
+                landreduce[i][j] = (int)flanddist;
+            }
+        }
+    }
+
+    // Now assign the ice
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            int total = 0;
+            int crount = 0;
+
+            for (int k = -tempdist; k <= tempdist; k++)
+            {
+                int kk = i + k;
+
+                if (kk<0 || kk>width)
+                    kk = wrap(kk, width);
+
+                for (int l = -tempdist; l <= tempdist; l++)
+                {
+                    if (k * k + l * l < tempdist * tempdist + tempdist)
+                    {
+                        int ll = j + l;
+
+                        if (ll >= 0 && ll <= height)
+                        {
+                            int thistemp = (world.mintemp(kk, ll) + world.maxtemp(kk, ll)) / 2;
+
+                            thistemp = thistemp - landreduce[kk][ll];
+
+                            total = total + thistemp;
+                            crount++;
+                        }
+                    }
+                }
+            }
+
+            int temp = total / crount + (fractal[i][j] / adjustfactor) - maxadjust / 2;
+
+            if (temp < seasice)
+                world.setseaice(i, j, 1);
+
+            if (temp < permice)
+            {
+                if (world.maxtemp(i, j) <= 10)
+                    world.setseaice(i, j, 2);
+                else
+                    world.setseaice(i, j, 1);
+            }
+        }
+    }
+
+    // Remove odd bits
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 1; j < height; j++)
+        {
+            if (world.seaice(i, j) == 1)
+            {
+                if (world.seaice(i, j - 1) == 0 && world.seaice(i, j + 1) == 0)
+                    world.setseaice(i, j, 0);
+            }
 
             if (world.seaice(i, j) == 2)
-                col = 2;
+            {
+                if (world.seaice(i, j - 1) == 1 && world.seaice(i, j + 1) == 1)
+                    world.setseaice(i, j, 2);
+            }
 
-            world.setseaice(i, j, col);
         }
     }
 
@@ -1415,7 +1349,7 @@ void createprevailinglandrain(planet& world, vector<vector<int>>& inland, int ma
     float tempfactor = 80.0; // The amount temperature affects moisture pickup over ocean. The higher it is, the more difference it makes.
     float mintemp = 0.15; // The minimum fraction that low temperatures can reduce the pickup rate to.
     int dumprate = 80; // The higher this number, the less rain gets deposited, but the further across the land it is distributed.
-    int pickuprate = 200; // The higher this number, the more rain gets picked up over ocean tiles.
+    int pickuprate = world.waterpickup()*2; // The higher this number, the more rain gets picked up over ocean tiles.
     int landpickuprate = 40; // This is the amount of rain that gets acquired while passing over land.
     int swervechance = 3; // The lower this number, the more variation in where the rain lands.
     int spreadchance = 2; // The lower this number, the more precipitation will spread to north and south.
@@ -8534,7 +8468,7 @@ int findnearbyriver(planet& world, int x, int y, int dropno, vector<vector<int>>
     return (0);
 }
 
-// This function works out whether a river can divert into the given square if its height were lowered.
+// This function works out whether a river could divert into the given square if its height were lowered.
 
 bool swervecheck(planet& world, int x, int y, int origx, int origy, int lowered, int neighbours[8][2])
 {

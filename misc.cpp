@@ -999,7 +999,7 @@ int tempelevadd(planet& world, int temp, int i, int j)
 
     float elevationadjust = elevation;
     elevationadjust = elevationadjust / 1000.0;
-    elevationadjust = elevationadjust * 6.5;
+    elevationadjust = elevationadjust * world.tempdecrease();
 
     temp = temp - elevationadjust;
 
@@ -1008,7 +1008,7 @@ int tempelevadd(planet& world, int temp, int i, int j)
 
 // Same thing, but at the regional level.
 
-int tempelevadd(region& region, int temp, int i, int j)
+int tempelevadd(planet& world, region& region, int temp, int i, int j)
 {
     int elevation = region.map(i, j) - region.sealevel();
 
@@ -1017,7 +1017,7 @@ int tempelevadd(region& region, int temp, int i, int j)
 
     float elevationadjust = elevation;
     elevationadjust = elevationadjust / 1000.0;
-    elevationadjust = elevationadjust * 6.5;
+    elevationadjust = elevationadjust * world.tempdecrease();
 
     temp = temp - elevationadjust;
 
@@ -1035,7 +1035,7 @@ int tempelevremove(planet& world, int temp, int i, int j)
 
     float elevationadjust = elevation;
     elevationadjust = elevationadjust / 1000.0;
-    elevationadjust = elevationadjust * 6.5;
+    elevationadjust = elevationadjust * world.tempdecrease();
 
     temp = temp + elevationadjust;
 
@@ -1044,7 +1044,7 @@ int tempelevremove(planet& world, int temp, int i, int j)
 
 // Same thing, but at the regional level.
 
-int tempelevremove(region& region, int temp, int i, int j)
+int tempelevremove(planet& world, region& region, int temp, int i, int j)
 {
     int elevation = region.map(i, j) - region.sealevel();
 
@@ -1053,7 +1053,7 @@ int tempelevremove(region& region, int temp, int i, int j)
 
     float elevationadjust = elevation;
     elevationadjust = elevationadjust / 1000.0;
-    elevationadjust = elevationadjust * 6.5;
+    elevationadjust = elevationadjust * world.tempdecrease();
 
     temp = temp + elevationadjust;
 
@@ -1420,13 +1420,51 @@ int landdistance(planet& world, int x, int y)
     int dist = 0;
     int pets = -1;
 
+    int target = equator;
+
     if (y < equator)
         pets = 1;
 
-    for (int j = y; j != equator; j = j + pets)
+    // Reverse the direction of search if the equator is colder than the poles!
+
+    if (y < equator) // Northern hemisphere
+    {
+        if (world.eqtemperature() < world.northpolartemperature())
+        {
+            pets = -1;
+            target = 0;
+        }
+    }
+    else // Southern hemisphere
+    {
+        if (world.eqtemperature() < world.southpolartemperature())
+        {
+            pets = 1;
+            target = height;
+        }
+    }
+
+    for (int j = y; j != target; j = j + pets)
     {
         if (world.sea(x, j) == 0)
-            return (dist);
+        {
+            if (world.sea(x, j + pets) == 0 && world.sea(x, j + pets * 2) == 0) // To avoid little islands showing up
+            {
+                int xleft = x - 1;
+
+                if (xleft == -1)
+                    xleft = width;
+
+                int xright = x + 1;
+                if (xright = width + 1)
+                    xright = 0;
+
+                if (world.sea(xleft, j + pets) == 0 && world.sea(xright, j + pets) == 0)
+                {
+                    return (dist);
+                }
+            }
+        }
 
         dist++;
     }
@@ -2984,15 +3022,21 @@ void initialiseworld(planet& world)
     int width = 2047;
     int height = 1024;
     bool rotation = 1;            // 1 to rotate like Earth, 0 for the other way
+    float tilt = 22.5;            // for calculating seasonal change
+    float tempdecrease = 6.5;     // for reducing temperature with elevation
+    int northpolartemp = -32; // -36;     // temperature at the north pole
+    int southpolartemp = -38; // -36     // temperature at the south pole
+    int eqtemp = 38;              // temperature at the equator
+    int waterpickup = 100;        // How much water to pick up over oceans
     float riverfactor = 15.0;     // for calculating flow in cubic metres/second
     int riverlandreduce = 20;     // how much rivers lower the land
     int estuarylimit = 20;        // how big a river must be to have an estuary
     int glacialtemp = 4;          // maximum temperature for glacial features
-    int glaciertemp = 4;          // maximum temperature for actual glaciers
+    int glaciertemp = -1;          // maximum temperature for actual glaciers
     float mountainreduce = 0.75;  // factor to reduce mountain size by
     int climatenumber = 31;       // total number of climate types
-    int maxelevation = 24000; //12750;     // maximum elevation
-    int sealevel = 12000; //2500;          // sea level
+    int maxelevation = 24000;     // maximum elevation
+    int sealevel = 12000;         // sea level
     int noisewidth = 1024;
     int noiseheight = 512;
 
@@ -3000,6 +3044,12 @@ void initialiseworld(planet& world)
     world.setwidth(width);
     world.setheight(height);
     world.setrotation(rotation);
+    world.settilt(tilt);
+    world.settempdecrease(tempdecrease);
+    world.setnorthpolartemperature(northpolartemp);
+    world.setsouthpolartemperature(southpolartemp);
+    world.seteqtemperature(eqtemp);
+    world.setwaterpickup(waterpickup);
     world.setriverfactor(riverfactor);
     world.setriverlandreduce(riverlandreduce);
     world.setestuarylimit(estuarylimit);
@@ -3129,4 +3179,49 @@ void initialiseregion(planet& world, region& region)
     region.setpixelmetres(pixelmetres);
 }
 
+// This randomises some of the world's properties. (Note: the possible changes are fairly modest.)
+
+void changeworldproperties(planet& world)
+{
+    long seed = world.seed();
+    fast_srand(seed);
+
+    if (random(1, 8) == 1)
+        world.setrotation(0);
+
+    float newtilt = (float)25 - (float)random(1, 50);
+    newtilt = newtilt / 10.0;
+
+    newtilt = newtilt + 22.5;
+
+    world.settilt(newtilt);
+
+    int npoletemp = world.northpolartemperature();
+    int spoletemp = world.southpolartemperature();
+    int eqtemp = world.eqtemperature();
+
+    int tempadjust = 15 - random(1, 30);
+
+    npoletemp = npoletemp + tempadjust;
+    spoletemp = spoletemp + tempadjust;
+    eqtemp = eqtemp + tempadjust;
+
+    int npoleadjust = 5 - random(1, 10);
+    int spoleadjust = 5 - random(1, 10);
+
+    npoletemp = npoletemp + npoleadjust;
+    spoletemp = spoletemp + spoleadjust;
+
+    world.setnorthpolartemperature(npoletemp);
+    world.setsouthpolartemperature(spoletemp);
+    world.seteqtemperature(eqtemp);
+
+    int newwater = 80 + random(1, 40);
+
+    world.setwaterpickup(newwater);
+
+    int newglacial = -10 + random(1, 20);
+
+    world.setglacialtemp(newglacial);
+}
 

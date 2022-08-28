@@ -3,6 +3,8 @@
 #include "imgui-SFML.h"
 #include "ImGuiFileDialog.h"
 
+#include <iomanip>
+#include <sstream>
 #include <iostream>
 #include <cmath>
 #include <fstream>
@@ -112,7 +114,7 @@ int main()
     Style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.09f, 0.15f, 0.16f, 1.00f);
     Style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.29f, 0.18f, 0.92f, 0.78f);
     Style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(highlight1, highlight2, highlight3, 1.00f);
-    Style.Colors[ImGuiCol_CheckMark] = ImVec4(0.27f, 0.22f, 0.71f, 1.00f);
+    Style.Colors[ImGuiCol_CheckMark] = ImVec4(0.86f, 0.93f, 0.89f, 0.78f);
     Style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.47f, 0.77f, 0.83f, 0.14f);
     Style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.28f, 0.18f, 0.92f, 1.00f);
     Style.Colors[ImGuiCol_Button] = ImVec4(0.47f, 0.77f, 0.83f, 0.14f);
@@ -421,8 +423,10 @@ int main()
     int newy = -1; // These are used to locate the new region.
 
     bool showcolouroptions = 0; // If this is 1 then we display the appearance preferences options.
-
+    bool showworldproperties = 0; // If this is 1 then we display the properties of the current world.
     bool showwarning = 0; // If this is 1 then a warning is shown (which allows the import screen to be opened).
+    bool showcontinents = 0; // If this is 1 then we show the panel for creating custom world terrain.
+    bool showworldeditproperties = 0; // If this is 1 then we show the panel for editing custom world properties.
 
     string infotext = "Welcome to a new world!"; // Info about the point selected in the global map screen
     string infotext2 = ""; // Info about the point selected in the regional map screen
@@ -443,6 +447,22 @@ int main()
     short savingworldpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
     short exportingareapass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
     short generatingregionpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
+    short generatingcontinentspass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
+
+    int landmass = 5; // Rough amount of land coverage, for custom worlds.
+    int mergefactor = 15; // Amount continents will be removed by merging with the fractal map, for custom worlds.-----------------
+
+    // Now world property variables that can be directly manipulated in the world settings edit panel.
+
+    int currentrotation = world->rotation();
+    float currenttilt = world->tilt();
+    float currenttempdecrease = world->tempdecrease();
+    int currentnorthpolartemp = world->northpolartemperature();
+    int currentsouthpolartemp = world->southpolartemperature();
+    int currenteqtemp = world->eqtemperature();
+    int currentwaterpickup = world->waterpickup();
+    int currentglacialtemp = world->glacialtemp();
+    bool currentrivers = 1; // This one controls whether or not rivers will be calculated for the custom world.
 
     // Now we prepare map colours. We put them into ImVec4 objects, which can be directly manipulated by the colour picker objects.
 
@@ -647,8 +667,6 @@ int main()
 
         if (screenmode == createworldscreen)
         {
-            showwarning = 0;
-
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2(193, 71), ImGuiCond_FirstUseEver);
             ImGui::Begin("Create world");
@@ -662,6 +680,8 @@ int main()
             if (seedentry < 0)
                 seedentry = 0;
 
+            string loadtext = "Load a world";
+
             if (brandnew == 1)
             {
                 if (ImGui::Button("Load")) // This opens the load world dialogue. We check its results later.
@@ -673,22 +693,27 @@ int main()
             }
             else
             {
+                loadtext = "Return to the world map";
+                
                 if (ImGui::Button("Cancel"))
                     screenmode = globalmapscreen;
             }
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Load a world");
+                ImGui::SetTooltip(loadtext.c_str());
 
             ImGui::SameLine();
 
-            if (ImGui::Button("Import"))
+            if (ImGui::Button("Custom"))
             {
-                screenmode = importscreen;
+                if (brandnew == 1)
+                    screenmode = importscreen;
+                else
+                    showwarning = 1;
             }
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Create a world from imported maps.");
+                ImGui::SetTooltip("Create a custom world.");
 
             ImGui::SameLine();
 
@@ -746,6 +771,11 @@ int main()
                 updatereport("Generating world from seed: " + to_string(world->seed()) + ":");
                 updatereport("");
 
+                initialiseworld(*world);
+                world->clear();
+
+                changeworldproperties(*world);
+
                 for (int n = 0; n < GLOBALMAPTYPES; n++) // Set all map types as unviewed, to force them to be redrawn when called up
                     globalmapimagecreated[n] = 0;
 
@@ -753,16 +783,23 @@ int main()
 
                 fast_srand(world->seed());
 
-                if (random(1, 10) == 1) // Rarely, do the terrain type that gives fragmented land masses.
+                if (random(1, 10) == 1) // Rarely, do the terrain type that gives smaller land masses.
                     terraintype = 1;
+
+                int contno = random(1, 9);
+
+                int thismergefactor = random(1, 15);
+
+                if (random(1, 12) == 1) // Fairly rarely, have more fragmented continents
+                    thismergefactor = random(1, 25);
 
                 vector<vector<int>> mountaindrainage(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
                 vector<vector<bool>> shelves(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
 
                 // Actually generate the world
 
-                generateglobalterrain(*world, terraintype, landshape, chainland, mountaindrainage, shelves);
-                generateglobalclimate(*world, smalllake, largelake, landshape, mountaindrainage, shelves);
+                generateglobalterrain(*world, terraintype, thismergefactor, -1, -1, landshape, chainland, mountaindrainage, shelves);
+                generateglobalclimate(*world, 1, smalllake, largelake, landshape, mountaindrainage, shelves);
 
                 // Now draw a new map
 
@@ -791,13 +828,19 @@ int main()
         if (screenmode == globalmapscreen)
         {
             areafromregional = 0;
+            brandnew = 0;
             
             // Main controls.
 
-            string title = "Seed: " + to_string(world->seed());
+            string title;
+
+            if (world->seed() >= 0)
+                title = "Seed: " + to_string(world->seed());
+            else
+                title = "Custom";
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(160, 431), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(160, 448), ImGuiCond_FirstUseEver);
 
             ImGui::Begin(title.c_str());
 
@@ -825,7 +868,7 @@ int main()
                 savingworld = 1;
             }
 
-            if (standardbutton("Import world"))
+            if (standardbutton("Custom world"))
             {
                 showwarning = 1;
             }
@@ -927,10 +970,14 @@ int main()
 
             ImGui::PushItemWidth(100.0f);
 
+            if (standardbutton("Properties"))
+            {
+                showworldproperties = 1;
+            }
+
             if (standardbutton("Appearance"))
             {
                 showcolouroptions = 1;
-
             }
 
             if (standardbutton("Zoom"))
@@ -956,7 +1003,7 @@ int main()
             // Now the text box.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(1023, 140), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1023, 151), ImGuiCond_FirstUseEver);
             title = "            ";
 
             ImGui::Begin(title.c_str());
@@ -1023,7 +1070,7 @@ int main()
                         string glac = "";
 
                         if ((world->jantemp(poix, poiy) + world->jultemp(poix, poiy)) / 2 <= world->glacialtemp())
-                            glac = "Glacial region. ";
+                            glac = "Ancient glacial region. ";
 
                         if (world->special(poix, poiy) == 110)
                             climate = climate + ". Salt pan";
@@ -1290,7 +1337,7 @@ int main()
             // Now the text box.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(1023, 140), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1023, 151), ImGuiCond_FirstUseEver);
 
             title = "               ";
 
@@ -1646,7 +1693,7 @@ int main()
             // Now the text box.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(1023, 140), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1023, 151), ImGuiCond_FirstUseEver);
             string title = "            ";
             string areatext = "Total regions: " + to_string(totalregions); // 117 OK; 143 not OK; 132 not OK; 121 not OK; 112 OK; 116 OK; 110
 
@@ -1767,16 +1814,19 @@ int main()
             }
         }
 
-        // Import world screen
+        // Custom world screen
 
         if (screenmode == importscreen)
         {
+            showcolouroptions = 0;
+            showworldproperties = 0;
+            
             // Main controls.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(160, 431), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(160, 452), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin("Import");
+            ImGui::Begin("Custom##custom");
 
             ImGui::Text("Controls:");
 
@@ -1848,6 +1898,14 @@ int main()
             ImGui::Text("Generate:");
 
             ImGui::PushItemWidth(100.0f);
+
+            if (standardbutton("World terrain"))
+            {
+                showcontinents = 1;
+            }
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Create all terrain, with continents, mountains, coastal shelves, and oceanic ridges.");
 
             if (standardbutton("Coastlines"))
             {
@@ -2137,7 +2195,7 @@ int main()
             }
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Generates random mountain ranges.");
+                ImGui::SetTooltip("Generate random mountain ranges.");
 
             if (standardbutton("Hills"))
             {
@@ -2189,11 +2247,25 @@ int main()
             }
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Generates random ranges of hills.");
+                ImGui::SetTooltip("Generate random ranges of hills.");
 
             ImGui::Dummy(ImVec2(0.0f, linespace));
 
-            if (standardbutton("Done"))
+            ImGui::SetNextItemWidth(0);
+
+            ImGui::Text("Other controls:");
+
+            ImGui::PushItemWidth(100.0f);
+
+            if (standardbutton("Properties"))
+            {
+                showworldeditproperties = 1;
+            }
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Adjust the world's properties.");
+
+            if (standardbutton("Finish"))
             {
                 screenmode = completingimportscreen;
             }
@@ -2206,11 +2278,11 @@ int main()
             // Now the text box.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(1023, 140), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1023, 151), ImGuiCond_FirstUseEver);
 
             string title = "            ";
 
-            string importtext = "Use the 'import' buttons to load in your own maps. These must be 2048x1025 pixels, in .png format.\nYou need at least a land map, but the others are optional.\nCheck the tooltips for each button for more details.\n\nAfter you have imported your maps, you can use the 'generate' buttons to tweak them or to add extra features.\n\nWhen you are done, click 'Done' to finish the world.";
+            string importtext = "You can use the 'import' buttons to load in your own maps. These must be 2048x1025 pixels, in .png format.\nYou need at least a land map, but the others are optional. Check the tooltips for each button for more details.\n\nAlternatively, you can use the 'World terrain' button to generate a map from scratch.\n\nAfter you have imported or generated the map, you can use the other 'generate' buttons to tweak it or to add extra features.\nYou can use the 'Properties' panel to change settings such as global temperatures or rainfall.\n\nWhen you are done, click 'Finish' to finish the world.";
 
             ImGui::Begin(title.c_str());
             ImGui::PushItemWidth(world->width() / 2);
@@ -2219,6 +2291,125 @@ int main()
         }
 
         // These screens all display a "Please wait" message ten times (for some reason doing it once or twice doesn't actually display it) and then do something time-consuming.
+
+        if (screenmode == generatingcontinentsscreen)
+        {
+            if (generatingcontinentspass < 10)
+            {
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait!");
+                ImGui::Text("Generating continents...");
+                ImGui::End();
+
+                generatingcontinentspass++;
+            }
+            else
+            {
+                initialiseworld(*world);
+                world->clear();
+
+                int seed = random(0, 9);
+
+                for (int n = 1; n <= 7; n++)
+                {
+                    if (n == 7)
+                        seed = seed + (random(1, 9) * pow(10, n));
+                    else
+                        seed = seed + (random(0, 9) * pow(10, n));
+                }
+
+                seed = 0 - seed;
+
+                world->setseed(seed);
+
+                updatereport("Generating custom world terrain from seed: " + to_string(world->seed()) + ":");
+                updatereport("");
+
+                for (int n = 0; n < GLOBALMAPTYPES; n++) // Set all map types as unviewed, to force them to be redrawn when called up
+                    globalmapimagecreated[n] = 0;
+
+                short terraintype = 2; // This terrain type gives large continents.
+
+                fast_srand(world->seed());
+
+                int clusterno = -1;
+                int clustersize = -1;
+
+                switch (landmass)
+                {
+                case 1:
+                    terraintype = 1;
+                    break;
+
+                case 2:
+                    clusterno = 1;
+                    clustersize = 1;
+                    break;
+
+                case 3:
+                    clusterno = 1;
+                    clustersize = 6;
+                    break;
+
+                case 4:
+                    clusterno = 2;
+                    clustersize = 3;
+                    break;
+
+                case 5:
+                    clusterno = 2;
+                    clustersize = 7;
+                    break;
+
+                case 6:
+                    clusterno = 3;
+                    clustersize = 3;
+                    break;
+
+                case 7:
+                    clusterno = 3;
+                    clustersize = 8;
+                    break;
+
+                case 8:
+                    clusterno = 3;
+                    clustersize = 9;
+                    break;
+
+                case 9:
+                    clusterno = 4;
+                    clustersize = 5;
+                    break;
+
+                case 10:
+                    clusterno = 4;
+                    clustersize = 9;
+                    break;
+                }
+
+                vector<vector<int>> mountaindrainage(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+                vector<vector<bool>> shelves(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
+
+                // Now generate the terrain.
+
+                generateglobalterrain(*world, terraintype, mergefactor-5, clusterno, clustersize, landshape, chainland, mountaindrainage, shelves);
+
+                // Now redraw the map.
+
+                for (int n = 0; n < GLOBALMAPTYPES; n++)
+                    globalmapimagecreated[n] = 0;
+
+                mapview = relief;
+                drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
+
+                globalmaptexture->loadFromImage(*displayglobalreliefimage);
+                globalmap->setTexture(*globalmaptexture);
+
+                generatingcontinentspass = 0;
+                screenmode = importscreen;
+            }
+        }
 
         if (screenmode == completingimportscreen)
         {
@@ -2236,6 +2427,17 @@ int main()
             {
                 updatereport("Generating world from imported maps:");
                 updatereport("");
+
+                // Plug in the world settings.
+
+                world->setrotation((bool)currentrotation);
+                world->settilt(currenttilt);
+                world->settempdecrease(currenttempdecrease);
+                world->setnorthpolartemperature(currentnorthpolartemp);
+                world->setsouthpolartemperature(currentsouthpolartemp);
+                world->seteqtemperature(currenteqtemp);
+                world->setwaterpickup(currentwaterpickup);
+                world->setglacialtemp(currentglacialtemp);
 
                 // First, finish off the terrain generation.
 
@@ -2283,7 +2485,7 @@ int main()
 
                 // Now do the climates.
 
-                generateglobalclimate(*world, smalllake, largelake, landshape, mountaindrainage, shelves);
+                generateglobalclimate(*world, currentrivers, smalllake, largelake, landshape, mountaindrainage, shelves);
 
                 // Now draw a new map
 
@@ -3050,6 +3252,184 @@ int main()
             ImGui::End();
         }
 
+        // World properties window, if being shown
+
+        if (showworldproperties)
+        {
+            int rightalign = 320;
+            
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 425, main_viewport->WorkPos.y + 118), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(500, 157), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("World properties");
+
+            string rotationinfo = "Rotation: ";
+
+            if (world->rotation())
+                rotationinfo = rotationinfo + "west to east";
+            else
+                rotationinfo = rotationinfo + "east to west";
+
+            stringstream ss;
+            ss << fixed << setprecision(2) << world->tilt();
+
+            string tiltinfo = "Axial tilt: " + ss.str();
+
+            stringstream ss2;
+            ss2 << fixed << setprecision(2) << world->tempdecrease();
+
+            string tempdecreaseinfo = "Temperature decrease per vertical km: " + ss2.str();
+
+            string northpoleinfo = "Average north pole temperature: " + to_string(world->northpolartemperature());
+            string southpoleinfo = "Average south pole temperature: " + to_string(world->southpolartemperature());
+            string equatorinfo = "Average equator temperature:    " + to_string(world->eqtemperature());
+
+            string moistureinfo = "Moisture pickup rate: " + to_string(world->waterpickup());
+
+            string glacialinfo = "Glaciation temperature: " + to_string(world->glacialtemp());
+
+            ImGui::Text(rotationinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects weather patterns. (Earth: west to east)");
+
+            ImGui::SameLine(rightalign);
+
+            ImGui::Text(tiltinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects seasonal variation in temperature. (Earth: 22.5)");
+
+            ImGui::Text("   ");
+
+            ImGui::Text(tempdecreaseinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects how much colder it gets higher up. (Earth: 6.5)");
+
+            ImGui::SameLine(rightalign);
+
+            ImGui::Text(moistureinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects how much moisture wind picks up from the ocean. (Earth: 100)");
+
+            ImGui::Text("   ");
+
+            ImGui::Text(northpoleinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Earth: -32");
+
+            ImGui::SameLine(rightalign);
+
+            ImGui::Text(glacialinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Areas below this average temperature may show signs of past glaciation. (Earth: 4)");
+
+            ImGui::Text(southpoleinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Earth: -38");
+
+            ImGui::Text(equatorinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Earth: 38");
+
+            ImGui::SameLine(rightalign);
+
+            if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
+            {
+                showworldproperties = 0;
+            }
+
+            ImGui::End();
+        }
+
+        // World edit properties screen, if shown.
+
+        if (showworldeditproperties)
+        {
+            int rightalign = 310;
+
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 460, main_viewport->WorkPos.y + 168), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(43, 242), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("World properties##2");
+
+            ImGui::PushItemWidth(180);
+
+            const char* rotationitems[] = { "East to west", "West to east" };
+            static int item_current = 0;
+            ImGui::Combo("Rotation", &currentrotation, rotationitems,2);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects weather patterns. (Earth: west to east)");
+
+            ImGui::InputFloat("Axial tilt", &currenttilt, 0.01f, 1.0f, "%.3f");
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects seasonal variation in temperature. (Earth: 22.5)");
+
+            ImGui::InputInt("Moisture pickup rate", &currentwaterpickup);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects how much moisture wind picks up from the ocean. (Earth: 100)");
+
+            ImGui::InputInt("Glaciation temperature", &currentglacialtemp);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Areas below this average temperature may show signs of past glaciation. (Earth: 4)");
+
+            ImGui::InputFloat("Temperature decrease per vertical km", &currenttempdecrease, 0.01f, 1.0f, "%.3f");
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects how much colder it gets higher up. (Earth: 6.5)");
+
+            ImGui::InputInt("Average north pole temperature", &currentnorthpolartemp);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Earth: -32");
+
+            ImGui::InputInt("Average south pole temperature", &currentsouthpolartemp);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Earth: -38");
+
+            ImGui::InputInt("Average equator temperature", &currenteqtemp);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Earth: -38");
+
+            ImGui::Text("   ");
+
+            ImGui::Checkbox("Generate rivers", &currentrivers);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Untick this if you don't want rivers and lakes to be generated.");
+
+            ImGui::SameLine(rightalign);
+
+            if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
+            {
+                showworldeditproperties = 0;
+            }
+
+            ImGui::End();
+
+            if (currentwaterpickup < 0)
+                currentwaterpickup = 0;
+
+            if (currenttilt > 90.0)
+                currenttilt = 90.0;
+
+            if (currenttilt < -90.0)
+                currenttilt = -90.0;
+
+        }
+
         // Now draw the graphical elements.
 
         if (screenmode == globalmapscreen || screenmode == exportareascreen || screenmode == importscreen)
@@ -3708,7 +4088,7 @@ int main()
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 469, main_viewport->WorkPos.y + 202), ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2(330, 85), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin("Import maps?");
+            ImGui::Begin("Create custom world?");
 
             ImGui::Text("This will delete the current world. Proceed?");
             ImGui::Text(" ");
@@ -3720,6 +4100,16 @@ int main()
             {
                 initialiseworld(*world);
                 world->clear();
+
+                currentrotation = world->rotation();
+                currenttilt = world->tilt();
+                currenttempdecrease = world->tempdecrease();
+                currentnorthpolartemp = world->northpolartemperature();
+                currentsouthpolartemp = world->southpolartemperature();
+                currenteqtemp = world->eqtemperature();
+                currentwaterpickup = world->waterpickup();
+                currentglacialtemp = world->glacialtemp();
+                currentrivers = 1;
 
                 int width = world->width();
                 int height = world->height();
@@ -3764,6 +4154,61 @@ int main()
             if (ImGui::Button("Cancel"))
             {
                 showwarning = 0;
+            }
+
+            ImGui::End();
+        }
+
+        // Custom continents window
+
+        if (showcontinents == 1)
+        {
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 428, main_viewport->WorkPos.y + 167), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(370, 162), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Generate world terrain");
+
+            /*
+            ImVec2 pos = ImGui::GetWindowPos();
+
+            cout << "Position: " << pos.x << ", " << pos.y << endl;
+
+            ImVec2 size = ImGui::GetWindowSize();
+
+            cout << "Size: " << size.x << ", " << size.y << endl;
+            */
+
+            ImGui::Text("This will overwrite any existing terrain.");
+            ImGui::Text(" ");
+
+            ImGui::SliderInt("Continental mass", &landmass, 1, 10);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("The (very approximate) amount of land mass.");
+
+            ImGui::Text(" ");
+
+            ImGui::SliderInt("Marine flooding", &mergefactor, 1, 30);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("The degree to which sea covers the continents. The higher this is, the more inland seas and fragmented coastlines there will be.");
+
+            ImGui::Text(" ");
+            ImGui::Text(" ");
+
+            ImGui::SameLine(100);
+
+            if (ImGui::Button("OK"))
+            {
+                screenmode = generatingcontinentsscreen;
+                generatingcontinentspass = 0;
+
+                showcontinents = 0;
+            }
+
+            ImGui::SameLine(220);
+
+            if (ImGui::Button("Cancel"))
+            {
+                showcontinents = 0;
             }
 
             ImGui::End();
@@ -4071,7 +4516,6 @@ int main()
 
             colourschanged = 0;
         }
-
     }
 
     ImGui::SFML::Shutdown();

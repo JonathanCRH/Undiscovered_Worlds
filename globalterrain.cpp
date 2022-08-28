@@ -20,24 +20,24 @@
 
 using namespace std;
 
-void generateglobalterrain(planet& world, short terraintype, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves)
+void generateglobalterrain(planet& world, short terraintype, int mergefactor, int clusterno, int clustersize, boolshapetemplate landshape[], boolshapetemplate chainland[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves)
 {
     //highres_timer_t timer("Generate Global Terrain"); // 22.1s => 17.6s
     switch (terraintype)
     {
     case 1:
-        generateglobalterraintype1(world, landshape, mountaindrainage, shelves, chainland);
+        generateglobalterraintype1(world, mergefactor, landshape, mountaindrainage, shelves, chainland);
         break;
 
     case 2:
-        generateglobalterraintype2(world, landshape, mountaindrainage, shelves, chainland);
+        generateglobalterraintype2(world, mergefactor, clusterno, clustersize, landshape, mountaindrainage, shelves, chainland);
         break;
     }
 }
 
 // This creates type 1 terrain. This type gives a fairly chaotic looking map with small continents and lots of islands.
 
-void generateglobalterraintype1(planet& world, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[])
+void generateglobalterraintype1(planet& world, int mergefactor, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[])
 {
     // First get our key variables and clear the world.
 
@@ -111,7 +111,7 @@ void generateglobalterraintype1(planet& world, boolshapetemplate landshape[], ve
 
     updatereport("Merging maps");
 
-    fractalmerge(world, fractal);
+    fractalmerge(world, mergefactor, fractal);
 
     // Make continental shelves.
 
@@ -461,7 +461,7 @@ void generateglobalterraintype1(planet& world, boolshapetemplate landshape[], ve
 
 // This creates type 2 terrain. This type gives a more earthlike map with large continents.
 
-void generateglobalterraintype2(planet& world, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[])
+void generateglobalterraintype2(planet& world, int mergefactor, int clusterno, int clustersize, boolshapetemplate landshape[], vector<vector<int>>& mountaindrainage, vector<vector<bool>>& shelves, boolshapetemplate chainland[])
 {
     // First get our key variables and clear the world.
 
@@ -522,7 +522,7 @@ void generateglobalterraintype2(planet& world, boolshapetemplate landshape[], ve
 
     updatereport("Creating continental map");
 
-    largecontinents(world, baseheight, conheight, fractal, plateaumap, shelves, landshape, chainland);
+    largecontinents(world, baseheight, conheight, clusterno, clustersize, fractal, plateaumap, shelves, landshape, chainland);
 
     flip(fractal, width, height, 1, 1);
 
@@ -530,7 +530,7 @@ void generateglobalterraintype2(planet& world, boolshapetemplate landshape[], ve
 
     updatereport("Merging maps");
 
-    fractalmergemodified(world, fractal, plateaumap, removedland);
+    fractalmergemodified(world, mergefactor, fractal, plateaumap, removedland);
 
     updatereport("Shifting fractal");
 
@@ -865,7 +865,7 @@ void generateglobalterraintype2(planet& world, boolshapetemplate landshape[], ve
 
 // This function makes the continents in a larger style.
 
-void largecontinents(planet& world, int baseheight, int conheight, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& shelves, boolshapetemplate landshape[], boolshapetemplate chainland[])
+void largecontinents(planet& world, int baseheight, int conheight, int clusterno, int clustersize, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& shelves, boolshapetemplate landshape[], boolshapetemplate chainland[])
 {
     int width = world.width();
     int height = world.height();
@@ -893,13 +893,18 @@ void largecontinents(planet& world, int baseheight, int conheight, vector<vector
 
     int focustotal;
 
-    if (random(1, 10) == 1)
-        focustotal = 1;
-    else
-        focustotal = 2;
+    if (clusterno == -1)
+    {
+        if (random(1, 10) == 1)
+            focustotal = 1;
+        else
+            focustotal = 2;
 
-    if (random(1, 3) != 1)
-        focustotal = 3;
+        if (random(1, 3) != 1)
+            focustotal = 3;
+    }
+    else
+        focustotal = clusterno;
 
     focuspoints[0].x = width / 4;
     focuspoints[0].y = random(height / 6, height - height / 6);
@@ -1129,6 +1134,9 @@ void largecontinents(planet& world, int baseheight, int conheight, vector<vector
         }
 
         short extracont = random(1, 9) - 1; // Number of extra continents.
+
+        if (clustersize != -1)
+            extracont = clustersize - 1;
 
         for (int n = 1; n <= extracont; n++)
         {
@@ -5095,7 +5103,7 @@ void cuts(planet& world, int cuttotal, int baseheight, int conheight, boolshapet
 
 // This function merges the fractal map into the main map to create more interesting terrain.
 
-void fractalmerge(planet& world, vector<vector<int>>& fractal)
+void fractalmerge(planet& world, int adjust, vector<vector<int>>& fractal)
 {
     vector<vector<int>> temp(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0)); // This will be used to merge the fractal onto the main map in a varied way.
 
@@ -5113,8 +5121,9 @@ void fractalmerge(planet& world, vector<vector<int>>& fractal)
 
     createfractal(temp, width, height, grain, valuemod, valuemod2, min, max, extreme, 0);
 
-    int addbit = random(0, 15);
-    addbit = addbit / 10.0;
+    float addbit = (float)adjust; // adjust is -5 to 25. 1 for very little land taken away, 25 for lots.
+
+    addbit = addbit / 100.0;
 
     float div1 = 1.5 + addbit; // This is the amount we divide the fractal height by over the sea. The higher this number, the more the fractal will eat away at the land masses.
 
@@ -5147,7 +5156,7 @@ void fractalmerge(planet& world, vector<vector<int>>& fractal)
 
 // Same thing, but for the larger continental style.
 
-void fractalmergemodified(planet& world, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& removedland)
+void fractalmergemodified(planet& world, int adjust, vector<vector<int>>& fractal, vector<vector<int>>& plateaumap, vector<vector<bool>>& removedland)
 {
     vector<vector<int>> temp(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0)); // This will be used to merge the fractal onto the main map in a varied way.
 
@@ -5164,7 +5173,14 @@ void fractalmergemodified(planet& world, vector<vector<int>>& fractal, vector<ve
 
     createfractalformodifiedmerging(temp, width, height, grain, valuemod, valuemod2, 1, maxelev, extreme);
 
-    int tippingpoint = maxelev / 4;
+    float ftippingpoint = (float) maxelev;
+    float factor = 25.0;
+
+    ftippingpoint = ftippingpoint / factor;
+
+    int tippingpoint = int(ftippingpoint);
+
+    adjust = adjust * 200; // adjust is -5 to 25. 1 for very little land taken away, 25 for lots.
 
     for (int j = 0; j <= height; j++)
     {
@@ -5172,9 +5188,14 @@ void fractalmergemodified(planet& world, vector<vector<int>>& fractal, vector<ve
         {
             if (temp[i][j] > tippingpoint)
             {
-                if (fractal[i][j] <= sealevel && world.nom(i, j) > sealevel)
+                if (fractal[i][j]-adjust <= sealevel && world.nom(i, j) > sealevel)
                 {
-                    world.setnom(i, j, fractal[i][j]);
+                    int newval = fractal[i][j] - adjust;
+                    
+                    if (newval < 1)
+                        newval = 1;
+
+                    world.setnom(i, j, newval);
                     removedland[i][j] = 1;
                 }
             }

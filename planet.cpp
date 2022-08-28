@@ -816,6 +816,12 @@ void planet::saveworld(string filename)
     writevariable(outfile, itsheight);
     writevariable(outfile, itsseed);
     writevariable(outfile, itsrotation);
+    writevariable(outfile, itstilt);
+    writevariable(outfile, itstempdecrease);
+    writevariable(outfile, itsnorthpolartemperature);
+    writevariable(outfile, itssouthpolartemperature);
+    writevariable(outfile, itseqtemperature);
+    writevariable(outfile, itswaterpickup);
     writevariable(outfile, itsriverfactor);
     writevariable(outfile, itsriverlandreduce);
     writevariable(outfile, itsestuarylimit);
@@ -974,6 +980,12 @@ void planet::loadworld(string filename)
     readvariable(infile, itsheight);
     readvariable(infile, itsseed);
     readvariable(infile, itsrotation);
+    readvariable(infile, itstilt);
+    readvariable(infile, itstempdecrease);
+    readvariable(infile, itsnorthpolartemperature);
+    readvariable(infile, itssouthpolartemperature);
+    readvariable(infile, itseqtemperature);
+    readvariable(infile, itswaterpickup);
     readvariable(infile, itsriverfactor);
     readvariable(infile, itsriverlandreduce);
     readvariable(infile, itsestuarylimit);

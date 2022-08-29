@@ -11098,8 +11098,23 @@ void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int
                 checkno++;
                 int tally = 0;
 
-                poolcheckrecursive(region, startx, starty, tally, maxtally, checkno, regionsea, pathchecked);
+                poolcheckrecursive_fg(region, startx, starty, tally, maxtally, checkno, regionsea, pathchecked);
 
+#if 0 // example debugging code for comparing the results of two different poolcheck() functions
+                static unsigned tot_count(0), diff_count(0);
+                ++tot_count;
+
+                if (diff_count < 100) { // show at most 100 diffs
+                    checkno++;
+                    int tally2 = 0;
+                    poolcheckrecursive(region, startx, starty, tally2, maxtally, checkno, regionsea, pathchecked);
+
+                    if ((tally < maxtally) != (tally2 < maxtally)) {
+                        cout << "tally: " << tally << ", tally2: " << tally2 << ", maxtally: " << maxtally << ", tot_count: " << tot_count << ", diff_count: " << diff_count << endl;
+                        ++diff_count;
+                    }
+                }
+#endif
                 if (tally < maxtally) // If it's small enough to be a pool
                 {
                     for (int i = dx - 16; i <= dx + 16; i++) // Turn all the cells that got marked in this pass into land.

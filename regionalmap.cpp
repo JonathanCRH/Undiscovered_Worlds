@@ -11051,6 +11051,9 @@ bool findpath(region& region, int& leftx, int& lefty, int& rightx, int& righty, 
 
 // This identifies any more pools that are on the map and turns them into land (originally it changed them into lakes but I changed it!). (This is because the removepools routine checks only near coastlines, and may miss some that are further inland, especially where fjords are nearby.)
 
+void poolcheckrecursive_fg(region const& region, int const currentx, int const currenty, int& tally, int maxtally, int const checkno, vector<vector<bool>> const & regionsea, vector<vector<int>>& pathchecked);
+void poolcheck_fg(region const& region, int const currentx, int const currenty, int& tally, int maxtally, int const checkno, vector<vector<bool>> const& regionsea, vector<vector<int>>& pathchecked);
+
 void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked, int& checkno)
 {
     int width = world.width();
@@ -11295,6 +11298,85 @@ bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int max
     }
 
     return 0;
+}
+
+void poolcheckrecursive_fg(region const& region, int const currentx, int const currenty, int& tally, int maxtally, int const checkno, vector<vector<bool>> const & regionsea, vector<vector<int>>& pathchecked)
+{
+    if (pathchecked[currentx][currenty] == checkno)
+        return;
+    pathchecked[currentx][currenty] = checkno;
+
+    if (regionsea[currentx][currenty] == 0)
+        return;
+
+    if (currentx<1 || currenty<1 || currentx>region.rwidth() - 1 || currenty>region.rheight() - 1) // We've gone out of the search zone, so this might be a pool
+    {
+        tally = maxtally + 1;
+        return;
+    }
+    tally++;
+
+    if (tally > maxtally) // We've counted more cells than a pool can be
+        return;
+
+    int const x_deltas[4] = {0, 1, -1, 0}; // north, east, west, south
+    int const y_deltas[4] = {-1, 0, 0, 1}; // north, east, west, south
+
+    for (int dir = 0; dir < 4; ++dir) {
+        poolcheckrecursive_fg(region, (currentx + x_deltas[dir]), (currenty + y_deltas[dir]), tally, maxtally, checkno, regionsea, pathchecked);
+        if (tally > maxtally) // We've counted more cells than a pool can be (early exit optimization)
+            return;
+    }
+}
+
+void poolcheck_fg(region const& region, int const currentx, int const currenty, int& tally, int maxtally, int const checkno, vector<vector<bool>> const& regionsea, vector<vector<int>>& pathchecked)
+{
+    if (regionsea[currentx][currenty] == 0)
+        return;
+
+    if (pathchecked[currentx][currenty] == checkno)
+        return;
+
+    queue<twointegers> q;
+
+    twointegers point;
+    point.x = currentx;
+    point.y = currenty;
+
+    q.push(point);
+    tally++; // first point counts
+
+    while (!q.empty())
+    {
+        point = q.front();
+
+        if (point.x<1 || point.y<1 || point.x>region.rwidth() - 1 || point.y>region.rheight() - 1) // We've gone out of the search zone, so this might be ocean
+        {
+            tally = maxtally + 1;
+            return;
+        }
+
+        q.pop();
+
+        int const x_deltas[4] = {0, 1, -1, 0}; // north, east, west, south
+        int const y_deltas[4] = {-1, 0, 0, 1}; // north, east, west, south
+
+        for (int dir = 0; dir < 4; ++dir) {
+            twointegers newpoint = point;
+            newpoint.x += x_deltas[dir];
+            newpoint.y += y_deltas[dir];
+
+            if (pathchecked[newpoint.x][newpoint.y] != checkno && regionsea[newpoint.x][newpoint.y] == 1)
+            {
+                pathchecked[newpoint.x][newpoint.y] = checkno;
+                tally++;
+
+                if (tally > maxtally) // We've counted more cells than a pool can be
+                    return;
+                q.push(newpoint);
+            }
+        }
+    }
 }
 
 // This function turns a river on the regional map into sea from this point downstream.

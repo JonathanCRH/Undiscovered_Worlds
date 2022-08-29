@@ -395,8 +395,8 @@ void pastepeak(planet& world, region& region, int x, int y, float peakheight, in
 void removepools(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<int>>& pathchecked, int& checkno);
 bool findpath(region& region, int& leftx, int& lefty, int& rightx, int& righty, int& fromx, int& fromy, int& destx, int& desty, int& checkno, vector<vector<int>>& pathchecked, int& recursion);
 void turnpoolstolakes(planet& world, region& region, int dx, int dy, int sx, int sy, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked, int& checkno);
-bool poolcheck(region& region, int& currentx, int& currenty, int& tally, int maxtally, int& checkno, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked);
-bool poolcheckrecursive(region& region, int& currentx, int& currenty, int& tally, int maxtally, int& checkno, vector<vector<bool>>& regionsea, vector<vector<int>>& pathchecked);
+void poolcheckrecursive(region const& region, int const currentx, int const currenty, int& tally, int maxtally, int const checkno, vector<vector<bool>> const& regionsea, vector<vector<int>>& pathchecked);
+void poolcheck(region const& region, int const currentx, int const currenty, int& tally, int maxtally, int const checkno, vector<vector<bool>> const& regionsea, vector<vector<int>>& pathchecked);
 void turntosea(region& region, int leftx, int rightx, int lefty, int righty, int x, int y, int newheight, int sealevel);
 void removediagonalwater(region& region, int leftx, int lefty, int rightx, int righty, int sealevel);
 void removelakesbysea(region& region, int leftx, int lefty, int rightx, int righty, int sealevel);

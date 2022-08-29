@@ -16,6 +16,7 @@
 #include "planet.hpp"
 #include "region.hpp"
 #include "functions.hpp"
+//#include "profiler.h"
 
 #define REGIONALTILEWIDTH 32 // Height and width of the regional map measured in tiles
 #define REGIONALTILEHEIGHT 32
@@ -970,6 +971,7 @@ void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& di
         }
     }
 
+    //highres_timer_t timer("turnpoolstolakes");
     for (int x = xleft + 1; x < xright; x++) // Note that we don't do the ones on the edges of the regional map.
     {
         int xx = leftx + x;
@@ -984,6 +986,7 @@ void makeregionalterrain(planet& world, region& region, vector<vector<bool>>& di
             turnpoolstolakes(world, region, x * 16, y * 16, xx, yy, regionsea, pathchecked, checkno);
         }
     }
+    //timer.end();
 
     // Remove bits of lakes that touch the sea. (Turned off as it sometimes had the unfortunate effect of turning the entire sea into lake.)
 

@@ -46,6 +46,32 @@ public:
     int z;
 };
 
+class fourintegers
+{
+public:
+
+    fourintegers(); // constructor
+    ~fourintegers(); // destructor
+
+    int w;
+    int x;
+    int y;
+    int z;
+};
+
+class fourshorts
+{
+public:
+
+    fourshorts(); // constructor
+    ~fourshorts(); // destructor
+
+    short w;
+    short x;
+    short y;
+    short z;
+};
+
 class twofloats
 {
 public:
@@ -106,8 +132,8 @@ public:
     int ysize() const {return itsvector[0].size()-1;};
     void setysize(int amount)
     {
-        for (int n=0; n<itsvector.size(); n++)
-            itsvector[n].resize(amount+1);
+        for (int n = 0; n < (int)itsvector.size(); n++)
+            itsvector[n].resize(amount + 1);
     };
     
     bool point(int x, int y) const {return itsvector[x][y];}
@@ -139,8 +165,8 @@ public:
     int ysize() const {return itsvector[0].size()-1;};
     void setysize(int amount)
     {
-        for (int n=0; n<itsvector.size(); n++)
-            itsvector[n].resize(amount+1);
+        for (int n = 0; n < (int)itsvector.size(); n++)
+            itsvector[n].resize(amount + 1);
     };
     
     unsigned char point(int x, int y) const {return itsvector[x][y];}

@@ -15,6 +15,37 @@
 #include "region.hpp"
 #include "functions.hpp"
 
+// This toggles a bool.
+
+void toggle(bool &val)
+{
+    if (val == 0)
+    {
+        val = 1;
+        return;
+    }
+
+    val = 0;
+    return;
+}
+
+// This converts a number to a string containing commas. Taken from here: https://9to5answer.com/c-format-number-with-commas
+
+string formatnumber(int val)
+{
+    string s = to_string(val);
+
+    if (val<1000 && val>-1000)
+        return s;
+    int n = s.length() - 3;
+    while (n > 0)
+    {
+        s.insert(n, ",");
+        n -= 3;
+    }
+
+    return s;
+}
 
 // This converts strings into bools.
 
@@ -37,6 +68,39 @@ short stos(string const& instring)
     return s;
 }
 
+// This converts strings into unsigned shorts. (Note: no error trapping.)
+
+unsigned short stous(string const& instring)
+{
+    int val = stoi(instring);
+
+    unsigned short s = (unsigned short)val;
+
+    return s;
+}
+
+// This converts strings into chars. (Note: no error trapping.)
+
+char stoc(string const& instring)
+{
+    int val = stoi(instring);
+
+    char s = (char)val;
+
+    return s;
+}
+
+// This converts strings into unsigned chars. (Note: no error trapping.)
+
+unsigned char stouc(string const& instring)
+{
+    int val = stoi(instring);
+
+    unsigned char s = (unsigned char)val;
+
+    return s;
+}
+
 // This function saves settings.
 
 void savesettings(planet& world, string filename)
@@ -44,6 +108,7 @@ void savesettings(planet& world, string filename)
     ofstream outfile;
     outfile.open(filename, ios::out);
 
+    outfile << world.settingssaveversion() << '\n';
     outfile << world.landshading() << '\n';
     outfile << world.lakeshading() << '\n';
     outfile << world.seashading() << '\n';
@@ -55,6 +120,8 @@ void savesettings(planet& world, string filename)
     outfile << world.seamarbling() << '\n';
     outfile << world.minriverflowglobal() << '\n';
     outfile << world.minriverflowregional() << '\n';
+    outfile << world.showmangroves() << '\n';
+    outfile << world.colourcliffs() << '\n';
     outfile << world.seaice1() << '\n';
     outfile << world.seaice2() << '\n';
     outfile << world.seaice3() << '\n';
@@ -112,12 +179,18 @@ void savesettings(planet& world, string filename)
     outfile << world.glacier1() << '\n';
     outfile << world.glacier2() << '\n';
     outfile << world.glacier3() << '\n';
-    outfile << world.beach1() << '\n';
-    outfile << world.beach2() << '\n';
-    outfile << world.beach3() << '\n';
+    outfile << world.sand1() << '\n';
+    outfile << world.sand2() << '\n';
+    outfile << world.sand3() << '\n';
     outfile << world.mud1() << '\n';
     outfile << world.mud2() << '\n';
     outfile << world.mud3() << '\n';
+    outfile << world.shingle1() << '\n';
+    outfile << world.shingle2() << '\n';
+    outfile << world.shingle3() << '\n';
+    outfile << world.mangrove1() << '\n';
+    outfile << world.mangrove2() << '\n';
+    outfile << world.mangrove3() << '\n';
     outfile << world.highlight1() << '\n';
     outfile << world.highlight2() << '\n';
     outfile << world.highlight3() << '\n';
@@ -135,6 +208,13 @@ bool loadsettings(planet& world, string filename)
     string line;
     int val;
     float fval;
+    bool bval;
+
+    getline(infile, line);
+    val = stoi(line);
+
+    if (val != world.settingssaveversion()) // Incompatible file format!
+        return 0;
 
     getline(infile, line);
     fval = stof(line);
@@ -179,6 +259,14 @@ bool loadsettings(planet& world, string filename)
     getline(infile, line);
     val = stoi(line);
     world.setminriverflowregional(val);
+
+    getline(infile, line);
+    bval = stob(line);
+    world.setshowmangroves(val);
+
+    getline(infile, line);
+    bval = stob(line);
+    world.setcolourcliffs(val);
 
     getline(infile, line);
     val = stoi(line);
@@ -410,15 +498,15 @@ bool loadsettings(planet& world, string filename)
 
     getline(infile, line);
     val = stoi(line);
-    world.setbeach1(val);
+    world.setsand1(val);
 
     getline(infile, line);
     val = stoi(line);
-    world.setbeach2(val);
+    world.setsand2(val);
 
     getline(infile, line);
     val = stoi(line);
-    world.setbeach3(val);
+    world.setsand3(val);
 
     getline(infile, line);
     val = stoi(line);
@@ -431,6 +519,30 @@ bool loadsettings(planet& world, string filename)
     getline(infile, line);
     val = stoi(line);
     world.setmud3(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setshingle1(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setshingle2(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setshingle3(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setmangrove1(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setmangrove2(val);
+
+    getline(infile, line);
+    val = stoi(line);
+    world.setmangrove3(val);
 
     getline(infile, line);
     val = stoi(line);
@@ -459,8 +571,8 @@ void createriftblob(vector<vector<float>>& riftblob, int size)
             riftblob[i][j] = 0;
     }
 
-    float startvalue = 1.0; // The starting value for the centre of the circle.
-    float endvalue = 0.15; // The end value for the edge of the circle.
+    float startvalue = 1.0f; // The starting value for the centre of the circle.
+    float endvalue = 0.15f; // The end value for the edge of the circle.
     float step = (startvalue - endvalue) / size; // Reduce the value by this much at each step of the circle drawing.
 
     float currentvalue = startvalue;
@@ -504,7 +616,17 @@ int randomsign(int a)
     if (random(0, 1) == 1)
         a = 0 - a;
 
-    return (a);
+    return a;
+}
+
+// This does the same thing, for floats.
+
+float randomsign(float a)
+{
+    if (random(0, 1) == 1)
+        a = 0.0f - a;
+
+    return a;
 }
 
 // These do the same thing but with the inbuilt randomiser.
@@ -591,23 +713,160 @@ int tilt(int a, int b, int percentage)
     int neg = 0;
     int tilt = 0;
 
-    float diff = a - b;
+    float diff = (float)(a - b);
 
-    if (diff < 1)
+    if (diff < 1.0f)
     {
-        diff = 0 - diff;
+        diff = 0.0f - diff;
         neg = 1;
     }
 
-    if (diff != 0)
-        tilt = (diff / 100) * percentage;
+    if (diff != 0.0f)
+        tilt = (int)((diff / 100.0f) * (float)percentage);
 
     if (neg == 1)
         tilt = 0 - tilt;
 
     int newval = b + tilt;
 
-    return(newval);
+    return newval ;
+}
+
+// This does the same thing, but for floats.
+
+float tilt(float a, float b, int percentage)
+{
+    int neg = 0;
+    float tilt = 0.0f;
+
+    float diff = a - b;
+
+    if (diff < 1.0f)
+    {
+        diff = 0.0f - diff;
+        neg = 1;
+    }
+
+    if (diff != 0.0f)
+        tilt = (diff / 100.0f) * (float)percentage;
+
+    if (neg == 1)
+        tilt = 0.0f - tilt;
+
+    float newval = b + tilt;
+
+    return newval;
+}
+
+// This function warps a vector by the specified amount, creating a more natural look.
+
+void warp(vector<vector<int>>& map, int width, int height, int maxelev, int warpfactor, bool vary)
+{
+    vector<vector<int>> dest(width+1, vector<int>(height+1, 0));
+    
+    int grain = 8; // Level of detail on this fractal map.
+    float valuemod = 0.2f;
+    int v = random(3, 6);
+    float valuemod2 = (float)v;
+
+    vector<vector<int>> warpright(width + 1, vector<int>(height + 1, 0));
+    vector<vector<int>> warpdown(width + 1, vector<int>(height + 1, 0));
+
+    createfractal(warpright, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+    createfractal(warpdown, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    // Now create another one to vary the strength of this effect (if needed).
+
+    vector<vector<int>> broad(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    grain = 4;
+    valuemod = 0.002f;
+    valuemod2 = 0.002f;
+
+    if (vary)
+        createfractal(broad, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            int x = i;
+            int y = j;
+
+            float thiswarpright = (float)warpright[i][j] / (float)maxelev;
+            float thiswarpdown = (float)warpdown[i][j] / (float)maxelev;
+
+            thiswarpright = thiswarpright - 0.5f; // So they're in the range -0.5 - 0.5.
+            thiswarpdown = thiswarpdown - 0.5f;
+
+            thiswarpright = thiswarpright * warpfactor;
+            thiswarpdown = thiswarpdown * warpfactor;
+
+            if (vary)
+            {
+                float varyfactor = (float)broad[i][j] / (float)maxelev;
+
+                thiswarpright = thiswarpright * varyfactor;
+                thiswarpdown = thiswarpdown * varyfactor;
+            }
+
+            x = x + (int)thiswarpright;
+
+            if (x<0 || x>width)
+                x = wrap(x, width);
+
+            y = y + (int)thiswarpdown;
+
+            if (y < 0)
+                y = 0;
+
+            if (y > height)
+                y = height;
+
+            int val = map[x][y];
+
+            dest[i][j] = (int)val;
+        }
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            map[i][j] = dest[i][j];
+        }
+    }
+}
+
+// This does the same thing, but a "monstrous" warp - http://thingonitsown.blogspot.com/2018/11/monstrous-terrain.html
+
+void monstrouswarp(vector<vector<int>>& map, int width, int height, int maxelev, int warpfactor)
+{
+    vector<vector<int>> dest(width + 1, vector<int>(height + 1, 0));
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            float point = (float)map[i][j];
+
+            point = point / (float)maxelev; // Makes it into a value from 0.0 to 1.0
+
+            point = point * (float)warpfactor;
+
+            int val = map[(int)point][(int)point];
+ 
+            dest[i][j] = val;
+        }
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            map[i][j] = dest[i][j];
+        }
+    }
 }
 
 // This function shifts everything in a vector to the left by a given number of pixels.
@@ -735,8 +994,8 @@ void smooth(vector<vector<int>>& arr, int width, int height, int maxelev, int am
 
             if (goaheadx == 1 && goaheady == 1)
             {
-                int crount = 0;
-                int ave = 0;
+                float crount = 0.0f;
+                float ave = 0.0f;
 
                 for (int k = i - amount; k <= i + amount; k++)
                 {
@@ -751,15 +1010,15 @@ void smooth(vector<vector<int>>& arr, int width, int height, int maxelev, int am
                     for (int l = j - amount; l <= j + amount; l++)
                     {
                         //ave=ave+nomwrap(k,l);
-                        ave = ave + arr[kk][l];
+                        ave = ave + (float)arr[kk][l];
                         crount++;
                     }
                 }
 
                 ave = ave / crount;
 
-                if (ave > 0 && ave < maxelev)
-                    arr[i][j] = ave;
+                if (ave > 0.0f && ave < (float)maxelev)
+                    arr[i][j] = (int)ave;
             }
         }
     }
@@ -811,8 +1070,8 @@ void drawline(vector<vector<bool>>& arr, int x1, int y1, int x2, int y2)
         std::swap(y1, y2);
     }
 
-    const float dx = x2 - x1;
-    const float dy = fabs(y2 - y1);
+    const float dx = (float)(x2 - x1);
+    const float dy = (float)fabs(y2 - y1);
 
     float error = dx / 2.0f;
     const int ystep = (y1 < y2) ? 1 : -1;
@@ -836,19 +1095,98 @@ void drawline(vector<vector<bool>>& arr, int x1, int y1, int x2, int y2)
     }
 }
 
+// This does the same thing, but allows lines to pass between the left and right sides.
+
+void drawlinewrapped(vector<vector<bool>>& arr, int width, int height, int x1, int y1, int x2, int y2)
+{
+    if (x2 > x1)
+    {
+        int dist = x2 - x1;
+
+        int altdist = (x1 + width) - x2;
+
+        if (altdist < dist)
+            x1 = x1 + width;
+    }
+    else
+    {
+        int dist = x1 - x2;
+
+        int altdist = (x2 + width) - x1;
+
+        if (altdist < dist)
+            x2 = x2 + width;
+    }
+    
+    const bool steep = (fabs(y2 - y1) > fabs(x2 - x1));
+    if (steep)
+    {
+        std::swap(x1, y1);
+        std::swap(x2, y2);
+    }
+
+    if (x1 > x2)
+    {
+        std::swap(x1, x2);
+        std::swap(y1, y2);
+    }
+
+    const float dx = (float)(x2 - x1);
+    const float dy = (float)fabs(y2 - y1);
+
+    float error = dx / 2.0f;
+    const int ystep = (y1 < y2) ? 1 : -1;
+    int y = (int)y1;
+
+    const int maxX = (int)x2;
+
+    for (int x = (int)x1; x <= maxX; x++)
+    {
+        int a = x;
+        int b = y;
+
+        if (steep)
+        {
+            a = y;
+            b = x;
+        }
+
+        if (a < 0)
+            a = a + width;
+
+        if (a > width)
+            a = a - width;
+
+        if (b < 0)
+            b = b + width;
+
+        if (b > width)
+            b = b - width;
+        
+        arr[a][b] = 1;
+
+        error -= dy;
+        if (error < 0)
+        {
+            y += ystep;
+            error += dx;
+        }
+    }
+}
+
 // This function draws a filled circle on the specified vector.
 // Uses code by OBese87 and Libervurto - https://forum.thegamecreators.com/thread/197341
 
 void drawcircle(vector<vector<int>>& arr, int x, int y, int col, int radius)
 {
-    float dots = radius * 6.28;
-    float t = 360.0 / dots;
-    int quarter = dots / 4;
+    float dots = radius * 6.28f;
+    float t = 360.0f / dots;
+    int quarter = (int)(dots / 4.0f);
 
     for (int i = 1; i <= quarter; i++)
     {
-        int u = sin(i * t) * radius;
-        int v = cos(i * t) * radius;
+        int u = (int)((float)sin(i * t) * (float)radius);
+        int v = (int)((float)cos(i * t) * (float)radius);
 
         box(arr, x - u, y - v, x + u, y + v, col);
     }
@@ -877,14 +1215,14 @@ void box(vector<vector<int>>& arr, int x1, int y1, int x2, int y2, int col)
 
 void drawcircle3d(vector<vector<vector<int>>>& arr, int x, int y, int col, int radius, int index)
 {
-    float dots = radius * 6.28;
-    float t = 360.0 / dots;
-    int quarter = dots / 4;
+    float dots = radius * 6.28f;
+    float t = 360.0f / dots;
+    int quarter = (int)(dots / 4.0f);
 
     for (int i = 1; i <= quarter; i++)
     {
-        int u = sin(i * t) * radius;
-        int v = cos(i * t) * radius;
+        int u = (int)((float)sin(i * t) * (float)radius);
+        int v = (int)((float)cos(i * t) * (float)radius);
 
         box3d(arr, x - u, y - v, x + u, y + v, col, index);
     }
@@ -911,8 +1249,8 @@ twofloats curvepos(twofloats p0, twofloats p1, twofloats p2, twofloats p3, float
 {
     twofloats pt;
 
-    pt.x = 0.5 * ((2.0 * p1.x) + (-p0.x + p2.x) * t + (2.0 * p0.x - 5.0 * p1.x + 4.0 * p2.x - p3.x) * (t * t) + (-p0.x + 3.0 * p1.x - 3.0 * p2.x + p3.x) * (t * t * t)); 
-    pt.y = 0.5 * ((2.0 * p1.y) + (-p0.y + p2.y) * t + (2.0 * p0.y - 5.0 * p1.y + 4.0 * p2.y - p3.y) * (t * t) + (-p0.y + 3.0 * p1.y - 3.0 * p2.y + p3.y) * (t * t * t));
+    pt.x = 0.5f * ((2.0f * p1.x) + (-p0.x + p2.x) * t + (2.0f * p0.x - 5.0f * p1.x + 4.0f * p2.x - p3.x) * (t * t) + (-p0.x + 3.0f * p1.x - 3.0f * p2.x + p3.x) * (t * t * t)); 
+    pt.y = 0.5f * ((2.0f * p1.y) + (-p0.y + p2.y) * t + (2.0f * p0.y - 5.0f * p1.y + 4.0f * p2.y - p3.y) * (t * t) + (-p0.y + 3.0f * p1.y - 3.0f * p2.y + p3.y) * (t * t * t));
 
     return (pt);
 }
@@ -1027,13 +1365,13 @@ int tempelevadd(planet& world, int temp, int i, int j)
     if (elevation < 0)
         elevation = 0;
 
-    float elevationadjust = elevation;
-    elevationadjust = elevationadjust / 1000.0;
+    float elevationadjust = (float)elevation;
+    elevationadjust = elevationadjust / 1000.0f;
     elevationadjust = elevationadjust * world.tempdecrease();
 
-    temp = temp - elevationadjust;
+    temp = temp - (int)elevationadjust;
 
-    return (temp);
+    return temp;
 }
 
 // Same thing, but at the regional level.
@@ -1045,13 +1383,13 @@ int tempelevadd(planet& world, region& region, int temp, int i, int j)
     if (elevation < 0)
         elevation = 0;
 
-    float elevationadjust = elevation;
-    elevationadjust = elevationadjust / 1000.0;
+    float elevationadjust = (float)elevation;
+    elevationadjust = elevationadjust / 1000.0f;
     elevationadjust = elevationadjust * world.tempdecrease();
 
-    temp = temp - elevationadjust;
+    temp = temp - (int)elevationadjust;
 
-    return (temp);
+    return temp;
 }
 
 // This function removes the elevation element of a temperature.
@@ -1063,13 +1401,13 @@ int tempelevremove(planet& world, int temp, int i, int j)
     if (elevation < 0)
         elevation = 0;
 
-    float elevationadjust = elevation;
-    elevationadjust = elevationadjust / 1000.0;
+    float elevationadjust = (float)elevation;
+    elevationadjust = elevationadjust / 1000.0f;
     elevationadjust = elevationadjust * world.tempdecrease();
 
-    temp = temp + elevationadjust;
+    temp = temp + (int)elevationadjust;
 
-    return (temp);
+    return temp;
 }
 
 // Same thing, but at the regional level.
@@ -1081,13 +1419,13 @@ int tempelevremove(planet& world, region& region, int temp, int i, int j)
     if (elevation < 0)
         elevation = 0;
 
-    float elevationadjust = elevation;
-    elevationadjust = elevationadjust / 1000.0;
+    float elevationadjust = (float)elevation;
+    elevationadjust = elevationadjust / 1000.0f;
     elevationadjust = elevationadjust * world.tempdecrease();
 
-    temp = temp + elevationadjust;
+    temp = temp + (int)elevationadjust;
 
-    return (temp);
+    return temp;
 }
 
 // This function translates a direction from an integer into a text string.
@@ -1373,46 +1711,44 @@ int getflatness(planet& world, int x, int y)
 
     int thiselev = getflatelevation(world, x, y);
 
-    float flatness = 0;
+    float flatness = 0.0f;
 
     int thatelev = getflatelevation(world, xminus, y);
-    flatness = flatness + abs(thiselev - thatelev);
+    flatness = flatness + (float)abs(thiselev - thatelev);
 
-    float crount = 2;
+    float crount = 2.0f;
 
     if (y > 0)
     {
         thatelev = getflatelevation(world, xminus, y - 1);
-        flatness = flatness + abs(thiselev - thatelev);
+        flatness = flatness + (float)abs(thiselev - thatelev);
 
         thatelev = getflatelevation(world, x, y - 1);
-        flatness = flatness + abs(thiselev - thatelev);
+        flatness = flatness + (float)abs(thiselev - thatelev);
 
         thatelev = getflatelevation(world, xplus, y - 1);
-        flatness = flatness + abs(thiselev - thatelev);
+        flatness = flatness + (float)abs(thiselev - thatelev);
 
-        crount = crount + 3;
+        crount = crount + 3.0f;
     }
 
     if (y < height)
     {
         thatelev = getflatelevation(world, xminus, y + 1);
-        flatness = flatness + abs(thiselev - thatelev);
+        flatness = flatness + (float)abs(thiselev - thatelev);
 
         thatelev = getflatelevation(world, x, y + 1);
-        flatness = flatness + abs(thiselev - thatelev);
+        flatness = flatness + (float)abs(thiselev - thatelev);
 
         thatelev = getflatelevation(world, xplus, y + 1);
-        flatness = flatness + abs(thiselev - thatelev);
+        flatness = flatness + (float)abs(thiselev - thatelev);
 
-        crount = crount + 3;
+        crount = crount + 3.0f;
     }
 
     flatness = flatness / crount;
 
-    int iflatness = flatness;
-
-    return (iflatness);
+    return (int)flatness;
 }
 
 // This function gets the elevation of a point, incorporating water level.
@@ -1459,7 +1795,7 @@ int landdistance(planet& world, int x, int y)
 
     if (y < equator) // Northern hemisphere
     {
-        if (world.eqtemperature() < world.northpolartemperature())
+        if (world.northpolartemp()>world.eqtemp())
         {
             pets = -1;
             target = 0;
@@ -1467,7 +1803,7 @@ int landdistance(planet& world, int x, int y)
     }
     else // Southern hemisphere
     {
-        if (world.eqtemperature() < world.southpolartemperature())
+        if (world.southpolartemp() > world.eqtemp())
         {
             pets = 1;
             target = height;
@@ -1486,7 +1822,7 @@ int landdistance(planet& world, int x, int y)
                     xleft = width;
 
                 int xright = x + 1;
-                if (xright = width + 1)
+                if (xright == width + 1)
                     xright = 0;
 
                 if (world.sea(xleft, j + pets) == 0 && world.sea(xright, j + pets) == 0)
@@ -3049,36 +3385,51 @@ void initialiseworld(planet& world)
 {
     world.clear();
 
-    int width = 2047;
-    int height = 1024;
+    int saveversion = 1;        // Only save files that start with this number can be loaded
+    int settingssaveversion = 1; // As above, but for settings files.
+    int size = 2;
+    int type = 2;
+    int width = 2047; // 1280; // 2047;
+    int height = 1024; // 640; // 1024;
     bool rotation = 1;            // 1 to rotate like Earth, 0 for the other way
     float tilt = 22.5;            // for calculating seasonal change
-    float tempdecrease = 6.5;     // for reducing temperature with elevation
-    int northpolartemp = -32; // -36;     // temperature at the north pole
-    int southpolartemp = -38; // -36     // temperature at the south pole
-    int eqtemp = 38;              // temperature at the equator
-    int waterpickup = 100;        // How much water to pick up over oceans
-    float riverfactor = 15.0;     // for calculating flow in cubic metres/second
+    float eccentricity = 0.0167f;  // the greater this is, the more climate difference there will be between hemispheres
+    short perihelion = 0;         // point at which it's closest to the sun (0=Jan, 1=Jul)
+    float gravity = 1.0f;          // affects mountain size and valley depth
+    float lunar = 1.0f;            // affects tides
+    float tempdecrease = 6.5f;     // for reducing temperature with elevation
+    int northpolaradjust = 0; // -36;     // adjustment to temperature at the north pole
+    int southpolaradjust = 0; // -36     // adjustment to temperature at the south pole
+    int averagetemp = 14;              // average global temperature
+    float waterpickup = 1.0f;        // How much water to pick up over oceans
+    float riverfactor = 15.0f;     // for calculating flow in cubic metres/second
     int riverlandreduce = 20;     // how much rivers lower the land
     int estuarylimit = 20;        // how big a river must be to have an estuary
     int glacialtemp = 4;          // maximum temperature for glacial features
     int glaciertemp = -1;          // maximum temperature for actual glaciers
-    float mountainreduce = 0.75;  // factor to reduce mountain size by
+    float mountainreduce = 0.75f;  // factor to reduce mountain size by
     int climatenumber = 31;       // total number of climate types
     int maxelevation = 24000;     // maximum elevation
     int sealevel = 12000;         // sea level
-    int noisewidth = 1024;
-    int noiseheight = 512;
+    int craterno = 0;             // number of craters
 
 
+    world.setsaveversion(saveversion);
+    world.setsettingssaveversion(settingssaveversion);
+    world.setsize(size);
     world.setwidth(width);
     world.setheight(height);
+    world.settype(type);
     world.setrotation(rotation);
     world.settilt(tilt);
+    world.seteccentricity(eccentricity);
+    world.setperihelion(perihelion);
+    world.setgravity(gravity);
+    world.setlunar(lunar);
     world.settempdecrease(tempdecrease);
-    world.setnorthpolartemperature(northpolartemp);
-    world.setsouthpolartemperature(southpolartemp);
-    world.seteqtemperature(eqtemp);
+    world.setnorthpolaradjust(northpolaradjust);
+    world.setsouthpolaradjust(southpolaradjust);
+    world.setaveragetemp(averagetemp);
     world.setwaterpickup(waterpickup);
     world.setriverfactor(riverfactor);
     world.setriverlandreduce(riverlandreduce);
@@ -3089,27 +3440,33 @@ void initialiseworld(planet& world)
     world.setclimatenumber(climatenumber);
     world.setmaxelevation(maxelevation);
     world.setsealevel(sealevel);
-    world.setnoisewidth(noisewidth);
-    world.setnoiseheight(noiseheight);
+    world.setlandtotal(0);
+    world.setseatotal(0);
+    world.setcraterno(craterno);
+
+    world.setseatotal(0);
+    world.setlandtotal(0);
 }
 
 // This function sets up the default colours (and other settings) for drawing relief maps.
 
 void initialisemapcolours(planet& world)
 {
-    world.setlandshading(0.7);
-    world.setlakeshading(0.3);
-    world.setseashading(0.5);
+    world.setlandshading(0.7f);
+    world.setlakeshading(0.3f);
+    world.setseashading(0.5f);
 
-    world.setlandmarbling(0.5);
-    world.setlakemarbling(0.8);
-    world.setseamarbling(0.8);
+    world.setlandmarbling(0.5f);
+    world.setlakemarbling(0.8f);
+    world.setseamarbling(0.8f);
 
     world.setshadingdir(8);
     world.setsnowchange(1);
     world.setseaiceappearance(1);
     world.setminriverflowglobal(1000000);
     world.setminriverflowregional(150);
+    world.setshowmangroves(1);
+    world.setcolourcliffs(0);
 
     world.setseaice1(243);
     world.setseaice2(243);
@@ -3187,13 +3544,21 @@ void initialisemapcolours(planet& world)
     world.setglacier2(222);
     world.setglacier3(251); // Glacier colours.
 
-    world.setbeach1(244);
-    world.setbeach2(231);
-    world.setbeach3(90); // Beach colours. (Currently unused.)
+    world.setsand1(174);
+    world.setsand2(168);
+    world.setsand3(84); // Sand colours.
 
-    world.setmud1(117);
-    world.setmud2(120);
-    world.setmud3(62); // Mud colours. (Currently unused.)
+    world.setmud1(94);
+    world.setmud2(85);
+    world.setmud3(55); // Mud colours.
+
+    world.setshingle1(142);
+    world.setshingle2(113);
+    world.setshingle3(58); // Shingle colours.
+
+    world.setmangrove1(37);
+    world.setmangrove2(70);
+    world.setmangrove3(17); // Mangrove colours.
 
     world.sethighlight1(0);
     world.sethighlight2(255);
@@ -3224,42 +3589,370 @@ void changeworldproperties(planet& world)
     long seed = world.seed();
     fast_srand(seed);
 
-    if (random(1, 8) == 1)
+    // Size and type
+
+    world.setsize(2); // Large world
+    world.setgravity(1.0f);
+
+    world.settype(2);
+
+    if (random(1, 30) == 1)
+        world.settype(4);
+
+    if (random(1, 12) == 1) // Fairly rarely, have more fragmented continents
+        world.settype(1);
+
+    if (random(1, 16) == 1) // Medium-sized world
+    {
+        world.setsize(1);
+        world.setgravity(0.4f);
+
+        if (random(1,4)!=1)
+            world.settype(4);
+    }
+
+    if (random(1, 25) == 1) // Small world
+    {
+        world.setsize(0);
+        world.setgravity(0.15f);
+
+        if (random(1, 8) != 1)
+            world.settype(4);
+    }
+
+    if (random(1, 30) == 1) // Occasionally, have ocean worlds
+        world.settype(3);
+
+    // Rotation
+
+    if (random(1, 6) == 1)
         world.setrotation(0);
+    else
+        world.setrotation(1);
 
-    float newtilt = (float)25 - (float)random(1, 50);
-    newtilt = newtilt / 10.0;
+    // Gravity
 
-    newtilt = newtilt + 22.5;
+    float oldgravity = world.gravity();
+
+    int gravityvar = random(75, 125);
+
+    world.setgravity(oldgravity * ((float)gravityvar / 100.0f));
+
+    // Perihelion
+
+    if (random(1, 6) == 1)
+        world.setperihelion(1);
+
+    // Obliquity
+
+    float newtilt = 25.0f - (float)random(1, 50);
+    newtilt = newtilt / 10.0f;
+
+    newtilt = newtilt + 22.5f;
 
     world.settilt(newtilt);
 
-    int npoletemp = world.northpolartemperature();
-    int spoletemp = world.southpolartemperature();
-    int eqtemp = world.eqtemperature();
+    // Eccentricity
 
-    int tempadjust = 15 - random(1, 30);
+    float neweccentricity = (float)random(1, 200);
+    neweccentricity = neweccentricity / 10000.0f + 0.005f;
 
-    npoletemp = npoletemp + tempadjust;
-    spoletemp = spoletemp + tempadjust;
-    eqtemp = eqtemp + tempadjust;
+    world.seteccentricity(neweccentricity);
 
-    int npoleadjust = 5 - random(1, 10);
-    int spoleadjust = 5 - random(1, 10);
+    // Lunar pull
 
-    npoletemp = npoletemp + npoleadjust;
-    spoletemp = spoletemp + spoleadjust;
+    float newlunar = (float)random(1, 40);
 
-    world.setnorthpolartemperature(npoletemp);
-    world.setsouthpolartemperature(spoletemp);
-    world.seteqtemperature(eqtemp);
+    newlunar = newlunar / 100.0f;
+    newlunar = newlunar + 0.8f;
 
-    int newwater = 80 + random(1, 40);
+    world.setlunar(newlunar);
+
+    // Average temperature
+
+    int averagetemp  = random(1, 30);
+    averagetemp = averagetemp - 1;
+
+    world.setaveragetemp(averagetemp);
+
+    // Polar temperature adjustments
+
+    int npoleadjust = randomsign(random(0, 4));
+    int spoleadjust = randomsign(random(0, 4));
+
+    world.setnorthpolaradjust(npoleadjust);
+    world.setsouthpolaradjust(spoleadjust);
+
+    // Temperature decrease rate
+
+    float newtempdecrease = (float)random(1, 100);
+    newtempdecrease = newtempdecrease / 100.0f;
+
+    newtempdecrease = newtempdecrease + 6.0f;
+
+    world.settempdecrease(newtempdecrease);
+
+    // Water pickup rate
+
+    float newwater = 80.0f + (float)random(1, 40);
+
+    newwater = newwater / 100.0f;
 
     world.setwaterpickup(newwater);
+
+    // Glacial temperature
 
     int newglacial = -10 + random(1, 20);
 
     world.setglacialtemp(newglacial);
+
+    // Sea level
+
+    if (world.type() == 4)
+    {
+        int sealevel = world.sealevel();
+        
+        float sealevelmult = (float)random(15, 100);
+        sealevelmult = sealevelmult / 100.0f;
+
+        if (random(1, 5) == 1)
+            sealevelmult = sealevelmult * sealevelmult;
+        else
+            sealevelmult = ((sealevelmult * sealevelmult) + sealevelmult) / 2.0f; // Make lower values more likely.
+
+        float newsealevel = (float)sealevel * sealevelmult;
+        sealevel = (int)newsealevel;
+
+        world.setsealevel(sealevel);
+    }
 }
+
+// This works out the total areas of land and sea in the world.
+
+void getlandandseatotals(planet& world)
+{
+    int width = world.width();
+    int height = world.height();
+    int sealevel = world.sealevel();
+    
+    int seatotal = 0;
+    int landtotal = 0;
+
+    for (int i = 1; i < width; i++) // Avoid the margins, to avoid false positives.
+    {
+        for (int j = 1; j < height; j++)
+        {
+            if (world.nom(i, j) > sealevel)
+                landtotal++;
+            else
+                seatotal++;
+        }
+    }
+
+    if (landtotal > 0)
+    {
+        if ((float)seatotal / (float)landtotal < 0.05) // If it's this close to 0, assume it is 0.
+            seatotal = 0;
+    }
+
+    world.setlandtotal(landtotal);
+    world.setseatotal(seatotal);
+}
+
+// This function creates a voronoi map.
+
+void makevoronoi(vector<vector<short>>& voronoi, int width, int height, int points)
+{
+    vector<vector<int>> pointslist(points, vector<int>(2, 0));
+
+    int margin = points / 6;
+
+    int widthmargin = width / 10;
+    int widthfarmargin = width - widthmargin;
+    int heightmargin = height / 10;
+    int heightfarmargin = height - heightmargin;
+
+    for (int n = 0; n <= margin; n = n + 3) // Force it to put some points near the edges.
+    {
+        if (random(1, 2) == 1)
+        {
+            pointslist[n][0] = random(0, widthmargin);
+            pointslist[n][1] = random(0, height);
+        }
+        else
+        {
+            pointslist[n][0] = random(widthfarmargin, width);
+            pointslist[n][1] = random(0, height);
+        }
+
+        pointslist[n + 1][0] = random(0, width);
+        pointslist[n + 1][1] = random(0, heightmargin);
+
+        pointslist[n + 2][0] = random(0, width);
+        pointslist[n + 2][1] = random(heightfarmargin, height);
+
+    }
+
+    for (int n = margin + 1; n < points; n++)
+    {
+        pointslist[n][0] = random(0, width);
+        pointslist[n][1] = random(0, height);
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            int closest = 0;
+            int dist = 10000000;
+
+            for (int point = 0; point < points; point++)
+            {
+                int xdist = i - pointslist[point][0];
+                int ydist = j - pointslist[point][1];
+                int pointdist = xdist * xdist + ydist * ydist;
+
+                if (pointdist < dist)
+                {
+                    closest = point;
+                    dist = pointdist;
+                }
+            }
+
+            voronoi[i][j] = closest;
+        }
+    }
+}
+
+// This does the same thing, for the continental shelves.
+
+void makeshelvesvoronoi(planet& world, vector<vector<short>>& voronoi, vector<vector<bool>>& outline, int pointdist)
+{
+    int width = world.width();
+    int height = world.height();
+    int maxelev = world.maxelevation();
+    int midelev = maxelev / 2;
+
+    int grain = 16; // Level of detail on this fractal map.
+    float valuemod = 0.4f;
+    int v = random(3, 6);
+    float valuemod2 = (float)v;
+
+    vector<vector<int>> fractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    createfractal(fractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
+
+    int warpdist = 1;
+    int warpdiv = midelev / warpdist;
+
+    vector<vector<int>> pointsmap(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+    int pointnumber = 1;
+    int movedist = (pointdist / 4) * 3;
+
+    for (int i = 0; i <= width; i = i + pointdist)
+    {
+        for (int j = 0; j <= height; j = j + pointdist)
+        {
+            int ii = i + randomsign(random(1, movedist));
+            int jj = j + randomsign(random(1, movedist));
+
+            if (ii<0 || ii>width)
+                ii = wrap(ii, width);
+
+            if (jj < 0)
+                jj = 0;
+
+            if (jj > height)
+                jj = height;
+
+            pointsmap[ii][jj] = pointnumber;
+            pointnumber++;
+        }
+    }
+
+    for (int i = 0; i <= width; i++)
+    {
+        for (int j = 0; j <= height; j++)
+        {
+            int closest = 0;
+            int dist = 10000000;
+
+            int warpdistx = 0;
+            int warpdisty = 0;
+
+            int warpx = i;
+            int warpy = j;
+
+            if (fractal[warpx][warpy] > maxelev / 2)
+                warpdistx = (fractal[warpx][warpy] - midelev) / warpdiv;
+            else
+                warpdistx = 0 - (midelev - fractal[warpx][warpy]) / warpdiv;
+
+            int checkx = i + warpdistx;
+
+            if (checkx<0 || checkx>width)
+                wrap(checkx, width);
+
+            warpx = warpx + width / 2;
+
+            if (warpx > width)
+                warpx = warpx - width;
+
+            if (fractal[warpx][warpy] > maxelev / 2)
+                warpdisty = (fractal[warpx][warpy] - midelev) / warpdiv;
+            else
+                warpdisty = 0 - (midelev - fractal[warpx][warpy]) / warpdiv;
+
+            int checky = j + warpdisty;
+
+            if (checky < 0)
+                checky = 0;
+
+            if (checky > height)
+                checky = height;
+
+            checkx = i;
+            checky = j;
+
+            int distcheck = 10;
+
+            do
+            {
+                for (int x = checkx - distcheck; x <= checkx + distcheck; x++)
+                {
+                    int xx = x;
+
+                    if (xx<0 || xx>width)
+                        xx = wrap(xx, width);
+
+                    for (int y = checky - distcheck; y <= checky + distcheck; y++)
+                    {
+                        if (y >= 0 && y <= height)
+                        {
+                            if (pointsmap[xx][y] != 0)
+                            {
+                                int xdist = checkx - xx;
+                                int ydist = checky - y;
+                                int pointdist = xdist * xdist + ydist * ydist;
+
+                                if (pointdist < dist)
+                                {
+                                    closest = pointsmap[xx][y];
+                                    dist = pointdist;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                distcheck = distcheck + 10;
+
+            } while (closest == 0);
+
+            voronoi[i][j] = closest;
+        }
+    }
+}
+
 

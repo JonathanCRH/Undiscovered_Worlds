@@ -3,6 +3,14 @@
 #include "imgui-SFML.h"
 #include "ImGuiFileDialog.h"
 
+#pragma comment(lib, "urlmon.lib")
+
+#include <urlmon.h>
+#include <cstdio>
+
+#include <windows.h>
+#include <shellapi.h>
+
 #include <iomanip>
 #include <sstream>
 #include <iostream>
@@ -24,6 +32,8 @@
 #include "planet.hpp"
 #include "region.hpp"
 #include "functions.hpp"
+
+#define getURL URLOpenBlockingStreamA
 
 // nodiscard attribute
 #pragma warning (disable: 4834)
@@ -63,6 +73,15 @@ int fast_rand(void)
 
 int main()
 {
+    float currentversion = 1.0f;
+    float latestversion = getlatestversion();
+
+    string currentversionstring = "Current version: " + to_string(currentversion);
+    string latestversionstring = "Latest version: " + to_string(latestversion);
+
+    updatereport(currentversionstring.c_str());
+    updatereport(latestversionstring.c_str());
+
     // Set up the window.
 
     int scwidth = 1224;
@@ -75,7 +94,7 @@ int main()
     const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
 
     // Setting up Dear ImGUI style
-    // Based on Cinder-ImGui by Simon Geilfus - https://github.com/simongeilfus/Cinder-ImGui
+    // Adapted from Cinder-ImGui by Simon Geilfus - https://github.com/simongeilfus/Cinder-ImGui
 
     ImGuiStyle& Style = ImGui::GetStyle();
 
@@ -94,21 +113,23 @@ int main()
     Style.ScrollbarSize = 12.0f;
     Style.ScrollbarRounding = 16.0f;
 
-    float highlight1 = 0.40;
-    float highlight2 = 0.40;
-    float highlight3 = 0.40;
+    float highlight1 = 0.40f;
+    float highlight2 = 0.40f;
+    float highlight3 = 0.40f;
 
     Style.Colors[ImGuiCol_Text] = ImVec4(0.86f, 0.93f, 0.89f, 0.78f);
     Style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.86f, 0.93f, 0.89f, 0.28f);
     Style.Colors[ImGuiCol_WindowBg] = ImVec4(0.13f, 0.14f, 0.17f, 1.00f);
+    Style.Colors[ImGuiCol_ChildBg] = ImVec4(highlight1, highlight2, highlight3, 1.00f); // new
+    Style.Colors[ImGuiCol_PopupBg] = ImVec4(highlight1, highlight2, highlight3, 1.00f); // new
     Style.Colors[ImGuiCol_Border] = ImVec4(0.31f, 0.31f, 1.00f, 0.00f);
     Style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
     Style.Colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
-    Style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(highlight1, highlight2, highlight3, 0.78f);
-    Style.Colors[ImGuiCol_FrameBgActive] = ImVec4(highlight1, highlight2, highlight3, 1.00f);
+    Style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    Style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
     Style.Colors[ImGuiCol_TitleBg] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
     Style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.20f, 0.22f, 0.27f, 0.75f);
-    Style.Colors[ImGuiCol_TitleBgActive] = ImVec4(highlight1, highlight2, highlight3, 1.00f);
+    Style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
     Style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.20f, 0.22f, 0.27f, 0.47f);
     Style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
     Style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.09f, 0.15f, 0.16f, 1.00f);
@@ -136,6 +157,25 @@ int main()
     Style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(highlight1, highlight2, highlight3, 0.43f);
     Style.Colors[ImGuiCol_PopupBg] = ImVec4(0.20f, 0.22f, 0.27f, 0.9f);
     //Style.Colors[ImGuiCol_ModalWindowDarkening] = ImVec4(0.20f, 0.22f, 0.27f, 0.73f);
+
+    Style.Colors[ImGuiCol_Tab] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    Style.Colors[ImGuiCol_TabHovered] = ImVec4(highlight1, highlight2, highlight3, 0.86f);
+    Style.Colors[ImGuiCol_TabActive] = ImVec4(highlight1, highlight2, highlight3, 0.86f);
+    Style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    Style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(highlight1, highlight2, highlight3, 0.86f);
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImFont* font1 = io.Fonts->AddFontFromFileTTF("fonts\\Roboto-Medium.ttf", 18.0f);
+    io.Fonts->Build();
+    IM_ASSERT(font != NULL);
+    ImGui::SFML::UpdateFontTexture();
+
+    ImGuiWindowFlags window_flags = 0;
+    window_flags |= ImGuiWindowFlags_NoCollapse;
+    window_flags |= ImGuiWindowFlags_NoResize;
+
+    string degree = "\xC2\xB0"; // 0xC2 0xB0 (c2b0) °
+    string cube = "\xC2\xB3"; // 0xC2 0xB3 (c2b3) ³
 
     // Now create the main world object and initialise its basic variables.
 
@@ -243,7 +283,7 @@ int main()
 
     sf::Sprite* minimap = new sf::Sprite;
 
-    float minimapxpos = 190.f + globaltexturesize.x / 4;
+    float minimapxpos = 190.f + ARRAYWIDTH / 4;
     float minimapypos = 20.f;
 
     minimap->setTexture(*globalmaptexture);
@@ -269,14 +309,14 @@ int main()
 
     sf::Sprite* highlight = new sf::Sprite;
     highlight->setTexture(*highlighttexture);
-    highlight->setOrigin(highlightsize / 2, highlightsize / 2);
+    highlight->setOrigin((float)(highlightsize / 2), (float)(highlightsize / 2));
 
     sf::Texture* minihighlighttexture = new sf::Texture;
     minihighlighttexture->loadFromImage(*minihighlightimage);
 
     sf::Sprite* minihighlight = new sf::Sprite;
     minihighlight->setTexture(*minihighlighttexture);
-    minihighlight->setOrigin(minihighlightsize / 2, minihighlightsize / 2);
+    minihighlight->setOrigin((float)(minihighlightsize / 2), (float)(minihighlightsize / 2));
 
     // Now we must create the images for the different regional maps. Same thing again.
 
@@ -370,13 +410,13 @@ int main()
 
     int riftblobsize = 40;
 
-    vector<vector<float>> riftblob(riftblobsize + 2, vector<float>(riftblobsize + 2, 0));
+    vector<vector<float>> riftblob(riftblobsize + 2, vector<float>(riftblobsize + 2, 0.0f));
 
     createriftblob(riftblob, riftblobsize / 2);
 
     // Other bits
 
-    fast_srand(time(0));
+    fast_srand((long)time(0));
 
     bool brandnew = 1; // This means the program has just started and it's the first world to be generated.
     bool loadingworld = 0; // This would mean that we're trying to load in a new world.
@@ -391,7 +431,29 @@ int main()
     bool importingmountainsmap = 0;
     bool importingvolcanoesmap = 0;
 
+    string month[12];
+
+    month[0] = "Jan";
+    month[1] = "Feb";
+    month[2] = "Mar";
+    month[3] = "Apr";
+    month[4] = "May";
+    month[5] = "Jun";
+    month[6] = "Jul";
+    month[7] = "Aug";
+    month[8] = "Sep";
+    month[9] = "Oct";
+    month[10] = "Nov";
+    month[11] = "Dec";
+
+    vector<int> squareroot((MAXCRATERRADIUS* MAXCRATERRADIUS + MAXCRATERRADIUS + 1) * 24);
+
+    for (int n = 0; n <= ((MAXCRATERRADIUS * MAXCRATERRADIUS + MAXCRATERRADIUS) * 24); n++)
+        squareroot[n] = (int)sqrt(n);
+
     screenmodeenum screenmode = createworldscreen; // This is used to keep track of which screen mode we're in.
+    screenmodeenum oldscreenmode = createworldscreen;
+
     mapviewenum mapview = relief; // This is used to keep track of which kind of information we want the map to show.
 
     int poix = 0; // Coordinates of the point of interest, if there is one.
@@ -422,14 +484,20 @@ int main()
     int newx = -1;
     int newy = -1; // These are used to locate the new region.
 
+    bool newworld = 0; // Whether to show the new world message.
+
     bool showcolouroptions = 0; // If this is 1 then we display the appearance preferences options.
     bool showworldproperties = 0; // If this is 1 then we display the properties of the current world.
-    bool showwarning = 0; // If this is 1 then a warning is shown (which allows the import screen to be opened).
-    bool showcontinents = 0; // If this is 1 then we show the panel for creating custom world terrain.
+    bool showglobaltemperaturechart = 0; // If thjis is 1 then we show monthly temperatures for the selected point.
+    bool showglobalrainfallchart = 0; // If thjis is 1 then we show monthly rainfall for the selected point.
+    bool showregionaltemperaturechart = 0; // If thjis is 1 then we show monthly temperatures for the selected point.
+    bool showregionalrainfallchart = 0; // If thjis is 1 then we show monthly rainfall for the selected point.
+    bool showsetsize = 0; // If this is 1 then a window is show to set the size for the custom world.
+    bool showtectonicchooser = 0; // If this is 1 then we show the panel for creating tectonic-based custom world terrain.
+    bool shownontectonicchooser = 0; // If this is 1 then we show the panel for creating non-tectonic-based custom world terrain.
     bool showworldeditproperties = 0; // If this is 1 then we show the panel for editing custom world properties.
-
-    string infotext = "Welcome to a new world!"; // Info about the point selected in the global map screen
-    string infotext2 = ""; // Info about the point selected in the regional map screen
+    bool showareawarning = 0; // If this is 1 then we show a warning about too-large areas.
+    bool showabout = 0; // If this is 1 then we display information about the program.
 
     for (int n = 0; n < GLOBALMAPTYPES; n++)
         regionalmapimagecreated[n] = 0;
@@ -447,22 +515,34 @@ int main()
     short savingworldpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
     short exportingareapass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
     short generatingregionpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
-    short generatingcontinentspass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
+    short generatingtectonicpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
+    short generatingnontectonicpass = 0; // Tracks which pass we're on for this section, to ensure that widgets are correctly displayed.
 
     int landmass = 5; // Rough amount of land coverage, for custom worlds.
     int mergefactor = 15; // Amount continents will be removed by merging with the fractal map, for custom worlds.-----------------
+    int iterations = 4; // Number of terrain iterations for worlds of terrain type 4.
+    int sealeveleditable = 5; // Sea level (0-10) for worlds of terrain type 4.
+
+    vector<vector<bool>> OKmountains(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0)); // This will track mountains that have been imported by the user and which therefore should not be altered to take account of gravity.
 
     // Now world property variables that can be directly manipulated in the world settings edit panel.
 
+    int currentsize = world->size();
+    float currentgravity = world->gravity();
+    float currentlunar = world->lunar();
+    float currenteccentricity = world->eccentricity();  
+    int currentperihelion = world->perihelion();
     int currentrotation = world->rotation();
     float currenttilt = world->tilt();
     float currenttempdecrease = world->tempdecrease();
-    int currentnorthpolartemp = world->northpolartemperature();
-    int currentsouthpolartemp = world->southpolartemperature();
-    int currenteqtemp = world->eqtemperature();
-    int currentwaterpickup = world->waterpickup();
+    int currentnorthpolaradjust = world->northpolaradjust();
+    int currentsouthpolaradjust = world->southpolaradjust();
+    int currentaveragetemp = world->averagetemp();
+    float currentwaterpickup = world->waterpickup();
     int currentglacialtemp = world->glacialtemp();
     bool currentrivers = 1; // This one controls whether or not rivers will be calculated for the custom world.
+    bool currentlakes = 1; // This one controls whether or not lakes will be calculated for the custom world.
+    bool currentdeltas = 1; // This one controls whether or not river deltas will be calculated for the custom world.
 
     // Now we prepare map colours. We put them into ImVec4 objects, which can be directly manipulated by the colour picker objects.
 
@@ -599,6 +679,34 @@ int main()
     rivercolour.z = (float)world->river3() / 255.f;
     rivercolour.w = 1.f;
 
+    ImVec4 sandcolour;
+
+    sandcolour.x = (float)world->sand1() / 255.f;
+    sandcolour.y = (float)world->sand2() / 255.f;
+    sandcolour.z = (float)world->sand3() / 255.f;
+    sandcolour.w = 1.f;
+
+    ImVec4 mudcolour;
+
+    mudcolour.x = (float)world->mud1() / 255.f;
+    mudcolour.y = (float)world->mud2() / 255.f;
+    mudcolour.z = (float)world->mud3() / 255.f;
+    mudcolour.w = 1.f;
+
+    ImVec4 shinglecolour;
+
+    shinglecolour.x = (float)world->shingle1() / 255.f;
+    shinglecolour.y = (float)world->shingle2() / 255.f;
+    shinglecolour.z = (float)world->shingle3() / 255.f;
+    shinglecolour.w = 1.f;
+
+    ImVec4 mangrovecolour;
+
+    mangrovecolour.x = (float)world->mangrove1() / 255.f;
+    mangrovecolour.y = (float)world->mangrove2() / 255.f;
+    mangrovecolour.z = (float)world->mangrove3() / 255.f;
+    mangrovecolour.w = 1.f;
+
     ImVec4 highlightcolour;
 
     highlightcolour.x = (float)world->highlight1() / 255.f;
@@ -637,6 +745,8 @@ int main()
 
     int snowchange = world->snowchange() - 1;
     int seaiceappearance = world->seaiceappearance() - 1;
+    bool colourcliffs = world->colourcliffs();
+    bool mangroves = world->showmangroves();
 
     sf::Clock deltaClock;
     while (window.isOpen())
@@ -655,9 +765,9 @@ int main()
         ImGui::SFML::Update(window, deltaClock.restart());
 
         if (screenmode == movingtoglobalmapscreen)
-        {
-            screenmode = globalmapscreen;
-        }
+            screenmode = globalmapscreen;        
+
+        ImGui::PushFont(font1);
 
         //ImGui::ShowDemoWindow();
 
@@ -667,9 +777,42 @@ int main()
 
         if (screenmode == createworldscreen)
         {
-            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(193, 71), ImGuiCond_FirstUseEver);
-            ImGui::Begin("Create world");
+            showglobaltemperaturechart = 0;
+            showglobalrainfallchart = 0;
+            showregionaltemperaturechart = 0;
+            showregionalrainfallchart = 0;
+            showworldproperties = 0;
+            showworldeditproperties = 0;
+            newworld = 0;
+
+            // If there is an update available, show an alert.
+
+            if (latestversion > currentversion)
+            {
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 10), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(224, 107), ImGuiCond_FirstUseEver);
+
+                ImGui::Begin("Update available!", NULL, window_flags);
+               
+                ImGui::Text("Click here to visit the website.");
+                ImGui::Text(" ");
+
+                ImGui::Text(" ");
+
+                ImGui::SameLine(95.0f);
+
+                if (ImGui::Button("Go"))
+                {
+                    ShellExecute(0, 0, L"https://undiscoveredworlds.blogspot.com/2019/01/what-is-undiscovered-worlds.html", 0, 0, SW_SHOW);
+                }
+
+                ImGui::End();
+            }
+            
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 483, main_viewport->WorkPos.y + 206), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(249, 90), ImGuiCond_FirstUseEver);
+            
+            ImGui::Begin("Create world",NULL, window_flags);
 
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputInt(" ", &seedentry);
@@ -680,7 +823,7 @@ int main()
             if (seedentry < 0)
                 seedentry = 0;
 
-            string loadtext = "Load a world";
+            string loadtext = "Load a world.";
 
             if (brandnew == 1)
             {
@@ -693,7 +836,7 @@ int main()
             }
             else
             {
-                loadtext = "Return to the world map";
+                loadtext = "Return to the world map.";
                 
                 if (ImGui::Button("Cancel"))
                     screenmode = globalmapscreen;
@@ -706,10 +849,7 @@ int main()
 
             if (ImGui::Button("Custom"))
             {
-                if (brandnew == 1)
-                    screenmode = importscreen;
-                else
-                    showwarning = 1;
+                    showsetsize = 1;
             }
 
             if (ImGui::IsItemHovered())
@@ -724,9 +864,9 @@ int main()
                 for (int n = 1; n <= 7; n++)
                 {
                     if (n == 7)
-                        seed = seed + (random(1, 9) * pow(10, n));
+                        seed = seed + (random(1, 9) * (int)pow(10, n));
                     else
-                        seed = seed + (random(0, 9) * pow(10, n));
+                        seed = seed + (random(0, 9) * (int)pow(10, n));
                 }
 
                 seedentry = seed;
@@ -758,9 +898,9 @@ int main()
         {
             if (creatingworldpass<10)
             {
-                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                ImGui::Begin("Please wait!");
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 506, main_viewport->WorkPos.y + 171), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(173, 68), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait...##createworld ", NULL, window_flags);
                 ImGui::Text("Generating world...");
                 ImGui::End();
 
@@ -776,15 +916,14 @@ int main()
 
                 changeworldproperties(*world);
 
+                adjustforsize(*world, globaltexturesize, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *highlightimage, highlightsize, *minihighlightimage, minihighlightsize);
+                
+                minihighlighttexture->loadFromImage(*minihighlightimage);
+                minihighlight->setTexture(*minihighlighttexture);
+                minihighlight->setOrigin((float)minihighlightsize /2.0f, (float)minihighlightsize / 2.0f);
+
                 for (int n = 0; n < GLOBALMAPTYPES; n++) // Set all map types as unviewed, to force them to be redrawn when called up
                     globalmapimagecreated[n] = 0;
-
-                short terraintype = 2; // This terrain type gives large continents.
-
-                fast_srand(world->seed());
-
-                if (random(1, 10) == 1) // Rarely, do the terrain type that gives smaller land masses.
-                    terraintype = 1;
 
                 int contno = random(1, 9);
 
@@ -793,13 +932,29 @@ int main()
                 if (random(1, 12) == 1) // Fairly rarely, have more fragmented continents
                     thismergefactor = random(1, 25);
 
+                iterations = 4; // This is for worlds of terrain type 4.
+
+                for (int n = 0; n < 3; n++)
+                {
+                    if (random(1, 2) == 1)
+                        iterations++;
+                    else
+                        iterations--;
+                }
+
+                if (iterations < 1)
+                    iterations = 1;
+
+                if (iterations > 7)
+                    iterations = 7;
+
                 vector<vector<int>> mountaindrainage(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
                 vector<vector<bool>> shelves(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
 
                 // Actually generate the world
 
-                generateglobalterrain(*world, terraintype, thismergefactor, -1, -1, landshape, chainland, mountaindrainage, shelves);
-                generateglobalclimate(*world, 1, smalllake, largelake, landshape, mountaindrainage, shelves);
+                generateglobalterrain(*world, 0, iterations, thismergefactor, -1, -1, landshape, chainland, mountaindrainage, shelves,squareroot);
+                generateglobalclimate(*world, 1, 1, 1, smalllake, largelake, landshape, mountaindrainage, shelves);
 
                 // Now draw a new map
 
@@ -814,12 +969,11 @@ int main()
                 updatereport("World generation completed.");
                 updatereport("");
 
-                infotext = "Welcome to a new world!";
-
                 focused = 0;
 
                 creatingworldpass = 0;
                 screenmode = movingtoglobalmapscreen;
+                newworld = 1;
             }
         }
 
@@ -827,6 +981,10 @@ int main()
 
         if (screenmode == globalmapscreen)
         {
+            showworldeditproperties = 0;
+            showregionaltemperaturechart = 0;
+            showregionalrainfallchart = 0;
+            
             areafromregional = 0;
             brandnew = 0;
             
@@ -836,13 +994,15 @@ int main()
 
             if (world->seed() >= 0)
                 title = "Seed: " + to_string(world->seed());
-            else
+           else
                 title = "Custom";
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(160, 448), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(161, 549), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin(title.c_str());
+            ImGui::Begin(title.c_str(), NULL, window_flags);
+
+            ImVec2 pos = ImGui::GetWindowPos();
 
             ImGui::Text("World controls:");
 
@@ -870,7 +1030,7 @@ int main()
 
             if (standardbutton("Custom world"))
             {
-                showwarning = 1;
+                showsetsize = 1;
             }
 
             ImGui::Dummy(ImVec2(0.0f, linespace));
@@ -890,6 +1050,13 @@ int main()
 
             if (standardbutton("Area maps"))
             {
+                mapview = relief;
+
+                drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
+
+                globalmaptexture->loadFromImage(*displayglobalreliefimage);
+                globalmap->setTexture(*globalmaptexture);
+                
                 screenmode = exportareascreen;
                 areafromregional = 0;
             }
@@ -971,14 +1138,10 @@ int main()
             ImGui::PushItemWidth(100.0f);
 
             if (standardbutton("Properties"))
-            {
-                showworldproperties = 1;
-            }
+                toggle(showworldproperties);
 
             if (standardbutton("Appearance"))
-            {
-                showcolouroptions = 1;
-            }
+                toggle(showcolouroptions);
 
             if (standardbutton("Zoom"))
             {
@@ -991,9 +1154,6 @@ int main()
                     newx = poix;
                     newy = poiy;
 
-                    infotext = "";
-                    infotext2 = "";
-
                     screenmode = generatingregionscreen;
                 }
             }
@@ -1002,171 +1162,371 @@ int main()
 
             // Now the text box.
 
-            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(1023, 151), ImGuiCond_FirstUseEver);
-            title = "            ";
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 539), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1023, 155), ImGuiCond_FirstUseEver);
+            title = "Information";
 
-            ImGui::Begin(title.c_str());
-            ImGui::PushItemWidth(world->width() / 2);
-            ImGui::Text(infotext.c_str(), world->width() / 2);
+            ImGui::Begin(title.c_str(), NULL, window_flags);
+
+            float pos1 = 10.0f;
+            float pos2 = 100.0f;
+            float pos3 = 220.0f;
+            float pos4 = 350.0f;
+            float pos5 = 570.0f;
+            float pos6 = 690.0f;
+
+            float pos7 = 850.0f;
+
+            if (focused == 1)
+            {                
+                int sealevel = world->sealevel();
+
+                bool lake = 0;             
+                if (world->truelake(poix, poiy) != 0)
+                    lake = 1;
+
+                bool sea = 0;
+                if (world->sea(poix, poiy) == 1)
+                    sea = 1;
+
+                bool river = 0;
+                if (sea == 0 && world->riveraveflow(poix, poiy) > 0 && lake == 0)
+                    river = 1;
+
+                // Longitude
+                
+                int longdegrees = 0;
+                int longminutes = 0;
+                int longseconds = 0;
+                bool longneg = 0;
+
+                world->longitude(poix, longdegrees, longminutes, longseconds,longneg);
+
+                string longtext = to_string(longdegrees) + degree + " " + to_string(longminutes) + "' " + to_string(longseconds);
+
+                if (longneg)
+                    longtext = "-" + longtext;
+
+                // Latitude
+
+                int latdegrees = 0;
+                int latminutes = 0;
+                int latseconds = 0;
+                bool latneg = 0;
+
+                world->latitude(poiy, latdegrees, latminutes, latseconds,latneg);
+
+                string lattext = to_string(latdegrees) + degree + " " + to_string(latminutes) + "' " + to_string(latseconds);
+
+                if (latneg)
+                    lattext = "-" + lattext;
+
+                // Wind
+
+                int wind = world->wind(poix, poiy);
+                string windtext = "";
+
+                if (wind > 0)
+                    windtext = "westerly";
+
+                if (wind < 0)
+                    windtext = "easterly";
+
+                if (wind == 0 || wind > 50)
+                    windtext = "none";
+
+                // Elevation
+
+                string elevationtext = "";
+
+                int pointelevation = world->map(poix, poiy);
+
+                if (world->lakesurface(poix, poiy) != 0)
+                    pointelevation = world->lakesurface(poix, poiy) - 1;
+
+                if (sea == 0)
+                {
+                    if (pointelevation > sealevel)
+                    {
+                        elevationtext = formatnumber(pointelevation - sealevel) + " metres";
+
+                        if (world->seatotal() != 0)
+                            elevationtext = elevationtext + " above sea level";
+                    }
+                    else
+                    {
+                        if (lake)
+                            elevationtext = formatnumber(sealevel - pointelevation) + " metres below sea level";
+                        else
+                        {
+                            if (world->seatotal() != 0)
+                                elevationtext = formatnumber(world->lakesurface(poix, poiy) - sealevel) + " metres above sea level";
+                            else
+                                elevationtext = formatnumber(world->lakesurface(poix, poiy) - sealevel) + " metres";
+                        }
+                    }
+                }
+                else
+                    elevationtext = formatnumber(sealevel - pointelevation) + " metres below sea level";
+
+                // Climate
+                
+                short climatetype = world->climate(poix, poiy);
+                string climatetext = getclimatename(climatetype) + " (" + getclimatecode(climatetype) + ")";
+
+
+                // Specials
+
+                string specialstext = "";
+
+                int special = world->special(poix, poiy);
+
+                if (special == 110)
+                    specialstext = "Salt pan";
+
+                if (special == 120)
+                    specialstext = "Dunes";
+
+                if (special == 130)
+                    specialstext = "Wetlands";
+
+                if (special == 131)
+                    specialstext = "Brackish wetlands";
+
+                if (special == 132)
+                    specialstext = "Salt wetlands";
+
+                if (world->volcano(poix, poiy) > 0)
+                {
+                    if (sea)
+                        specialstext = "Submarine volcano";
+                    else                    
+                        specialstext = "Volcano";
+                }
+
+                // Glacial
+
+                string glacialtext = "";
+
+                if (!sea && (world->jantemp(poix, poiy) + world->jultemp(poix, poiy)) / 2 <= world->glacialtemp())
+                    glacialtext = "Ancient glacial region";
+
+                string jantemptext = "";
+                string jultemptext = "";
+                string janraintext = "";
+                string julraintext = "";
+
+                // Flow
+
+                string janflowtext = "";
+                string julflowtext = "";
+                string flowdirtext = "";
+
+                if (river)
+                {
+                    switch (world->riverdir(poix, poiy))
+                    {
+                    case 1:
+                        flowdirtext = "north";
+                        break;
+
+                    case 2:
+                        flowdirtext = "northeast";
+                        break;
+
+                    case 3:
+                        flowdirtext = "east";
+                        break;
+
+                    case 4:
+                        flowdirtext = "southeast";
+                        break;
+
+                    case 5:
+                        flowdirtext = "south";
+                        break;
+
+                    case 6:
+                        flowdirtext = "southwest";
+                        break;
+
+                    case 7:
+                        flowdirtext = "west";
+                        break;
+
+                    case 8:
+                        flowdirtext = "northwest";
+                        break;
+                    }
+
+                    janflowtext = formatnumber(world->riverjan(poix, poiy)) + " m" + cube + "/s";
+                    julflowtext = formatnumber(world->riverjul(poix, poiy)) + " m" + cube + "/s";
+                }
+
+                // Lake
+
+                string lakedepthtext = "";
+
+                if (lake)
+                {
+                    elevationtext = formatnumber(world->lakesurface(poix, poiy) - sealevel) + " metres";
+
+                    if (world->seatotal() != 0)
+                        elevationtext = elevationtext + " above sea level";
+
+                    int depth = world->lakesurface(poix, poiy) - world->nom(poix, poiy);
+
+                    string salt = "";
+
+                    if (world->special(poix, poiy) == 100)
+                        salt = " (salty)";
+
+                    lakedepthtext = formatnumber(depth) + " metres" + salt;
+                }
+
+                // Sea ice
+
+                string seaicetext = "none";
+
+                if (world->seaice(poix, poiy) == 2)
+                    seaicetext= "permanent";
+                else
+                {
+                    if (world->seaice(poix, poiy) == 1)
+                        seaicetext = "seasonal";
+                }
+
+                // Now display all that.
+
+                // Line 1
+
+                ImGui::Text("Longitude:");
+                ImGui::SameLine((float)pos2);
+                ImGui::Text(longtext.c_str());
+
+                ImGui::SameLine((float)pos3);
+                ImGui::Text("Elevation:");
+                ImGui::SameLine((float)pos4);
+                ImGui::Text(elevationtext.c_str());
+
+                if (lake)
+                {
+                    ImGui::SameLine((float)pos5);
+
+                    lakedepthtext = "Lake depth:  " + lakedepthtext;
+                    ImGui::Text(lakedepthtext.c_str());
+                }
+
+                if (river)
+                {
+                    ImGui::SameLine((float)pos5);
+                    ImGui::Text("River direction:");
+                    ImGui::SameLine((float)pos6);
+                    ImGui::Text(flowdirtext.c_str());
+                }
+
+                ImGui::SameLine((float)pos7);
+                ImGui::Text("Charts:");
+
+                // Line 2
+
+                ImGui::Text("Latitude:");
+                ImGui::SameLine((float)pos2);
+                ImGui::Text(lattext.c_str());
+
+                ImGui::SameLine((float)pos3);
+                ImGui::Text("Prevailing wind:");
+                ImGui::SameLine((float)pos4);
+                ImGui::Text(windtext.c_str());
+
+                if (river)
+                {
+                    ImGui::SameLine((float)pos5);
+                    ImGui::Text("January flow:");
+                    ImGui::SameLine((float)pos6);
+                    ImGui::Text(janflowtext.c_str());
+                }
+
+                ImGui::SameLine((float)pos7+20);
+                if (ImGui::Button("Temperature", ImVec2(120.0f, 0.0f)))
+                    toggle(showglobaltemperaturechart);
+
+                // Line 3
+
+                ImGui::Text(" ");
+
+                if (river)
+                {                   
+                    ImGui::SameLine((float)pos5);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 4.0f); // Because the buttons to the right moves this line down a little
+                    ImGui::Text("July flow:");
+                    ImGui::SameLine((float)pos6);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 4.0f); // Because the buttons to the right moves this line down a little
+                    ImGui::Text(julflowtext.c_str());
+                }
+
+                ImGui::SameLine((float)pos7+20);
+                if (ImGui::Button("Precipitation", ImVec2(120.0f, 0.0f)))
+                    toggle(showglobalrainfallchart);
+
+                // Line 4
+
+                if (sea)
+                {
+                    ImGui::Text("Sea ice:");
+                    ImGui::SameLine((float)pos2);
+                    ImGui::Text(seaicetext.c_str());
+                }
+                else
+                {
+                    ImGui::Text("Climate:");
+                    ImGui::SameLine((float)pos2);
+                    ImGui::Text(climatetext.c_str());
+                }
+
+                // Line 5
+
+                ImGui::Text(" ");
+
+                ImGui::SameLine((float)pos2);
+
+                if (specialstext != "")
+                    ImGui::Text(specialstext.c_str());
+                else
+                    ImGui::Text(glacialtext.c_str());
+            }
+
+            if (newworld==1)
+                ImGui::Text("Welcome to a new world!");
+
+            ImGui::SetCursorPosX(993.0);
+            ImGui::SetCursorPosY(122.0f);
+
+            if (ImGui::Button("?"))
+                toggle(showabout);
 
             ImGui::End();
 
             // Now check to see if the map has been clicked on.
 
-            if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && io.WantCaptureMouse == 0)
+            if (window.hasFocus() && sf::Mouse::isButtonPressed(sf::Mouse::Left) && io.WantCaptureMouse == 0)
             {
                 sf::Vector2i mousepos = sf::Mouse::getPosition(window);
 
-                poix = (mousepos.x - globalmapxpos) * 2;
-                poiy = (mousepos.y - globalmapypos) * 2;
+                float mult = ((float)world->width()+1.0f) / (float)DISPLAYMAPSIZEX;
+
+                float fpoix = (float)(mousepos.x - globalmapxpos) * mult;
+                float fpoiy = (float)(mousepos.y - globalmapypos) * mult;
+
+                poix = (int)fpoix;
+                poiy = (int)fpoiy;
 
                 if (poix >= 0 && poix <= world->width() && poiy >= 0 && poiy <= world->height())
                 {
                     focused = 1;
+                    newworld = 0;
 
-                    highlight->setPosition(sf::Vector2f(mousepos.x, mousepos.y));
-
-                    int sealevel = world->sealevel();
-
-                    infotext = "Location is " + to_string(poix) + ", " + to_string(poiy) + ". Latitude: " + to_string(world->latitude(poix, poiy)) + " degrees. ";
-
-                    int wind = world->wind(poix, poiy);
-                    string winddir;
-
-                    if (wind > 0)
-                        winddir = " westerly. ";
-
-                    if (wind < 0)
-                        winddir = " easterly. ";
-
-                    if (wind == 0 || wind > 50)
-                        winddir = " none. ";
-
-                    if (wind < 0)
-                        wind = -wind;
-
-                    if (wind > 50)
-                        wind = 0;
-
-                    infotext = infotext + "Prevailing wind:" + winddir;
-
-                    int pointelevation = world->map(poix, poiy);
-
-                    if (world->sea(poix, poiy) == 0)
-                    {
-                        if (pointelevation > sealevel)
-                            infotext = infotext + "Elevation: " + to_string(pointelevation - sealevel) + " metres above sea level.\n";
-                        else
-                        {
-                            if (world->truelake(poix, poiy) == 1)
-                                infotext = infotext + "Elevation: " + to_string(sealevel - pointelevation) + " metres below sea level.\n";
-                            else
-                                infotext = infotext + "Elevation: " + to_string(world->lakesurface(poix, poiy) - sealevel) + " metres above sea level.\n";
-                        }
-
-                        short climatetype = world->climate(poix, poiy);
-                        string climate = getclimatename(climatetype) + " (" + getclimatecode(climatetype) + ")";
-                        string glac = "";
-
-                        if ((world->jantemp(poix, poiy) + world->jultemp(poix, poiy)) / 2 <= world->glacialtemp())
-                            glac = "Ancient glacial region. ";
-
-                        if (world->special(poix, poiy) == 110)
-                            climate = climate + ". Salt pan";
-
-                        if (world->special(poix, poiy) == 120)
-                            climate = climate + ". Dunes";
-
-                        if (world->special(poix, poiy) == 130)
-                            climate = climate + ". Wetlands";
-
-                        if (world->special(poix, poiy) == 131)
-                            climate = climate + ". Brackish wetlands";
-
-                        if (world->special(poix, poiy) == 132)
-                            climate = climate + ". Salt wetlands";
-
-                        if (world->volcano(poix, poiy) > 0)
-                            climate = climate + ". Volcano";
-
-                        infotext = infotext + "Climate: " + climate + ". " + glac + "\n";
-                    }
-                    else
-                    {
-                        infotext = infotext + "Elevation: " + to_string(sealevel - pointelevation) + " metres below sea level. ";
-
-                        if (world->seaice(poix, poiy) == 2)
-                            infotext = infotext + "Permanent sea ice. ";
-                        else
-                        {
-                            if (world->seaice(poix, poiy) == 1)
-                                infotext = infotext + "Seasonal sea ice. ";
-
-                        }
-                        infotext = infotext + "\n";
-
-                        if (world->volcano(poix, poiy) > 0)
-                            infotext = infotext + "Submarine volcano.\n";
-                    }
-
-                    infotext = infotext + "January temperature: " + to_string(world->jantemp(poix, poiy)) + "C. July temperature: " + to_string(world->jultemp(poix, poiy)) + "C. ";
-                    infotext = infotext + "January rainfall: " + to_string(world->janrain(poix, poiy)) + " mm/month. July rainfall: " + to_string(world->julrain(poix, poiy)) + " mm/month.\n";
-
-                    if (world->sea(poix, poiy) == 0 && world->riveraveflow(poix, poiy) > 0 && world->lakesurface(poix, poiy) == 0)
-                    {
-                        string direction;
-
-                        switch (world->riverdir(poix, poiy))
-                        {
-                        case 1:
-                            direction = "north";
-                            break;
-
-                        case 2:
-                            direction = "northeast";
-                            break;
-
-                        case 3:
-                            direction = "east";
-                            break;
-
-                        case 4:
-                            direction = "southeast";
-                            break;
-
-                        case 5:
-                            direction = "south";
-                            break;
-
-                        case 6:
-                            direction = "southwest";
-                            break;
-
-                        case 7:
-                            direction = "west";
-                            break;
-
-                        case 8:
-                            direction = "northwest";
-                            break;
-                        }
-                        infotext = infotext + "River direction: " + direction + ". January flow: " + to_string(world->riverjan(poix, poiy)) + " m3/s. July flow: " + to_string(world->riverjul(poix, poiy)) + " m3/s.\n";
-                    }
-
-                    if (world->truelake(poix, poiy) != 0)
-                    {
-                        infotext = infotext + "Lake elevation: " + to_string(world->lakesurface(poix, poiy) - sealevel) + " metres. ";
-                        int depth = world->lakesurface(poix, poiy) - world->nom(poix, poiy);
-
-                        string salt = "";
-
-                        if (world->special(poix, poiy) == 100)
-                            salt = "Salty. ";
-
-                        infotext = infotext + "Depth: " + to_string(depth) + " metres. " + salt;
-
-                    }
+                    highlight->setPosition(sf::Vector2f((float)mousepos.x, (float)mousepos.y));
                 }
                 else
                 {
@@ -1175,7 +1535,6 @@ int main()
                         focused = 0;
                         poix = -1;
                         poiy = -1;
-                        infotext = "";
                     }
                 }
             }
@@ -1185,9 +1544,14 @@ int main()
 
         if (screenmode == regionalmapscreen)
         {
+            showglobaltemperaturechart = 0;
+            showglobalrainfallchart = 0;
+            showworldeditproperties = 0;
+            
             areafromregional = 1;
             
-            showwarning = 0;
+            showsetsize = 0;
+            newworld = 0;
 
             // Main controls.
 
@@ -1201,9 +1565,9 @@ int main()
             title = title + "##regional";
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(160, 346), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(161, 449), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin(title.c_str());
+            ImGui::Begin(title.c_str(), NULL, window_flags);
 
             ImGui::Text("World controls:");
 
@@ -1214,7 +1578,6 @@ int main()
                 focused = 0;
                 poix = -1;
                 poiy = -1;
-                infotext = "";
 
                 for (int i = 0; i < regionalimagewidth; i++)
                 {
@@ -1227,6 +1590,11 @@ int main()
                 regionalmap->setTexture(*regionalmaptexture);
 
                 screenmode = globalmapscreen;
+
+                showcolouroptions = 0;
+                showworldproperties = 0;
+                showregionalrainfallchart = 0;
+                showregionaltemperaturechart = 0;
             }
 
             ImGui::Dummy(ImVec2(0.0f, linespace));
@@ -1327,255 +1695,576 @@ int main()
 
             ImGui::PushItemWidth(100.0f);
 
+            if (standardbutton("Properties"))
+                toggle(showworldproperties);
+
             if (standardbutton("Appearance"))
-            {
-                showcolouroptions = 1;
-            }
+                toggle(showcolouroptions);
 
             ImGui::End();
 
             // Now the text box.
 
-            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(1023, 151), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 539), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1023, 155), ImGuiCond_FirstUseEver);
 
-            title = "               ";
+            title = "Information##regional ";
 
-            ImGui::Begin(title.c_str());
-            ImGui::PushItemWidth(world->width() / 2);
-            ImGui::Text(infotext2.c_str(), world->width() / 2);
-            ImGui::End();
+            ImGui::Begin(title.c_str(), NULL, window_flags);
 
-            // Now check to see if the map has been clicked on.
-
-            if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && io.WantCaptureMouse == 0)
+            if (focused == 1)
             {
-                sf::Vector2i mousepos = sf::Mouse::getPosition(window);
+                int sealevel = world->sealevel();
+                int width = world->width();
+                int height = world->height();
 
-                poix = mousepos.x - regionalmapxpos;
-                poiy = mousepos.y - regionalmapypos;
+                int xx = region->leftx() + poix / 16;
+                int yy = region->lefty() + poiy / 16; // Coordinates of the gobal cell we're in.
 
-                if (poix >= 0 && poix < regionalmapimagewidth && poiy >= 0 && poiy < regionalmapimageheight)
+                bool lake = 0;
+                if (region->truelake(poix, poiy) != 0)
+                    lake = 1;
+
+                bool sea = 0;
+                if (region->sea(poix, poiy) == 1)
+                    sea = 1;
+
+                bool river = 0;
+                if (lake == 0 && region->map(poix,poiy)>sealevel && (region->riveraveflow(poix, poiy) > 0 || region->fakeaveflow(poix, poiy) > 0))
+                    river = 1;
+
+                bool beach = 0;
+
+                if (region->sand(poix, poiy) || region->shingle(poix, poiy) || region->mud(poix, poiy))
+                    beach = 1;
+
+                float pos1 = 10.0f;
+                float pos2 = 100.0f;
+                float pos3 = 220.0f;
+                float pos4 = 350.0f;
+                float pos5 = 570.0f;
+                float pos6 = 690.0f;
+                float pos7 = 850.0f;
+
+                // Longitude
+
+                int longdegrees = 0;
+                int longminutes = 0;
+                int longseconds = 0;
+                bool longneg = 0;
+
+                region->longitude(poix, xx, poix / 16, width, longdegrees, longminutes, longseconds, longneg);
+
+                string longtext = to_string(longdegrees) + degree + " " + to_string(longminutes) + "' " + to_string(longseconds);
+
+                if (longneg)
+                    longtext = "-" + longtext;
+
+                // Latitude
+
+                int latdegrees = 0;
+                int latminutes = 0;
+                int latseconds = 0;
+                bool latneg = 0;
+
+                region->latitude(poiy, yy, poiy / 16, height, latdegrees, latminutes, latseconds, latneg);
+
+                string lattext = to_string(latdegrees) + degree + " " + to_string(latminutes) + "' " + to_string(latseconds);
+
+                if (latneg)
+                    lattext = "-" + lattext;
+
+                // Wind
+
+                int wind = world->wind(xx, yy);
+                string windtext = "";
+
+                if (wind > 0)
+                    windtext = "westerly";
+
+                if (wind < 0)
+                    windtext = "easterly";
+
+                if (wind == 0 || wind > 50)
+                    windtext = "none";
+
+                // Elevation
+
+                string elevationtext = "";
+
+                int pointelevation = region->map(poix, poiy);
+
+                if (region->lakesurface(poix, poiy) != 0)
+                    pointelevation = region->lakesurface(poix, poiy);
+
+
+                if (sea == 0)
                 {
-                    poix = poix + region->regwidthbegin();
-                    poiy = poiy + region->regheightbegin();
-
-                    focused = 1;
-
-                    highlight->setPosition(sf::Vector2f(mousepos.x, mousepos.y));
-
-                    int sealevel = world->sealevel();
-
-                    int xx = region->leftx() + poix / 16;
-                    int yy = region->lefty() + poiy / 16; // Coordinates of the gobal cell we're in.
-
-                    if (region->surface(poix, poiy) != 0 && region->special(poix, poiy) > 100) // If there's a "special" lake here
+                    if (pointelevation > sealevel)
                     {
-                        infotext2 = "Elevation: " + to_string(region->surface(poix, poiy) - sealevel) + " metres above sea level.\n";
+                        elevationtext = formatnumber(pointelevation - sealevel) + " metres";
+
+                        if (world->seatotal() != 0)
+                        {
+                            if (beach)
+                                elevationtext = "Sea level";
+                            else
+                                elevationtext = elevationtext + " above sea level";
+                        }
                     }
                     else
                     {
-                        if (region->map(poix, poiy) <= sealevel)
-                        {
-                            infotext2 = "Elevation: " + to_string(sealevel - region->map(poix, poiy)) + " metres below sea level.\n";
-                        }
-                        else
-                            infotext2 = "Elevation: " + to_string(region->map(poix, poiy) - sealevel) + " metres above sea level.\n";
-                    }
-
-                    int janrain, julrain, jantemp, jultemp;
-
-                    if (yy <= height / 2) // Northern hemisphere
-                    {
-                        janrain = region->winterrain(poix, poiy);
-                        julrain = region->summerrain(poix, poiy);
-
-                        jantemp = region->mintemp(poix, poiy);
-                        jultemp = region->maxtemp(poix, poiy);
-
-                    }
-                    else // Southern hemisphere
-                    {
-                        janrain = region->summerrain(poix, poiy);
-                        julrain = region->winterrain(poix, poiy);
-
-                        jantemp = region->maxtemp(poix, poiy);
-                        jultemp = region->mintemp(poix, poiy);
-                    }
-
-                    infotext2 = infotext2 + "January temperature: " + to_string(jantemp) + "C. July temperature: " + to_string(jultemp) + "C. ";
-
-                    infotext2 = infotext2 + "January rainfall: " + to_string(janrain) + " mm/month. July rainfall: " + to_string(julrain) + " mm/month.\n";
-
-                    if (region->truelake(poix, poiy) == 1) // If there's a lake here
-                    {
-                        infotext2 = infotext2 + "Lake elevation: " + to_string(region->lakesurface(poix, poiy) - sealevel) + " metres. Depth: " + to_string(region->lakesurface(poix, poiy) - region->map(poix, poiy)) + " metres. ";
-
-                        if (region->special(poix, poiy) == 100)
-                            infotext2 = infotext2 + "Salty. ";
-
-                        infotext2 = infotext2 + "\n";
-                    }
-                    else
-                    {
-                        if (region->riverdir(poix, poiy) != 0 && region->special(poix, poiy) != 140) // If there's a river here
-                        {
-                            infotext2 = infotext2 + "River direction: " + getdirstring(region->riverdir(poix, poiy)) + ". ";
-                            infotext2 = infotext2 + "January flow: " + to_string(region->riverjan(poix, poiy)) + " m3/s. July flow: " + to_string(region->riverjul(poix, poiy)) + " m3/s. \n";
-                        }
+                        if (lake)
+                            elevationtext = formatnumber(sealevel - pointelevation) + " metres below sea level";
                         else
                         {
-                            if (region->fakedir(poix, poiy) > 0 && region->special(poix, poiy) != 140) // If there's a fake river here
-                            {
-                                infotext2 = infotext2 + "River direction: " + getdirstring(region->fakedir(poix, poiy)) + ". ";
-                                infotext2 = infotext2 + "January flow: " + to_string(region->fakejan(poix, poiy)) + " m3/s. July flow: " + to_string(region->fakejul(poix, poiy)) + " m3/s. \n";
-                            }
+                            if (world->seatotal() != 0)
+                                elevationtext = formatnumber(world->lakesurface(poix, poiy) - sealevel) + " metres above sea level";
+                            else
+                                elevationtext = formatnumber(world->lakesurface(poix, poiy) - sealevel) + " metres";
                         }
-                    }
-
-                    if (region->sea(poix, poiy) == 1)
-                    {
-                        if (region->volcano(poix, poiy))
-                            infotext2 = infotext2 + "Submarine volcano. ";
-
-                        int seaice = region->seaice(poix, poiy);
-
-                        if (seaice == 1)
-                            infotext2 = infotext2 + "Seasonal sea ice.";
-
-                        if (seaice == 2)
-                            infotext2 = infotext2 + "Permanent sea ice.";
-
-                        infotext2 = infotext2 + "\n";
-
-                    }
-                    else
-                    {
-                        short climate = region->climate(poix, poiy);
-
-                        string climatename = getclimatename(climate) + " (" + getclimatecode(climate) + ")";
-
-                        if (region->special(poix, poiy) == 110)
-                            climatename = climatename + ". Salt pan";
-
-                        if (region->special(poix, poiy) == 120)
-                            climatename = climatename + ". Dunes";
-
-                        if (region->special(poix, poiy) == 130)
-                            climatename = climatename + ". Wetlands";
-
-                        if (region->special(poix, poiy) == 131)
-                            climatename = climatename + ". Brackish wetlands";
-
-                        if (region->special(poix, poiy) == 132)
-                            climatename = climatename + ". Salt wetlands";
-
-                        if (region->rivervalley(poix, poiy) == 1)
-                            climatename = climatename + ". River valley";
-
-                        if (region->special(poix, poiy) == 140)
-                            climatename = climatename + ". Glacier";
-
-                        if (region->volcano(poix, poiy))
-                            climatename = climatename + ". Volcano";
-
-                        infotext2 = infotext2 + "Climate: " + climatename + ".\n";
                     }
                 }
                 else
+                    elevationtext = formatnumber(sealevel - pointelevation) + " metres below sea level";
+
+                // Climate
+
+                short climatetype = region->climate(poix, poiy);
+                string climatetext = getclimatename(climatetype) + " (" + getclimatecode(climatetype) + ")";
+
+                // Specials
+
+                string specialstext = "";
+
+                int special = region->special(poix, poiy);
+
+                if (region->barrierisland(poix, poiy) == 0 && (region->rivervalley(poix, poiy) == 1 || river))
+                    specialstext = "River valley";
+                
+                if (special == 110)
+                    specialstext = "Salt pan";
+
+                if (special == 120)
+                    specialstext = "Dunes";
+
+                if (special == 130)
+                    specialstext = "Wetlands";
+
+                if (special == 131)
+                    specialstext = "Brackish wetlands";
+
+                if (special == 132)
+                    specialstext = "Salt wetlands";
+
+                if (region->mud(poix, poiy))
+                    specialstext = "Mud flats";
+
+                if (region->sand(poix, poiy))
+                    specialstext = "Sandy beach";
+
+                if (region->shingle(poix, poiy))
+                    specialstext = "Shingle beach";
+
+                if (region->sand(poix, poiy) && region->shingle(poix, poiy))
+                    specialstext = "Sandy/shingle beach";
+
+                if (region->mud(poix, poiy) && region->sand(poix, poiy))
+                    specialstext = "Muddy/sandy beach";
+
+                if (region->mud(poix, poiy) && region->shingle(poix, poiy))
+                    specialstext = "Muddy/shingle beach";
+
+                if (region->mud(poix, poiy) && region->sand(poix,poiy) && region->shingle(poix, poiy))
+                    specialstext = "Muddy/sandy/shingle beach";
+
+                if (region->volcano(poix, poiy))
                 {
-                    if (focused == 1)
+                    if (sea)
+                        specialstext = "Submarine volcano";
+                    else
+                        specialstext = "Volcano";
+                }
+
+                if (region->barrierisland(poix, poiy))
+                {
+                    if (region->sand(poix, poiy))
+                        specialstext = "Sandbar";
+                    else
                     {
-                        focused = 0;
-                        poix = -1;
-                        poiy = -1;
-                        infotext2 = "";
+                        if (specialstext == "")
+                            specialstext = "Barrier island";
+                        else
+                            specialstext = "Barrier island. " + specialstext;
                     }
                 }
 
-                int minipoix = (mousepos.x - minimapxpos) * 4;
-                int minipoiy = (mousepos.y - minimapypos) * 4;
+                if (region->mangrove(poix, poiy))
+                    specialstext = specialstext + ". Mangrove";
 
-                if (minipoix >= 0 && minipoiy <= world->width() && minipoiy >= 0 && minipoiy <= world->height())// If the minimap has been clicked on.
+                // Glacial
+
+                string glacialtext = "";
+
+                //if (!sea && (region->jantemp(poix, poiy) + region->jultemp(poix, poiy)) / 2 <= world->glacialtemp())
+                    //glacialtext = "Ancient glacial region";
+
+                string jantemptext = "";
+                string jultemptext = "";
+                string janraintext = "";
+                string julraintext = "";
+
+                // Flow
+
+                string janflowtext = "";
+                string julflowtext = "";
+                string flowdirtext = "";
+
+                if (river)
                 {
-                    screenmode = generatingregionscreen;
-                    newx = minipoix;
-                    newy = minipoiy;
+                    switch (region->riverdir(poix, poiy))
+                    {
+                    case 1:
+                        flowdirtext = "north";
+                        break;
+
+                    case 2:
+                        flowdirtext = "northeast";
+                        break;
+
+                    case 3:
+                        flowdirtext = "east";
+                        break;
+
+                    case 4:
+                        flowdirtext = "southeast";
+                        break;
+
+                    case 5:
+                        flowdirtext = "south";
+                        break;
+
+                    case 6:
+                        flowdirtext = "southwest";
+                        break;
+
+                    case 7:
+                        flowdirtext = "west";
+                        break;
+
+                    case 8:
+                        flowdirtext = "northwest";
+                        break;
+                    }
+
+                    int janflow = region->riverjan(poix, poiy);
+                    int julflow = region->riverjul(poix, poiy);
+
+                    if (flowdirtext == "") // It must be a fake river!
+                    {
+                        switch (region->fakedir(poix, poiy))
+                        {
+                        case 1:
+                            flowdirtext = "north";
+                            break;
+
+                        case 2:
+                            flowdirtext = "northeast";
+                            break;
+
+                        case 3:
+                            flowdirtext = "east";
+                            break;
+
+                        case 4:
+                            flowdirtext = "southeast";
+                            break;
+
+                        case 5:
+                            flowdirtext = "south";
+                            break;
+
+                        case 6:
+                            flowdirtext = "southwest";
+                            break;
+
+                        case 7:
+                            flowdirtext = "west";
+                            break;
+
+                        case 8:
+                            flowdirtext = "northwest";
+                            break;
+                        }
+
+                        janflow = region->fakejan(poix, poiy);
+                        julflow = region->fakejul(poix, poiy);
+                    }
+
+                    janflowtext = formatnumber(janflow) + " m" + cube + "/s";
+                    julflowtext = formatnumber(julflow) + " m" + cube + "/s";
                 }
+
+                // Lake
+
+                string lakedepthtext = "";
+
+                if (lake)
+                {
+                    elevationtext = formatnumber(region->lakesurface(poix, poiy) - sealevel) + " metres";
+
+                    if (world->seatotal() != 0)
+                        elevationtext = elevationtext + " above sea level";
+
+                    int depth = region->lakesurface(poix, poiy) - region->map(poix, poiy);
+
+                    string salt = "";
+
+                    if (region->special(poix, poiy) == 100)
+                        salt = " (salty)";
+
+                    lakedepthtext = formatnumber(depth) + " metres" + salt;
+                }
+
+                // Sea ice
+
+                string seaicetext = "none";
+
+                if (region->seaice(poix, poiy) == 2)
+                    seaicetext = "permanent";
+                else
+                {
+                    if (region->seaice(poix, poiy) == 1)
+                        seaicetext = "seasonal";
+                }
+
+                // Now display all that.
+
+                // Line 1
+
+                ImGui::Text("Longitude:");
+                ImGui::SameLine((float)pos2);
+                ImGui::Text(longtext.c_str());
+
+                ImGui::SameLine((float)pos3);
+                ImGui::Text("Elevation:");
+                ImGui::SameLine((float)pos4);
+                ImGui::Text(elevationtext.c_str());
+
+                if (lake)
+                {
+                    ImGui::SameLine((float)pos5);
+
+                    lakedepthtext = "Lake depth:  " + lakedepthtext;
+                    ImGui::Text(lakedepthtext.c_str());
+                }
+
+                if (river)
+                {
+                    ImGui::SameLine((float)pos5);
+                    ImGui::Text("River direction:");
+                    ImGui::SameLine((float)pos6);
+                    ImGui::Text(flowdirtext.c_str());
+                }
+
+                ImGui::SameLine((float)pos7);
+                ImGui::Text("Charts:");
+
+                // Line 2
+
+                ImGui::Text("Latitude:");
+                ImGui::SameLine((float)pos2);
+                ImGui::Text(lattext.c_str());
+
+                ImGui::SameLine((float)pos3);
+                ImGui::Text("Prevailing wind:");
+                ImGui::SameLine((float)pos4);
+                ImGui::Text(windtext.c_str());
+
+                if (river)
+                {
+                    ImGui::SameLine((float)pos5);
+                    ImGui::Text("January flow:");
+                    ImGui::SameLine((float)pos6);
+                    ImGui::Text(janflowtext.c_str());
+                }
+
+                ImGui::SameLine((float)pos7 + 20);
+                if (ImGui::Button("Temperature", ImVec2(120.0f, 0.0f)))
+                    toggle(showregionaltemperaturechart);
+
+                // Line 3
+
+                ImGui::Text(" ");
+
+                if (river)
+                {
+                    ImGui::SameLine((float)pos5);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 4.0f); // Because the buttons to the right move this line down a little
+                    ImGui::Text("July flow:");
+                    ImGui::SameLine((float)pos6);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 4.0f); // Because the buttons to the right move this line down a little
+                    ImGui::Text(julflowtext.c_str());
+                }
+
+                ImGui::SameLine((float)pos7 + 20);
+                if (ImGui::Button("Precipitation", ImVec2(120.0f, 0.0f)))
+                    toggle(showregionalrainfallchart);
+
+                // Line 4
+
+                if (sea)
+                {
+                    ImGui::Text("Sea ice:");
+                    ImGui::SameLine((float)pos2);
+                    ImGui::Text(seaicetext.c_str());
+                }
+                else
+                {
+                    ImGui::Text("Climate:");
+                    ImGui::SameLine((float)pos2);
+                    ImGui::Text(climatetext.c_str());
+                }
+
+                // Line 5
+
+                ImGui::Text(" ");
+
+                ImGui::SameLine((float)pos2);
+
+                if (specialstext != "")
+                    ImGui::Text(specialstext.c_str());
+                else
+                    ImGui::Text(glacialtext.c_str());
             }
 
-            // Check to see if the cursor keys have been pressed.
+            ImGui::SetCursorPosX(993.0);
+            ImGui::SetCursorPosY(122.0f);
 
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            if (ImGui::Button("?"))
+                toggle(showabout);
+
+            ImGui::End();
+
+            if (window.hasFocus())
             {
-                int regionalmapmove = REGIONALTILEWIDTH;
-
-                newx = region->centrex() - regionalmapmove;
-
-                if (newx > 0)
+                // Now check to see if the map has been clicked on.
+                
+                if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && io.WantCaptureMouse == 0)
                 {
+                    sf::Vector2i mousepos = sf::Mouse::getPosition(window);
+
+                    poix = mousepos.x - (int)regionalmapxpos;
+                    poiy = mousepos.y - (int)regionalmapypos;
+
+                    if (poix >= 0 && poix < regionalmapimagewidth && poiy >= 0 && poiy < regionalmapimageheight)
+                    {
+                        poix = poix + region->regwidthbegin();
+                        poiy = poiy + region->regheightbegin();
+
+                        focused = 1;
+
+                        highlight->setPosition(sf::Vector2f((float)mousepos.x, (float)mousepos.y));
+                    }
+                    else
+                    {
+                        if (focused == 1)
+                        {
+                            focused = 0;
+                            poix = -1;
+                            poiy = -1;
+                        }
+                    }
+
+                    float mult = ((float)world->width() + 1.0f) / (float)DISPLAYMAPSIZEX;
+
+                    float fpoix = (float)(mousepos.x - minimapxpos) * mult * 2.0f;
+                    float fpoiy = (float)(mousepos.y - minimapypos) * mult * 2.0f;
+
+                    int minipoix = (int)fpoix;
+                    int minipoiy = (int)fpoiy;
+
+                    if (minipoix >= 0 && minipoiy <= world->width() && minipoiy >= 0 && minipoiy <= world->height())// If the minimap has been clicked on.
+                    {
+                        screenmode = generatingregionscreen;
+                        newx = minipoix;
+                        newy = minipoiy;
+                    }
+                }
+
+                // Check to see if the cursor keys have been pressed.
+
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+                {
+                    int regionalmapmove = REGIONALTILEWIDTH;
+
+                    newx = region->centrex() - regionalmapmove;
+
+                    if (newx > 0)
+                    {
+                        newx = newx / 32;
+                        newx = newx * 32;
+                        newx = newx + 16;
+                    }
+
+                    if (newx < regionalmapmove * 2)
+                        newx = wrap(newx, world->width());
+
+                    newy = region->centrey();
+
+                    screenmode = generatingregionscreen;
+                }
+
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+                {
+                    int regionalmapmove = REGIONALTILEWIDTH;
+
+                    newx = region->centrex() + regionalmapmove;
+
                     newx = newx / 32;
                     newx = newx * 32;
                     newx = newx + 16;
-                }
 
-                if (newx < regionalmapmove * 2)
-                    newx = wrap(newx, world->width());
+                    if (newx > world->width())
+                        newx = wrap(newx, world->width());
 
-                newy = region->centrey();
+                    newy = region->centrey();
 
-                screenmode = generatingregionscreen;
-            }
-
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-            {
-                int regionalmapmove = REGIONALTILEWIDTH;
-
-                newx = region->centrex() + regionalmapmove;
-
-                newx = newx / 32;
-                newx = newx * 32;
-                newx = newx + 16;
-
-                if (newx > world->width())
-                    newx = wrap(newx, world->width());
-
-                newy = region->centrey();
-
-                screenmode = generatingregionscreen;
-            }
-
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
-            {
-                int regionalmapmove = REGIONALTILEHEIGHT;
-
-                newy = region->centrey() - regionalmapmove;
-
-                newy = newy / 32;
-                newy = newy * 32;
-                newy = newy + 16;
-
-                if (newy > regionalmapmove)
-                {
-                    newx = region->centrex();
                     screenmode = generatingregionscreen;
                 }
-            }
 
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
-            {
-                int regionalmapmove = REGIONALTILEHEIGHT;
-
-                newy = region->centrey() + regionalmapmove;
-
-                newy = newy / 32;
-                newy = newy * 32;
-                newy = newy + 16;
-
-                if (newy < world->height())
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
                 {
-                    newx = region->centrex();
-                    screenmode = generatingregionscreen;
+                    int regionalmapmove = REGIONALTILEHEIGHT;
+
+                    newy = region->centrey() - regionalmapmove;
+
+                    newy = newy / 32;
+                    newy = newy * 32;
+                    newy = newy + 16;
+
+                    if (newy > regionalmapmove)
+                    {
+                        newx = region->centrex();
+                        screenmode = generatingregionscreen;
+                    }
+                }
+
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+                {
+                    int regionalmapmove = REGIONALTILEHEIGHT;
+
+                    newy = region->centrey() + regionalmapmove;
+
+                    newy = newy / 32;
+                    newy = newy * 32;
+                    newy = newy + 16;
+
+                    if (newy < world->height())
+                    {
+                        newx = region->centrex();
+                        screenmode = generatingregionscreen;
+                    }
                 }
             }
         }
@@ -1584,20 +2273,29 @@ int main()
 
         if (screenmode == exportareascreen)
         {
-            showwarning = 0;
+            showglobaltemperaturechart = 0;
+            showglobalrainfallchart = 0;
+            showregionaltemperaturechart = 0;
+            showregionalrainfallchart = 0;
+            showworldproperties = 0;
+            showworldeditproperties = 0;
+            showcolouroptions = 0;
+            newworld = 0;
+            
+            showsetsize = 0;
 
             // Work out the size of the currently selected area.
 
             int totalregions = 0;
-            int maxtotalregions = 115; // Don't allow area maps larger than this.
+            int maxtotalregions = 100; // Query area maps larger than this.
             
             if (areanex != -1)
             {
-                float regiontilewidth = REGIONALTILEWIDTH; //30;
-                float regiontileheight = REGIONALTILEHEIGHT; //30; // The width and height of the visible regional map, in tiles.
+                float regiontilewidth = (float)REGIONALTILEWIDTH; //30;
+                float regiontileheight = (float)REGIONALTILEHEIGHT; //30; // The width and height of the visible regional map, in tiles.
 
-                int regionwidth = regiontilewidth * 16;
-                int regionheight = regiontileheight * 16; // The width and height of the visible regional map, in pixels.
+                int regionwidth = (int)regiontilewidth * 16;
+                int regionheight = (int)regiontileheight * 16; // The width and height of the visible regional map, in pixels.
 
                 int newareanwx = areanwx; // This is because the regions we'll be making will start to the north and west of the defined area.
                 int newareanwy = areanwy;
@@ -1610,20 +2308,20 @@ int main()
 
                 int newareasey = areasey;
 
-                newareanwx = newareanwx / regiontilewidth;
-                newareanwx = newareanwx * regiontilewidth;
+                newareanwx = newareanwx / (int)regiontilewidth;
+                newareanwx = newareanwx * (int)regiontilewidth;
 
-                newareanwy = newareanwy / regiontileheight;
-                newareanwy = newareanwy * regiontileheight;
+                newareanwy = newareanwy / (int)regiontileheight;
+                newareanwy = newareanwy * (int)regiontileheight;
 
                 newareaswx = newareanwx;
                 newareaney = newareanwy;
 
-                float areatilewidth = newareanex - newareanwx;
-                float areatileheight = newareasey - newareaney;
+                float areatilewidth = (float)(newareanex - newareanwx);
+                float areatileheight = (float)(newareasey - newareaney);
 
-                int areawidth = areatilewidth * 16;
-                int areaheight = areatileheight * 16;
+                int areawidth = (int)(areatilewidth * 16.0f);
+                int areaheight = (int)(areatileheight * 16.0f);
 
                 float fregionswide = areatilewidth / regiontilewidth;
                 float fregionshigh = areatileheight / regiontileheight;
@@ -1643,21 +2341,11 @@ int main()
             // Main controls.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(160, 431), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(161, 138), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin("Export custom area");
+            ImGui::Begin("Export custom area", NULL, window_flags);
 
             ImGui::PushItemWidth(100.0f);
-
-            if (standardbutton("Export maps"))
-            {
-                if (areanex != -1 && totalregions <= maxtotalregions)
-                {
-                    ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".png", ".");
-
-                    exportingareamaps = 1;
-                }
-            }
 
             if (standardbutton("Clear selection"))
             {
@@ -1670,6 +2358,23 @@ int main()
                 areanwx = -1;
                 areanwy = -1;
             }
+
+            if (standardbutton("Export maps"))
+            {
+                if (areanex != -1)
+                {
+                    if (totalregions <= maxtotalregions)
+                    {
+                        ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".png", ".");
+
+                        exportingareamaps = 1;
+                    }
+                    else
+                        showareawarning = 1;
+                }
+            }
+
+            ImGui::Text("  ");
 
             if (standardbutton("Cancel"))
             {
@@ -1697,24 +2402,26 @@ int main()
             string title = "            ";
             string areatext = "Total regions: " + to_string(totalregions); // 117 OK; 143 not OK; 132 not OK; 121 not OK; 112 OK; 116 OK; 110
 
-            ImGui::Begin(title.c_str());
-            ImGui::PushItemWidth(world->width() / 2);
+            ImGui::Begin(title.c_str(), NULL, window_flags);
+            ImGui::PushItemWidth((float)world->width() / 2.0f);
             areatext="This screen allows you to export maps at the same scale as the regional map, but of larger areas.\n\nClick on the map to pick the corners of the area you want to export. You can re-select corners to fine-tune the area.\n\nWhen you are done, click on 'export maps'. The program will ask you to specify the filename under which to save the maps, and then create them.";
-            
-            if (totalregions > maxtotalregions)
-                areatext = "Area too large! Please select a smaller area.";
             
             ImGui::Text(areatext.c_str(), world->width() / 2);
             ImGui::End();
-#
+
             // Now check to see if the map has been clicked on.
 
-            if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && io.WantCaptureMouse == 0)
+            if (window.hasFocus() && sf::Mouse::isButtonPressed(sf::Mouse::Left) && io.WantCaptureMouse == 0)
             {
                 sf::Vector2i mousepos = sf::Mouse::getPosition(window);
 
-                poix = (mousepos.x - globalmapxpos) * 2;
-                poiy = (mousepos.y - globalmapypos) * 2;
+                float mult = ((float)world->width() + 1.0f) / (float)DISPLAYMAPSIZEX;
+
+                float xpos = ((float)mousepos.x - (float)globalmapxpos) * mult;
+                float ypos = ((float)mousepos.y - (float)globalmapypos) * mult;
+
+                poix = (int)xpos;
+                poiy = (int)ypos;
 
                 if (poix >= 0 && poix <= world->width() && poiy >= 0 && poiy <= world->height())
                 {
@@ -1743,10 +2450,10 @@ int main()
                         int nwdistx = areanwx - poix;
                         int nwdisty = areanwy - poiy;
 
-                        float nedist = sqrt(nedistx * nedistx + nedisty * nedisty);
-                        float sedist = sqrt(sedistx * sedistx + sedisty * sedisty);
-                        float swdist = sqrt(swdistx * swdistx + swdisty * swdisty);
-                        float nwdist = sqrt(nwdistx * nwdistx + nwdisty * nwdisty);
+                        float nedist = (float)sqrt(nedistx * nedistx + nedisty * nedisty);
+                        float sedist = (float)sqrt(sedistx * sedistx + sedisty * sedisty);
+                        float swdist = (float)sqrt(swdistx * swdistx + swdisty * swdisty);
+                        float nwdist = (float)sqrt(nwdistx * nwdistx + nwdisty * nwdisty);
 
                         short id = 2; // This will identify which corner this is going to be.
                         float mindist = nedist;
@@ -1818,32 +2525,21 @@ int main()
 
         if (screenmode == importscreen)
         {
+            showglobaltemperaturechart = 0;
+            showglobalrainfallchart = 0;
+            showregionaltemperaturechart = 0;
+            showregionalrainfallchart = 0;
+            showworldproperties = 0;
+            
             showcolouroptions = 0;
             showworldproperties = 0;
             
             // Main controls.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(160, 452), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(161, 604), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin("Custom##custom");
-
-            ImGui::Text("Controls:");
-
-            ImGui::PushItemWidth(100.0f);
-
-            if (standardbutton("Cancel"))
-            {
-                brandnew = 1;
-                seedentry = 0;
-
-                screenmode = createworldscreen;
-            }
-
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Return to the world creation screen.");
-
-            ImGui::Dummy(ImVec2(0.0f, linespace));;
+            ImGui::Begin("Custom##custom", NULL, window_flags);
 
             ImGui::SetNextItemWidth(0);
 
@@ -1889,23 +2585,35 @@ int main()
             }
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("As for mountains. Blue=0 for shield volcano, or higher for stratovolcano. Green=0 for extinct, or higher for active.");
+                ImGui::SetTooltip("As for mountains. Green=0 for shield volcano, or higher for stratovolcano. Blue=0 for extinct, or higher for active.");
 
             ImGui::Dummy(ImVec2(0.0f, linespace));
 
             ImGui::SetNextItemWidth(0);
 
-            ImGui::Text("Generate:");
+            ImGui::Text("Generate terrain:");
 
             ImGui::PushItemWidth(100.0f);
 
-            if (standardbutton("World terrain"))
-            {
-                showcontinents = 1;
-            }
+            if (standardbutton("Tectonic"))
+                toggle(showtectonicchooser);
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Create all terrain, with continents, mountains, coastal shelves, and oceanic ridges.");
+                ImGui::SetTooltip("Create tectonic-based global terrain, with continents, mountains, coastal shelves, and oceanic ridges.");
+
+            if (standardbutton("Non-tectonic"))
+                toggle(shownontectonicchooser);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Create non-tectonic-based global terrain.");
+
+            ImGui::Dummy(ImVec2(0.0f, linespace));
+
+            ImGui::SetNextItemWidth(0);
+
+            ImGui::Text("Generate elements:");
+
+            ImGui::PushItemWidth(100.0f);
 
             if (standardbutton("Coastlines"))
             {
@@ -1936,18 +2644,19 @@ int main()
                 vector<vector<bool>> shelves(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
 
                 makecontinentalshelves(*world, shelves, 4);
+                createoceantrenches(*world, shelves);
 
                 int grain = 8; // Level of detail on this fractal map.
-                float valuemod = 0.2;
+                float valuemod = 0.2f;
                 int v = random(3, 6);
-                float valuemod2 = v;
+                float valuemod2 = (float)v;
 
                 vector<vector<int>> seafractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
 
                 createfractal(seafractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
 
-                float coastalvarreduce = maxelev / 3000;
-                float oceanvarreduce = maxelev / 1000;
+                float coastalvarreduce = (float)maxelev / 3000.0f;
+                float oceanvarreduce = (float)maxelev / 100.0f;
 
                 for (int i = 0; i <= width; i++)
                 {
@@ -2016,16 +2725,19 @@ int main()
                 int sealevel = world->sealevel();
 
                 int grain = 8; // Level of detail on this fractal map.
-                float valuemod = 0.2;
+                float valuemod = 0.2f;
                 int v = random(3, 6);
-                float valuemod2 = v;
+                float valuemod2 = (float)v;
 
                 vector<vector<int>> seafractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
 
                 createfractal(seafractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 0, 0);
 
-                float coastalvarreduce = maxelev / 3000;
-                float oceanvarreduce = maxelev / 1000;
+                int warpfactor = random(20, 80);
+                warp(seafractal, width, height, maxelev, warpfactor, 1);
+
+                float coastalvarreduce = (float)maxelev / 3000.0f;
+                float oceanvarreduce = (float)maxelev / 1000.0f;
 
                 for (int i = 0; i <= width; i++)
                 {
@@ -2033,49 +2745,25 @@ int main()
                     {
                         if (world->sea(i, j) == 1)
                         {
-                            bool shelf = 1;
+                            float var = (float)(seafractal[i][j] - maxelev / 2);
+                            var = var / coastalvarreduce;
+                            
+                            int newval = world->nom(i, j) + (int)var;
 
-                            if (world->nom(i, j) < sealevel - 300)
-                                shelf = 0;
+                            if (newval > sealevel - 10)
+                                newval = sealevel - 10;
 
-                            if (shelf == 1)
-                            {
-                                float var = seafractal[i][j] - maxelev / 2;
-                                var = var / coastalvarreduce;
+                            if (newval < 1)
+                                newval = 1;
 
-                                int newval = world->nom(i, j) + var;
-
-                                if (newval > sealevel - 10)
-                                    newval = sealevel - 10;
-
-                                if (newval < 1)
-                                    newval = 1;
-
-                                world->setnom(i, j, newval);
-                            }
-                            else
-                            {
-                                int ii = i + width / 2;
-
-                                if (ii > width)
-                                    ii = ii - width;
-
-                                float var = seafractal[ii][j] - maxelev / 2;
-                                var = var / oceanvarreduce;
-
-                                int newval = world->nom(i, j) + var;
-
-                                if (newval > sealevel - 3000)
-                                    newval = sealevel - 3000;
-
-                                if (newval < 1)
-                                    newval = 1;
-
-                                world->setnom(i, j, newval);
-                            }
+                            world->setnom(i, j, newval);
                         }
                     }
                 }
+
+                // Smooth the seabed.
+
+                smoothonlysea(*world, 2);
 
                 // Now redraw the map.
 
@@ -2102,13 +2790,16 @@ int main()
                 // First, make a fractal map.
 
                 int grain = 8; // Level of detail on this fractal map.
-                float valuemod = 0.2;
+                float valuemod = 0.2f;
                 int v = random(3, 6);
-                float valuemod2 = v;
+                float valuemod2 = (float)v;
 
                 vector<vector<int>> fractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
 
                 createfractal(fractal, width, height, grain, valuemod, valuemod2, 1, 12750, 0, 0);
+
+                int warpfactor = random(20, 80);
+                warp(fractal, width, height, maxelev, warpfactor, 1);
 
                 int fractaladd = sealevel - 2500;
 
@@ -2124,7 +2815,7 @@ int main()
 
                 // Smooth the land.
 
-                smoothland(*world, 2);
+                //smoothonlyland(*world, 2);
 
                 // Also, create extra elevation.
 
@@ -2162,9 +2853,9 @@ int main()
                 // First, make a fractal map.
 
                 int grain = 8; // Level of detail on this fractal map.
-                float valuemod = 0.2;
+                float valuemod = 0.2f;
                 int v = random(3, 6);
-                float valuemod2 = v;
+                float valuemod2 = (float)v;
 
                 vector<vector<int>> fractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
 
@@ -2214,9 +2905,9 @@ int main()
                 // First, make a fractal map.
 
                 int grain = 8; // Level of detail on this fractal map.
-                float valuemod = 0.2;
+                float valuemod = 0.2f;
                 int v = random(3, 6);
-                float valuemod2 = v;
+                float valuemod2 = (float)v;
 
                 vector<vector<int>> fractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
 
@@ -2249,6 +2940,86 @@ int main()
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Generate random ranges of hills.");
 
+            if (standardbutton("Craters"))
+            {
+                int width = world->width();
+                int height = world->height();
+                int maxelev = world->maxelevation();
+                int sealevel = world->sealevel();
+
+                vector<vector<int>> oldterrain(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0)); // Copy the terrain as it is before adding craters. This is so that we can add some variation to the craters afterwards, if there's sea on this world, so the depression filling doesn't fill them completely.
+
+                for (int i = 0; i <= width; i++)
+                {
+                    for (int j = 0; j <= height; j++)
+                        oldterrain[i][j] = world->nom(i, j);
+                }
+
+                int cratertotal = random(500, 10000);
+
+                createcratermap(*world, cratertotal, squareroot, 1);
+
+                float minseaproportion = (float)random(1, 500);
+                minseaproportion = minseaproportion / 1000.0f;
+
+                int minseasize = (int)(((float)width * (float)height) * minseaproportion);
+
+                if (random(1, 4) != 1) // That may have produced seas inside craters, so probably remove those now.
+                    removesmallseas(*world, minseasize, sealevel + 1);
+                else // Definitely remove any really little bits of sea.
+                    removesmallseas(*world, 20, sealevel + 1);
+
+                int totalsea = 0;
+
+                for (int i = 0; i <= -width; i++)
+                {
+                    for (int j = 0; j <= height; j++)
+                    {
+                        if (world->sea(i, j))
+                            totalsea++;
+                    }
+                }
+
+                if (totalsea > 40) // If there's sea, add some variation to how prominent the craters are. This will create some gaps in the craters so they don't get entirely filled up by the depression filling.
+                {
+                    vector<vector<int>> fractal(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+
+                    int grain = 8; // Level of detail on this fractal map.
+                    float valuemod = 0.2f;
+                    int v = random(3, 6);
+                    float valuemod2 = (float)v;
+
+                    createfractal(fractal, width, height, grain, valuemod, valuemod2, 1, maxelev, 1, 0);
+
+                    for (int i = 0; i <= width; i++)
+                    {
+                        for (int j = 0; j <= height; j++)
+                        {
+                            float oldmult = (float)fractal[i][j] / (float)maxelev;
+                            float newmult = 1.0f - oldmult;
+
+                            float thiselev = (float)oldterrain[i][j] * oldmult + (float)world->nom(i, j) * newmult;
+
+                            world->setnom(i, j, (int)thiselev);
+                        }
+                    }
+                }
+
+                // Now redraw the map.
+
+                for (int n = 0; n < GLOBALMAPTYPES; n++)
+                    globalmapimagecreated[n] = 0;
+
+                mapview = relief;
+                drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
+
+                globalmaptexture->loadFromImage(*displayglobalreliefimage);
+                globalmap->setTexture(*globalmaptexture);
+            }
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Generate random craters.");
+
             ImGui::Dummy(ImVec2(0.0f, linespace));
 
             ImGui::SetNextItemWidth(0);
@@ -2258,9 +3029,7 @@ int main()
             ImGui::PushItemWidth(100.0f);
 
             if (standardbutton("Properties"))
-            {
-                showworldeditproperties = 1;
-            }
+                toggle(showworldeditproperties);
 
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Adjust the world's properties.");
@@ -2273,50 +3042,69 @@ int main()
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Calculate climates, lakes, and rivers, and finish the world.");
 
+            if (standardbutton("Cancel"))
+            {
+                brandnew = 1;
+                seedentry = 0;
+
+                screenmode = createworldscreen;
+            }
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Return to the world creation screen.");
+
             ImGui::End();
 
             // Now the text box.
 
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 180, main_viewport->WorkPos.y + 542), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(1023, 151), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(1023, 155), ImGuiCond_FirstUseEver);
 
             string title = "            ";
 
-            string importtext = "You can use the 'import' buttons to load in your own maps. These must be 2048x1025 pixels, in .png format.\nYou need at least a land map, but the others are optional. Check the tooltips for each button for more details.\n\nAlternatively, you can use the 'World terrain' button to generate a map from scratch.\n\nAfter you have imported or generated the map, you can use the other 'generate' buttons to tweak it or to add extra features.\nYou can use the 'Properties' panel to change settings such as global temperatures or rainfall.\n\nWhen you are done, click 'Finish' to finish the world.";
+            string importtext = "You can use the 'import' buttons to load in your own maps. These must be " + formatnumber(world->width() + 1) + " x " + formatnumber(world->height() + 1) + " pixels, in .png format.\nAlternatively, you can use the 'World terrain' button to generate a map from scratch.\nAfter you have imported or generated the map, you can use the other 'generate' buttons to tweak it or to add extra features.\nYou can use the 'Properties' panel to change settings such as global temperatures or rainfall.\nWhen you are done, click 'Finish' to finish the world.";
 
-            ImGui::Begin(title.c_str());
-            ImGui::PushItemWidth(world->width() / 2);
+            ImGui::Begin(title.c_str(), NULL, window_flags);
+            ImGui::PushItemWidth((float)(world->width() / 2));
             ImGui::Text(importtext.c_str(), world->width() / 2);
             ImGui::End();
         }
 
         // These screens all display a "Please wait" message ten times (for some reason doing it once or twice doesn't actually display it) and then do something time-consuming.
 
-        if (screenmode == generatingcontinentsscreen)
+        if (screenmode == generatingtectonicscreen)
         {
-            if (generatingcontinentspass < 10)
+            if (generatingtectonicpass < 10)
             {
                 ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                ImGui::Begin("Please wait!");
-                ImGui::Text("Generating continents...");
+                ImGui::SetNextWindowSize(ImVec2(173, 68), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait...##generatetectonic ", NULL, window_flags);
+                ImGui::Text("Generating terrain...");
                 ImGui::End();
 
-                generatingcontinentspass++;
+                generatingtectonicpass++;
             }
             else
             {
                 initialiseworld(*world);
                 world->clear();
 
+                world->setsize(currentsize);
+
+                adjustforsize(*world, globaltexturesize, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *highlightimage, highlightsize, *minihighlightimage, minihighlightsize);
+
+                minihighlighttexture->loadFromImage(*minihighlightimage);
+                minihighlight->setTexture(*minihighlighttexture);
+                minihighlight->setOrigin((float)minihighlightsize / 2.0f, (float)minihighlightsize / 2.0f);
+
                 int seed = random(0, 9);
 
                 for (int n = 1; n <= 7; n++)
                 {
                     if (n == 7)
-                        seed = seed + (random(1, 9) * pow(10, n));
+                        seed = seed + (random(1, 9) * (int)pow(10, n));
                     else
-                        seed = seed + (random(0, 9) * pow(10, n));
+                        seed = seed + (random(0, 9) * (int)pow(10, n));
                 }
 
                 seed = 0 - seed;
@@ -2329,7 +3117,7 @@ int main()
                 for (int n = 0; n < GLOBALMAPTYPES; n++) // Set all map types as unviewed, to force them to be redrawn when called up
                     globalmapimagecreated[n] = 0;
 
-                short terraintype = 2; // This terrain type gives large continents.
+                world->settype(2); // This terrain type gives large continents.
 
                 fast_srand(world->seed());
 
@@ -2338,8 +3126,12 @@ int main()
 
                 switch (landmass)
                 {
+                case 0:
+                    world->settype(3);
+                    break;
+
                 case 1:
-                    terraintype = 1;
+                    world->settype(1);
                     break;
 
                 case 2:
@@ -2393,7 +3185,7 @@ int main()
 
                 // Now generate the terrain.
 
-                generateglobalterrain(*world, terraintype, mergefactor-5, clusterno, clustersize, landshape, chainland, mountaindrainage, shelves);
+                generateglobalterrain(*world, 1, iterations, mergefactor - 5, clusterno, clustersize, landshape, chainland, mountaindrainage, shelves, squareroot);
 
                 // Now redraw the map.
 
@@ -2406,7 +3198,88 @@ int main()
                 globalmaptexture->loadFromImage(*displayglobalreliefimage);
                 globalmap->setTexture(*globalmaptexture);
 
-                generatingcontinentspass = 0;
+                generatingtectonicpass = 0;
+                screenmode = importscreen;
+            }
+        }
+
+        if (screenmode == generatingnontectonicscreen)
+        {
+            if (generatingnontectonicpass < 10)
+            {
+                ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(173, 68), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait...##generatenontectonic ", NULL, window_flags);
+                ImGui::Text("Generating terrain...");
+                ImGui::End();
+
+                generatingnontectonicpass++;
+            }
+            else
+            {
+                initialiseworld(*world);
+                world->clear();
+
+                world->setsize(currentsize);
+
+                adjustforsize(*world, globaltexturesize, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *highlightimage, highlightsize, *minihighlightimage, minihighlightsize);
+
+                minihighlighttexture->loadFromImage(*minihighlightimage);
+                minihighlight->setTexture(*minihighlighttexture);
+                minihighlight->setOrigin((float)minihighlightsize / 2.0f, (float)minihighlightsize / 2.0f);
+
+                int seed = random(0, 9);
+
+                for (int n = 1; n <= 7; n++)
+                {
+                    if (n == 7)
+                        seed = seed + (random(1, 9) * (int)pow(10, n));
+                    else
+                        seed = seed + (random(0, 9) * (int)pow(10, n));
+                }
+
+                seed = 0 - seed;
+
+                world->setseed(seed);
+
+                updatereport("Generating custom world terrain from seed: " + to_string(world->seed()) + ":");
+                updatereport("");
+
+                for (int n = 0; n < GLOBALMAPTYPES; n++) // Set all map types as unviewed, to force them to be redrawn when called up
+                    globalmapimagecreated[n] = 0;
+
+                world->settype(4); // This terrain type gives alien-type terrain.
+
+                fast_srand(world->seed());
+
+                float sealevel = (float)sealeveleditable / 10.0f;
+
+                sealevel = (float)world->maxelevation() * sealevel;
+
+                if (sealevel < 1.0f)
+                    sealevel = 1.0f;
+
+                world->setsealevel((int)sealevel);
+
+                vector<vector<int>> mountaindrainage(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
+                vector<vector<bool>> shelves(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
+
+                // Now generate the terrain.
+
+                generateglobalterrain(*world, 1, iterations, mergefactor - 5, 1, 1, landshape, chainland, mountaindrainage, shelves, squareroot);
+
+                // Now redraw the map.
+
+                for (int n = 0; n < GLOBALMAPTYPES; n++)
+                    globalmapimagecreated[n] = 0;
+
+                mapview = relief;
+                drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
+
+                globalmaptexture->loadFromImage(*displayglobalreliefimage);
+                globalmap->setTexture(*globalmaptexture);
+
+                generatingtectonicpass = 0;
                 screenmode = importscreen;
             }
         }
@@ -2416,8 +3289,8 @@ int main()
             if (completingimportpass < 10)
             {
                 ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                ImGui::Begin("Please wait!");
+                ImGui::SetNextWindowSize(ImVec2(173, 68), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait...##completeimport ");
                 ImGui::Text("Finishing world...");
                 ImGui::End();
 
@@ -2425,17 +3298,21 @@ int main()
             }
             else
             {
-                updatereport("Generating world from imported maps:");
+                updatereport("Generating custom world:");
                 updatereport("");
 
                 // Plug in the world settings.
 
+                world->setgravity(currentgravity);
+                world->setlunar(currentlunar);
+                world->seteccentricity(currenteccentricity);
+                world->setperihelion(currentperihelion);
                 world->setrotation((bool)currentrotation);
                 world->settilt(currenttilt);
                 world->settempdecrease(currenttempdecrease);
-                world->setnorthpolartemperature(currentnorthpolartemp);
-                world->setsouthpolartemperature(currentsouthpolartemp);
-                world->seteqtemperature(currenteqtemp);
+                world->setnorthpolaradjust(currentnorthpolaradjust);
+                world->setsouthpolaradjust(currentsouthpolaradjust);
+                world->setaveragetemp(currentaveragetemp);
                 world->setwaterpickup(currentwaterpickup);
                 world->setglacialtemp(currentglacialtemp);
 
@@ -2444,48 +3321,60 @@ int main()
                 vector<vector<int>> mountaindrainage(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
                 vector<vector<bool>> shelves(ARRAYWIDTH, vector<bool>(ARRAYHEIGHT, 0));
 
+                world->setmaxelevation(100000);
+
                 updatereport("Raising mountain bases");
 
-                raisemountainbases(*world, mountaindrainage);
+                raisemountainbases(*world, mountaindrainage, OKmountains);
 
-                updatereport("Filling depressions");
+                getlandandseatotals(*world);
 
-                depressionfill(*world);
+                bool seapresent = 0;
 
-                addlandnoise(*world); // Add a bit of noise, then do remove depressions again. This is to add variety to the river courses.
+                if (world->seatotal() > 10)
+                    seapresent = 1;
 
-                depressionfill(*world);
+                if (seapresent)
+                {
+                    updatereport("Filling depressions");
 
-                updatereport("Adjusting coastlines");
+                    depressionfill(*world);
 
-                for (int n = 1; n <= 2; n++)
-                    normalisecoasts(*world, 13, 11, 4);
+                    addlandnoise(*world); // Add a bit of noise, then do remove depressions again. This is to add variety to the river courses.
 
-                clamp(*world);
+                    depressionfill(*world);
 
-                updatereport("Checking islands");
+                    updatereport("Adjusting coastlines");
 
-                checkislands(*world);
+                    for (int n = 1; n <= 2; n++)
+                        normalisecoasts(*world, 13, 11, 4);
+
+                    clamp(*world);
+
+                    updatereport("Checking islands");
+
+                    checkislands(*world);
+                }
 
                 updatereport("Creating roughness map");
 
                 vector<vector<int>> roughness(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
 
                 int grain = 8; // Level of detail on this fractal map.
-                float valuemod = 0.2;
-                float valuemod2 = 0.6;
+                float valuemod = 0.2f;
+                float valuemod2 = 0.6f;
 
                 createfractal(roughness, width, height, grain, valuemod, valuemod2, 1, world->maxelevation(), 0, 0);
 
                 for (int i = 0; i <= width; i++)
                 {
                     for (int j = 0; j <= height; j++)
-                        world->setroughness(i, j, roughness[i][j]);
+                        world->setroughness(i, j, (float)roughness[i][j]);
                 }
 
                 // Now do the climates.
 
-                generateglobalclimate(*world, currentrivers, smalllake, largelake, landshape, mountaindrainage, shelves);
+                generateglobalclimate(*world, currentrivers, currentlakes, currentdeltas, smalllake, largelake, landshape, mountaindrainage, shelves);
 
                 // Now draw a new map
 
@@ -2503,12 +3392,11 @@ int main()
                 updatereport("World generation completed.");
                 updatereport("");
 
-                infotext = "Welcome to a new world!";
-
                 focused = 0;
 
                 completingimportpass = 0;
                 screenmode = movingtoglobalmapscreen;
+                newworld = 1;
             }
         }
 
@@ -2517,8 +3405,8 @@ int main()
             if (loadingworldpass < 10)
             {
                 ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                ImGui::Begin("Please wait!");
+                ImGui::SetNextWindowSize(ImVec2(173, 68), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait...##loadworld ", NULL, window_flags);
                 ImGui::Text("Loading world...");
                 ImGui::End();
 
@@ -2526,26 +3414,209 @@ int main()
             }
             else
             {
-                world->loadworld(filepathname);
+                bool success=world->loadworld(filepathname);
 
-                for (int n = 0; n < GLOBALMAPTYPES; n++)
-                    globalmapimagecreated[n] = 0;
+                if (success == 0) // Failed to load
+                {
+                    screenmode = loadfailure;
+                    loadingworld = 0;
+                    loadingworldpass = 0;
+                }
+                else
+                {
+                    currentsize = world->size();
+                    currentgravity = world->gravity();
+                    currentlunar = world->lunar();
+                    currenteccentricity = world->eccentricity();
+                    currentperihelion = world->perihelion();
+                    currentrotation = world->rotation();
+                    currenttilt = world->tilt();
+                    currenttempdecrease = world->tempdecrease();
+                    currentnorthpolaradjust = world->northpolaradjust();
+                    currentsouthpolaradjust = world->southpolaradjust();
+                    currentaveragetemp = world->averagetemp();
+                    currentwaterpickup = world->waterpickup();
+                    currentglacialtemp = world->glacialtemp();
+                    
+                    //  Put all the correct values into the settings.
 
-                mapview = relief;
-                drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
+                    oceancolour.x = (float)world->ocean1() / 255.f;
+                    oceancolour.y = (float)world->ocean2() / 255.f;
+                    oceancolour.z = (float)world->ocean3() / 255.f;
+                    oceancolour.w = 1.f;
 
-                globalmaptexture->loadFromImage(*displayglobalreliefimage);
-                globalmap->setTexture(*globalmaptexture);
+                    deepoceancolour.x = (float)world->deepocean1() / 255.f;
+                    deepoceancolour.y = (float)world->deepocean2() / 255.f;
+                    deepoceancolour.z = (float)world->deepocean3() / 255.f;
+                    deepoceancolour.w = 1.f;
 
-                focused = 0;
-                infotext = "Welcome to a new world!";
+                    basecolour.x = (float)world->base1() / 255.f;
+                    basecolour.y = (float)world->base2() / 255.f;
+                    basecolour.z = (float)world->base3() / 255.f;
+                    basecolour.w = 1.f;
 
-                filepathname = "";
-                filepath = "";
+                    grasscolour.x = (float)world->grass1() / 255.f;
+                    grasscolour.y = (float)world->grass2() / 255.f;
+                    grasscolour.z = (float)world->grass3() / 255.f;
+                    grasscolour.w = 1.f;
 
-                screenmode = globalmapscreen;
-                loadingworld = 0;
-                loadingworldpass = 0;
+                    basetempcolour.x = (float)world->basetemp1() / 255.f;
+                    basetempcolour.y = (float)world->basetemp2() / 255.f;
+                    basetempcolour.z = (float)world->basetemp3() / 255.f;
+                    basetempcolour.w = 1.f;
+
+                    highbasecolour.x = (float)world->highbase1() / 255.f;
+                    highbasecolour.y = (float)world->highbase2() / 255.f;
+                    highbasecolour.z = (float)world->highbase3() / 255.f;
+                    highbasecolour.w = 1.f;
+
+                    desertcolour.x = (float)world->desert1() / 255.f;
+                    desertcolour.y = (float)world->desert2() / 255.f;
+                    desertcolour.z = (float)world->desert3() / 255.f;
+                    desertcolour.w = 1.f;
+
+                    highdesertcolour.x = (float)world->highdesert1() / 255.f;
+                    highdesertcolour.y = (float)world->highdesert2() / 255.f;
+                    highdesertcolour.z = (float)world->highdesert3() / 255.f;
+                    highdesertcolour.w = 1.f;
+
+                    colddesertcolour.x = (float)world->colddesert1() / 255.f;
+                    colddesertcolour.y = (float)world->colddesert2() / 255.f;
+                    colddesertcolour.z = (float)world->colddesert3() / 255.f;
+                    colddesertcolour.w = 1.f;
+
+                    eqtundracolour.x = (float)world->eqtundra1() / 255.f;
+                    eqtundracolour.y = (float)world->eqtundra2() / 255.f;
+                    eqtundracolour.z = (float)world->eqtundra3() / 255.f;
+                    eqtundracolour.w = 1.f;
+
+                    tundracolour.x = (float)world->tundra1() / 255.f;
+                    tundracolour.y = (float)world->tundra2() / 255.f;
+                    tundracolour.z = (float)world->tundra3() / 255.f;
+                    tundracolour.w = 1.f;
+
+                    coldcolour.x = (float)world->cold1() / 255.f;
+                    coldcolour.y = (float)world->cold2() / 255.f;
+                    coldcolour.z = (float)world->cold3() / 255.f;
+                    coldcolour.w = 1.f;
+
+                    seaicecolour.x = (float)world->seaice1() / 255.f;
+                    seaicecolour.y = (float)world->seaice2() / 255.f;
+                    seaicecolour.z = (float)world->seaice3() / 255.f;
+                    seaicecolour.w = 1.f;
+
+                    glaciercolour.x = (float)world->glacier1() / 255.f;
+                    glaciercolour.y = (float)world->glacier2() / 255.f;
+                    glaciercolour.z = (float)world->glacier3() / 255.f;
+                    glaciercolour.w = 1.f;
+
+                    saltpancolour.x = (float)world->saltpan1() / 255.f;
+                    saltpancolour.y = (float)world->saltpan2() / 255.f;
+                    saltpancolour.z = (float)world->saltpan3() / 255.f;
+                    saltpancolour.w = 1.f;
+
+                    ergcolour.x = (float)world->erg1() / 255.f;
+                    ergcolour.y = (float)world->erg2() / 255.f;
+                    ergcolour.z = (float)world->erg3() / 255.f;
+                    ergcolour.w = 1.f;
+
+                    wetlandscolour.x = (float)world->wetlands1() / 255.f;
+                    wetlandscolour.y = (float)world->wetlands2() / 255.f;
+                    wetlandscolour.z = (float)world->wetlands3() / 255.f;
+                    wetlandscolour.w = 1.f;
+
+                    lakecolour.x = (float)world->lake1() / 255.f;
+                    lakecolour.y = (float)world->lake2() / 255.f;
+                    lakecolour.z = (float)world->lake3() / 255.f;
+                    lakecolour.w = 1.f;
+
+                    rivercolour.x = (float)world->river1() / 255.f;
+                    rivercolour.y = (float)world->river2() / 255.f;
+                    rivercolour.z = (float)world->river3() / 255.f;
+                    rivercolour.w = 1.f;
+
+                    mudcolour.x = (float)world->mud1() / 255.f;
+                    mudcolour.y = (float)world->mud2() / 255.f;
+                    mudcolour.z = (float)world->mud3() / 255.f;
+                    mudcolour.w = 1.f;
+
+                    sandcolour.x = (float)world->sand1() / 255.f;
+                    sandcolour.y = (float)world->sand2() / 255.f;
+                    sandcolour.z = (float)world->sand3() / 255.f;
+                    sandcolour.w = 1.f;
+
+                    shinglecolour.x = (float)world->shingle1() / 255.f;
+                    shinglecolour.y = (float)world->shingle2() / 255.f;
+                    shinglecolour.z = (float)world->shingle3() / 255.f;
+                    shinglecolour.w = 1.f;
+
+                    mangrovecolour.x = (float)world->mangrove1() / 255.f;
+                    mangrovecolour.y = (float)world->mangrove2() / 255.f;
+                    mangrovecolour.z = (float)world->mangrove3() / 255.f;
+                    mangrovecolour.w = 1.f;
+
+                    highlightcolour.x = (float)world->highlight1() / 255.f;
+                    highlightcolour.y = (float)world->highlight2() / 255.f;
+                    highlightcolour.z = (float)world->highlight3() / 255.f;
+                    highlightcolour.w = 1.f;
+
+                    shadingland = world->landshading();
+                    shadinglake = world->lakeshading();
+                    shadingsea = world->seashading();
+                    marblingland = world->landmarbling();
+                    marblinglake = world->lakemarbling();
+                    marblingsea = world->seamarbling();
+
+                    minriverflowglobal = world->minriverflowglobal();
+                    minriverflowregional = world->minriverflowregional();
+
+                    globalriversentry = world->minriverflowglobal();
+                    regionalriversentry = world->minriverflowregional();
+
+                    if (world->shadingdir() == 4)
+                        shadingdir = 0;
+
+                    if (world->shadingdir() == 6)
+                        shadingdir = 1;
+
+                    if (world->shadingdir() == 2)
+                        shadingdir = 2;
+
+                    if (world->shadingdir() == 8)
+                        shadingdir = 3;
+
+                    snowchange = world->snowchange() - 1;
+                    seaiceappearance = world->seaiceappearance() - 1;
+                    colourcliffs = world->colourcliffs();
+                    mangroves = world->showmangroves();
+                    
+                    // Now draw the new world.
+                    
+                    adjustforsize(*world, globaltexturesize, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *highlightimage, highlightsize, *minihighlightimage, minihighlightsize);
+
+                    minihighlighttexture->loadFromImage(*minihighlightimage);
+                    minihighlight->setTexture(*minihighlighttexture);
+                    minihighlight->setOrigin((float)minihighlightsize / 2.0f, (float)minihighlightsize / 2.0f);
+
+                    for (int n = 0; n < GLOBALMAPTYPES; n++)
+                        globalmapimagecreated[n] = 0;
+
+                    mapview = relief;
+                    drawglobalmapimage(mapview, *world, globalmapimagecreated, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *displayglobalelevationimage, *displayglobaltemperatureimage, *displayglobalprecipitationimage, *displayglobalclimateimage, *displayglobalriversimage, *displayglobalreliefimage);
+
+                    globalmaptexture->loadFromImage(*displayglobalreliefimage);
+                    globalmap->setTexture(*globalmaptexture);
+
+                    focused = 0;
+                    newworld = 1;
+
+                    filepathname = "";
+                    filepath = "";
+
+                    screenmode = globalmapscreen;
+                    loadingworld = 0;
+                    loadingworldpass = 0;
+                }
             }
         }
 
@@ -2554,8 +3625,8 @@ int main()
             if (savingworldpass < 10)
             {
                 ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 507, main_viewport->WorkPos.y + 173), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                ImGui::Begin("Please wait!");
+                ImGui::SetNextWindowSize(ImVec2(173, 68), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait...##saveworld ", NULL, window_flags);
                 ImGui::Text("Saving world...");
                 ImGui::End();
 
@@ -2581,8 +3652,8 @@ int main()
             if (exportingareapass < 10)
             {
                 ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 300, main_viewport->WorkPos.y + 200), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                ImGui::Begin("Please wait!");
+                ImGui::SetNextWindowSize(ImVec2(173, 68), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait...##exportarea ", NULL, window_flags);
                 ImGui::Text("Generating area maps...");
                 ImGui::End();
 
@@ -2595,11 +3666,11 @@ int main()
 
                 mapviewenum oldmapview = mapview;
 
-                float regiontilewidth = REGIONALTILEWIDTH; //30;
-                float regiontileheight = REGIONALTILEHEIGHT; //30; // The width and height of the visible regional map, in tiles.
+                float regiontilewidth = (float)REGIONALTILEWIDTH; //30;
+                float regiontileheight = (float)REGIONALTILEHEIGHT; //30; // The width and height of the visible regional map, in tiles.
 
-                int regionwidth = regiontilewidth * 16;
-                int regionheight = regiontileheight * 16; // The width and height of the visible regional map, in pixels.
+                int regionwidth = (int)(regiontilewidth * 16.0f);
+                int regionheight = (int)(regiontileheight * 16.0f); // The width and height of the visible regional map, in pixels.
 
                 int origareanwx = areanwx; // This is because the regions we'll be making will start to the north and west of the defined area.
                 int origareanwy = areanwy;
@@ -2610,11 +3681,11 @@ int main()
                 int origareaswx = areaswx;
                 int origareaswy = areaswy;
 
-                areanwx = areanwx / regiontilewidth;
-                areanwx = areanwx * regiontilewidth;
+                areanwx = areanwx / (int)regiontilewidth;
+                areanwx = areanwx * (int)regiontilewidth;
 
-                areanwy = areanwy / regiontileheight;
-                areanwy = areanwy * regiontileheight;
+                areanwy = areanwy / (int)regiontileheight;
+                areanwy = areanwy * (int)regiontileheight;
 
                 areaswx = areanwx;
                 areaney = areanwy;
@@ -2622,23 +3693,23 @@ int main()
                 int woffset = (origareanwx - areanwx) * 16;
                 int noffset = (origareanwy - areanwy) * 16;
 
-                float areatilewidth = areanex - areanwx;
-                float areatileheight = areasey - areaney;
+                float areatilewidth = (float)(areanex - areanwx);
+                float areatileheight = (float)(areasey - areaney);
 
-                int areawidth = areatilewidth * 16;
-                int areaheight = areatileheight * 16;
+                int areawidth = (int)areatilewidth * 16;
+                int areaheight = (int)areatileheight * 16;
 
-                float imageareatilewidth = origareanex - origareanwx;
-                float imageareatileheight = areasey - origareaney;
+                float imageareatilewidth = (float)(origareanex - origareanwx);
+                float imageareatileheight = (float)(areasey - origareaney);
 
-                int imageareawidth = imageareatilewidth * 16;
-                int imageareaheight = imageareatileheight * 16;
+                int imageareawidth = (int)imageareatilewidth * 16;
+                int imageareaheight = (int)imageareatileheight * 16;
 
                 float fregionswide = areatilewidth / regiontilewidth;
                 float fregionshigh = areatileheight / regiontileheight;
 
-                int regionswide = fregionswide;
-                int regionshigh = fregionshigh;
+                int regionswide = (int)fregionswide;
+                int regionshigh = (int)fregionshigh;
 
                 if (regionswide != fregionswide)
                     regionswide++;
@@ -2673,18 +3744,18 @@ int main()
 
                 for (int i = 0; i < regionswide; i++)
                 {
-                    int centrex = i * regiontilewidth + (regiontilewidth / 2) + areanwx;
+                    int centrex = i * (int)regiontilewidth + ((int)regiontilewidth / 2) + areanwx;
 
                     for (int j = 0; j < regionshigh; j++)
                     {
-                        int centrey = j * regiontileheight + (regiontileheight / 2) + areanwy;
+                        int centrey = j * (int)regiontileheight + ((int)regiontileheight / 2) + areanwy;
 
                         // First, create the new region.
 
                         region->setcentrex(centrex);
                         region->setcentrey(centrey);
 
-                        generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge);
+                        generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge,squareroot);
 
                         // Now generate the maps.
 
@@ -2747,7 +3818,7 @@ int main()
                 region->setcentrey(oldregionalcentrey);
 
                 if (areafromregional == 1) // If we're going to go back to the regional map, we need to redo it.
-                    generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge);
+                    generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge, squareroot);
 
                 // Now just save the images.
 
@@ -2797,6 +3868,13 @@ int main()
 
         if (screenmode == generatingregionscreen)
         {
+            showcolouroptions = 0;
+            showworldproperties = 0;
+            showglobalrainfallchart = 0;
+            showglobaltemperaturechart = 0;
+            showregionalrainfallchart = 0;
+            showregionaltemperaturechart = 0;
+            
             if (generatingregionpass < 10) // This one has a non-functioning copy of the regional map screen controls, plus the "Please wait" message.
             {
                 string title;
@@ -2809,9 +3887,9 @@ int main()
                 title = title + "##regional";
 
                 ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 10, main_viewport->WorkPos.y + 20), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowSize(ImVec2(160, 346), ImGuiCond_FirstUseEver);
+                ImGui::SetNextWindowSize(ImVec2(161, 449), ImGuiCond_FirstUseEver);
 
-                ImGui::Begin(title.c_str());
+                ImGui::Begin(title.c_str(), NULL, window_flags);
 
                 ImGui::Text("World controls:");
 
@@ -2859,6 +3937,8 @@ int main()
 
                 ImGui::PushItemWidth(100.0f);
 
+                standardbutton("Properties");
+
                 standardbutton("Appearance");
 
                 ImGui::End();
@@ -2870,16 +3950,15 @@ int main()
 
                 title = "               ";
 
-                ImGui::Begin(title.c_str());
-                ImGui::PushItemWidth(world->width() / 2);
-                ImGui::Text(infotext2.c_str(), world->width() / 2);
+                ImGui::Begin(title.c_str(), NULL, window_flags);
+
                 ImGui::End();
 
                 // Now the additional element.
 
                 ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 849, main_viewport->WorkPos.y + 364), ImGuiCond_FirstUseEver);
-                ImGui::SetNextWindowSize(ImVec2(200, 50), ImGuiCond_FirstUseEver);
-                ImGui::Begin("Please wait...");
+                ImGui::SetNextWindowSize(ImVec2(200, 60), ImGuiCond_FirstUseEver);
+                ImGui::Begin("Please wait...##generateregion ", NULL, window_flags);
                 ImGui::Text("Generating region");
                 ImGui::End();
 
@@ -2887,8 +3966,6 @@ int main()
             }
             else
             {
-                infotext2 = "";
-
                 newx = newx / 32;
                 newy = newy / 32;
 
@@ -2906,7 +3983,7 @@ int main()
                 for (int n = 0; n < GLOBALMAPTYPES; n++)
                     regionalmapimagecreated[n] = 0;
 
-                float progressstep = 1.0 / REGIONALCREATIONSTEPS;
+                float progressstep = 1.0f / REGIONALCREATIONSTEPS;
 
                 // Blank the regional map image first
 
@@ -2922,7 +3999,7 @@ int main()
 
                 // Now generate the regional map
 
-                generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge);
+                generateregionalmap(*world, *region, smalllake, island, *peaks, riftblob, riftblobsize, 0, smudge, smallsmudge, squareroot);
 
                 // Now draw the regional map image
 
@@ -2943,115 +4020,208 @@ int main()
             }
         }
 
+        if (screenmode == loadfailure)
+        {
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 446, main_viewport->WorkPos.y + 174), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(296, 129), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Loading unsuccessful!", NULL, window_flags);
+
+            ImGui::Text("This world file is not compatible with the");
+            ImGui::Text("current version of Undiscovered Worlds.");
+
+            ImGui::Text(" ");
+            ImGui::Text(" ");
+
+            ImGui::SameLine((float)135);
+
+            if (ImGui::Button("OK"))
+            {
+                if (brandnew)
+                    screenmode = createworldscreen;
+                else
+                    screenmode = globalmapscreen;
+            }
+
+            ImGui::End();
+        }
+
+        if (screenmode == settingsloadfailure)
+        {
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 446, main_viewport->WorkPos.y + 174), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(310, 129), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Loading unsuccessful!##settings ", NULL, window_flags);
+
+            ImGui::Text("This settings file is not compatible with the");
+            ImGui::Text("current version of Undiscovered Worlds.");
+
+            ImGui::Text(" ");
+            ImGui::Text(" ");
+
+            ImGui::SameLine((float)135);
+
+            if (ImGui::Button("OK"))
+                screenmode = oldscreenmode;
+
+            ImGui::End();
+        }
+
         window.clear();
 
         // Colour options, if being shown
 
-        if (showcolouroptions)
+        if (showcolouroptions && screenmode != settingsloadfailure)
         {
             int colouralign = 360;
+            int otheralign = 330;
 
-            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 306, main_viewport->WorkPos.y + 33), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(646, 484), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 316, main_viewport->WorkPos.y + 24), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(655, 440), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin("Map appearance");
+            ImGui::Begin("Map appearance", NULL, window_flags);
 
-            ImGui::PushItemWidth(200);
+            ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
+            if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags))
+            {
+                if (ImGui::BeginTabItem("Colours"))
+                {
+                    ImGui::Text("  ");
 
-            ImGui::ColorEdit3("Shallow ocean", (float*)&oceancolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Tundra", (float*)&tundracolour);
+                    ImGui::PushItemWidth(200);
 
-            ImGui::ColorEdit3("Deep ocean", (float*)&deepoceancolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Arctic", (float*)&coldcolour);
+                    ImGui::ColorEdit3("Shallow ocean", (float*)&oceancolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Sea ice", (float*)&seaicecolour);
 
-            ImGui::ColorEdit3("Base land", (float*)&basecolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Sea ice", (float*)&seaicecolour);
+                    ImGui::ColorEdit3("Deep ocean", (float*)&deepoceancolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Glaciers", (float*)&glaciercolour);
 
-            ImGui::ColorEdit3("Grassland", (float*)&grasscolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Glaciers", (float*)&glaciercolour);
+                    ImGui::ColorEdit3("Base land", (float*)&basecolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Salt pans", (float*)&saltpancolour);
 
-            ImGui::ColorEdit3("Low temperate", (float*)&basetempcolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Salt pans", (float*)&saltpancolour);
+                    ImGui::ColorEdit3("Grassland", (float*)&grasscolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Dunes", (float*)&ergcolour);
 
-            ImGui::ColorEdit3("High temperate", (float*)&highbasecolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Dunes", (float*)&ergcolour);
+                    ImGui::ColorEdit3("Low temperate", (float*)&basetempcolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Rivers", (float*)&rivercolour);
 
-            ImGui::ColorEdit3("Low desert", (float*)&desertcolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Wetlands", (float*)&wetlandscolour);
+                    ImGui::ColorEdit3("High temperate", (float*)&highbasecolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Lakes", (float*)&lakecolour);
 
-            ImGui::ColorEdit3("High desert", (float*)&highdesertcolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Lakes", (float*)&lakecolour);
+                    ImGui::ColorEdit3("Low desert", (float*)&desertcolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Wetlands", (float*)&wetlandscolour);
 
-            ImGui::ColorEdit3("Cold desert", (float*)&colddesertcolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Rivers", (float*)&rivercolour);
+                    ImGui::ColorEdit3("High desert", (float*)&highdesertcolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Mangroves", (float*)&mangrovecolour);
 
-            ImGui::ColorEdit3("Mild tundra", (float*)&eqtundracolour);
-            ImGui::SameLine(colouralign);
-            ImGui::ColorEdit3("Highlights", (float*)&highlightcolour);
+                    ImGui::ColorEdit3("Cold desert", (float*)&colddesertcolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Mud", (float*)&mudcolour);
 
-            ImGui::Text("   ");
+                    ImGui::ColorEdit3("Mild tundra", (float*)&eqtundracolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Sand", (float*)&sandcolour);
 
-            ImGui::PushItemWidth(200);
+                    ImGui::ColorEdit3("Tundra", (float*)&tundracolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Shingle", (float*)&shinglecolour);
 
-            ImGui::Text("Shading");
-            ImGui::SameLine(colouralign);
-            ImGui::Text("Other effects");
+                    ImGui::ColorEdit3("Arctic", (float*)&coldcolour);
+                    ImGui::SameLine((float)colouralign);
+                    ImGui::ColorEdit3("Highlights", (float*)&highlightcolour);
 
-            ImGui::SetCursorPosX(20);
-            ImGui::SliderFloat("On land", &shadingland, 0.0f, 1.0f, "%.2f");
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Effects"))
+                {
+                    ImGui::Text("  ");
 
-            ImGui::SameLine(colouralign + 20);
+                    ImGui::PushItemWidth(200);
 
-            const char* lightdiritems[] = { "Southeast","Southwest","Northeast","Northwest" };
-            ImGui::Combo("Light", &shadingdir, lightdiritems, 4);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Controls the light source for the shading effect.");
+                    ImGui::Text("Shading");
 
-            ImGui::SetCursorPosX(20);
-            ImGui::SliderFloat("On lakes", &shadinglake, 0.0f, 1.0f, "%.2f");
+                    ImGui::SameLine((float)otheralign);
+                    ImGui::Text("Rivers");
 
-            ImGui::SameLine(colouralign + 20);
+                    ImGui::SetCursorPosX(20);
+                    ImGui::SliderFloat("On land", &shadingland, 0.0f, 1.0f, "%.2f");
 
-            const char* snowitems[] = { "Sudden","Speckled","Smooth" };
-            ImGui::Combo("Snow", &snowchange, snowitems, 3);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Changes the appearance of transitions from snowy regions to non-snowy ones.");
+                    ImGui::SameLine((float)otheralign + 20);
+                    ImGui::InputInt("Global map", &globalriversentry);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Only rivers greater than this size will be displayed on the global relief map.");
 
-            ImGui::SetCursorPosX(20);
-            ImGui::SliderFloat("On sea", &shadingsea, 0.0f, 1.0f, "%.2f");
+                    ImGui::SetCursorPosX(20);
+                    ImGui::SliderFloat("On lakes", &shadinglake, 0.0f, 1.0f, "%.2f");
 
-            ImGui::SameLine(colouralign + 20);
+                    ImGui::SameLine((float)otheralign + 20);
+                    ImGui::InputInt("Regional map", &regionalriversentry);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Only rivers greater than this size will be displayed on the regional relief map.");
 
-            const char* seaiceitems[] = { "Permanent","None","All" };
-            ImGui::Combo("Sea ice", &seaiceappearance, seaiceitems, 3);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Determines whether sea ice is shown.");
+                    ImGui::SetCursorPosX(20);
+                    ImGui::SliderFloat("On sea", &shadingsea, 0.0f, 1.0f, "%.2f");
 
-            ImGui::Text("Marbling");
+                    ImGui::Text("Marbling");
 
-            ImGui::SetCursorPosX(20);
-            ImGui::SliderFloat("On land ", &marblingland, 0.0f, 1.0f, "%.2f");
+                    ImGui::SameLine((float)otheralign);
+                    ImGui::Text("Other effects");
 
-            ImGui::SetCursorPosX(20);
-            ImGui::SliderFloat("On lakes ", &marblinglake, 0.0f, 1.0f, "%.2f");
+                    ImGui::SetCursorPosX(20);
+                    ImGui::SliderFloat("On land ", &marblingland, 0.0f, 1.0f, "%.2f");
 
-            ImGui::SameLine(colouralign);
+                    ImGui::SameLine((float)otheralign + 20);
+                    const char* lightdiritems[] = { "Southeast","Southwest","Northeast","Northwest" };
+                    ImGui::Combo("Light", &shadingdir, lightdiritems, 4);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Controls the light source for the shading effect.");
 
-            ImGui::Text("Controls");
+                    ImGui::SetCursorPosX(20);
+                    ImGui::SliderFloat("On lakes ", &marblinglake, 0.0f, 1.0f, "%.2f");
 
-            ImGui::SetCursorPosX(20);
-            ImGui::SliderFloat("On sea ", &marblingsea, 0.0f, 1.0f, " % .2f");
 
-            ImGui::SameLine(colouralign + 20);
+                    ImGui::SameLine((float)otheralign + 20);
+                    const char* snowitems[] = { "Sudden","Speckled","Smooth" };
+                    ImGui::Combo("Snow", &snowchange, snowitems, 3);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Changes the appearance of transitions from snowy regions to non-snowy ones.");
+
+                    ImGui::SetCursorPosX(20);
+                    ImGui::SliderFloat("On sea ", &marblingsea, 0.0f, 1.0f, " % .2f");
+
+                    ImGui::SameLine((float)otheralign + 20);
+                    const char* seaiceitems[] = { "Permanent","None","All" };
+                    ImGui::Combo("Sea ice", &seaiceappearance, seaiceitems, 3);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Determines whether sea ice is shown.");
+
+                    ImGui::Text("    ");
+
+                    ImGui::SetCursorPosX(20);
+                    ImGui::Checkbox("Show mangrove forests", &mangroves);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Shows mangrove forests on tropical mud flats and salt wetlands.");
+
+                    ImGui::SameLine((float)otheralign + 20);
+                    ImGui::Checkbox("Only cliffs use high base colour", &colourcliffs);
+                    if (ImGui::IsItemHovered())
+                        ImGui::SetTooltip("Uses high base colour only on steep slopes. May look better on non-tectonic worlds with high plateaux.");
+
+                    ImGui::EndTabItem();
+                }
+
+                ImGui::EndTabBar();
+            }
+
+            ImGui::SetCursorPos(ImVec2(75.0f, 405.0f));
 
             if (ImGui::Button("Save", ImVec2(120.0f, 0.0f)))
             {
@@ -3062,10 +4232,7 @@ int main()
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Save map appearance settings.");
 
-            ImGui::Text("Rivers");
-
-            ImGui::SameLine(colouralign + 20);
-
+            ImGui::SameLine();
             if (ImGui::Button("Load", ImVec2(120.0f, 0.0f)))
             {
                 ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".uws", ".");
@@ -3075,16 +4242,7 @@ int main()
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Load map appearance settings.");
 
-            ImGui::PushItemWidth(200);
-
-            ImGui::SetCursorPosX(20);
-
-            ImGui::InputInt("Global map", &globalriversentry);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Only rivers greater than this size will be displayed on the global relief map.");
-
-            ImGui::SameLine(colouralign + 20);
-
+            ImGui::SameLine();
             if (ImGui::Button("Default", ImVec2(120.0f, 0.0f)))
             {
                 initialisemapcolours(*world);
@@ -3186,6 +4344,26 @@ int main()
                 rivercolour.z = (float)world->river3() / 255.f;
                 rivercolour.w = 1.f;
 
+                mudcolour.x = (float)world->mud1() / 255.f;
+                mudcolour.y = (float)world->mud2() / 255.f;
+                mudcolour.z = (float)world->mud3() / 255.f;
+                mudcolour.w = 1.f;
+
+                sandcolour.x = (float)world->sand1() / 255.f;
+                sandcolour.y = (float)world->sand2() / 255.f;
+                sandcolour.z = (float)world->sand3() / 255.f;
+                sandcolour.w = 1.f;
+
+                shinglecolour.x = (float)world->shingle1() / 255.f;
+                shinglecolour.y = (float)world->shingle2() / 255.f;
+                shinglecolour.z = (float)world->shingle3() / 255.f;
+                shinglecolour.w = 1.f;
+
+                mangrovecolour.x = (float)world->mangrove1() / 255.f;
+                mangrovecolour.y = (float)world->mangrove2() / 255.f;
+                mangrovecolour.z = (float)world->mangrove3() / 255.f;
+                mangrovecolour.w = 1.f;
+
                 highlightcolour.x = (float)world->highlight1() / 255.f;
                 highlightcolour.y = (float)world->highlight2() / 255.f;
                 highlightcolour.z = (float)world->highlight3() / 255.f;
@@ -3218,6 +4396,8 @@ int main()
 
                 snowchange = world->snowchange() - 1;
                 seaiceappearance = world->seaiceappearance() - 1;
+                colourcliffs = world->colourcliffs();
+                mangroves = world->showmangroves();
 
                 drawhighlightobjects(*world, *highlightimage, highlightsize, *minihighlightimage, minihighlightsize);
 
@@ -3226,26 +4406,18 @@ int main()
 
                 minihighlighttexture->loadFromImage(*minihighlightimage);
                 minihighlight->setTexture(*minihighlighttexture);
+                minihighlight->setOrigin((float)minihighlightsize / 2.0f, (float)minihighlightsize / 2.0f);
 
                 colourschanged = 1;
             }
-
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Restore the default map appearance settings.");
 
-            ImGui::SetCursorPosX(20);
-
-            ImGui::InputInt("Regional map", &regionalriversentry);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Only rivers greater than this size will be displayed on the regional relief map.");
-
-            ImGui::SameLine(colouralign + 20);
-
+            ImGui::SameLine();
             if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
             {
                 showcolouroptions = 0;
             }
-
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Close the map appearance panel.");
 
@@ -3256,89 +4428,252 @@ int main()
 
         if (showworldproperties)
         {
-            int rightalign = 320;
-            
-            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 425, main_viewport->WorkPos.y + 118), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(500, 157), ImGuiCond_FirstUseEver);
+            int rightalign = 290;
 
-            ImGui::Begin("World properties");
+            int topleftfigures = 105;
+            int bottomleftfigures = 225;
+            int toprightfigures = 410;
+            int bottomrightfigures = 460;
 
-            string rotationinfo = "Rotation: ";
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 265, main_viewport->WorkPos.y + 60), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(499, 264), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("World properties", NULL, window_flags);
+
+            string sizeinfo = "Size:";
+
+            string sizevalue = "";
+
+            if (world->size() == 0)
+                sizevalue = "small";
+
+            if (world->size() == 1)
+                sizevalue = "medium";
+
+            if (world->size() == 2)
+                sizevalue = "large";
+
+            stringstream ss3;
+            ss3 << fixed << setprecision(5) << world->eccentricity();
+
+            string eccentricityinfo = "Eccentricity:";
+            string eccentricityvalue = ss3.str();
+
+            stringstream ss4;
+            ss4 << fixed << setprecision(2) << world->gravity();
+
+            string gravityinfo = "Surface gravity: ";
+            string gravityvalue = ss4.str() + "g";
+
+            string perihelioninfo = "Perihelion:";
+            string perihelionvalue = "";
+
+            if (world->perihelion() == 0)
+                perihelionvalue = "January";
+
+            if (world->perihelion() == 1)
+                perihelionvalue = "July";
+
+            stringstream ss5;
+            ss5 << fixed << setprecision(2) << world->lunar();
+
+            string lunarinfo = "Lunar pull:";
+            string lunarvalue = ss5.str();
+
+            string typeinfo = "Category: ";
+            string typevalue = to_string(world->type());
+
+            if (typevalue == "1")
+                typevalue = "tectonic (small)";
+
+            if (typevalue == "2")
+                typevalue = "tectonic (large)";
+
+            if (typevalue == "3")
+                typevalue = "oceanic";
+
+            if (typevalue == "4")
+                typevalue = "non-tectonic";
+
+            string rotationinfo = "Rotation:";
+            string rotationvalue = "";
 
             if (world->rotation())
-                rotationinfo = rotationinfo + "west to east";
+                rotationvalue = "west to east";
             else
-                rotationinfo = rotationinfo + "east to west";
+                rotationvalue = "east to west";
 
             stringstream ss;
             ss << fixed << setprecision(2) << world->tilt();
 
-            string tiltinfo = "Axial tilt: " + ss.str();
+            string tiltinfo = "Obliquity:";
+            string tiltvalue = ss.str() + degree;
 
             stringstream ss2;
             ss2 << fixed << setprecision(2) << world->tempdecrease();
 
-            string tempdecreaseinfo = "Temperature decrease per vertical km: " + ss2.str();
+            string tempdecreaseinfo = "Heat decrease per vertical km:";
+            string tempdecreasevalue = ss2.str() + degree;
 
-            string northpoleinfo = "Average north pole temperature: " + to_string(world->northpolartemperature());
-            string southpoleinfo = "Average south pole temperature: " + to_string(world->southpolartemperature());
-            string equatorinfo = "Average equator temperature:    " + to_string(world->eqtemperature());
+            string northpoleinfo = "North pole adjustment:";
+            string northpolevalue = to_string(world->northpolaradjust()) + degree;
 
-            string moistureinfo = "Moisture pickup rate: " + to_string(world->waterpickup());
+            string southpoleinfo = "South pole adjustment:";
+            string southpolevalue = to_string(world->southpolaradjust()) + degree;
 
-            string glacialinfo = "Glaciation temperature: " + to_string(world->glacialtemp());
+            string averageinfo = "Average global temperature:";
+            string averagevalue = to_string(world->averagetemp()) + degree;
+
+            stringstream ss6;
+            ss6 << fixed << setprecision(2) << world->waterpickup();
+
+            string moistureinfo = "Moisture pickup rate:";
+            string moisturevalue = ss6.str();
+
+            string glacialinfo = "Glaciation temperature:";
+            string glacialvalue=to_string(world->glacialtemp())+degree;
+
+            ImGui::Text(sizeinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Size of planet. (Earth: large; Mars: medium; Moon: small)");
+
+            ImGui::SameLine((float)topleftfigures);
+            ImGui::Text(sizevalue.c_str());
+
+            ImGui::SameLine((float)rightalign);
+
+            ImGui::Text(gravityinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects mountain and valley sizes. (Earth: 1.00g)");
+
+            ImGui::SameLine((float)toprightfigures);
+            ImGui::Text(gravityvalue.c_str());
+
+            ImGui::Text(typeinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Terrain category. (Earth: large tectonic)");
+
+            ImGui::SameLine((float)topleftfigures);
+            ImGui::Text(typevalue.c_str());
+
+            ImGui::SameLine((float)rightalign);
+
+            ImGui::Text(lunarinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects tides and coastal regions. (Earth: 1.00)");
+
+            ImGui::SameLine((float)toprightfigures);
+            ImGui::Text(lunarvalue.c_str());
 
             ImGui::Text(rotationinfo.c_str());
 
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Affects weather patterns. (Earth: west to east)");
 
-            ImGui::SameLine(rightalign);
+            ImGui::SameLine((float)topleftfigures);
+            ImGui::Text(rotationvalue.c_str());
+
+            ImGui::SameLine((float)rightalign);
 
             ImGui::Text(tiltinfo.c_str());
 
+            string tilttip = "Affects seasonal variation in temperature. (Earth: 22.5" + degree + ")";
+
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Affects seasonal variation in temperature. (Earth: 22.5)");
+                ImGui::SetTooltip(tilttip.c_str());
+
+            ImGui::SameLine((float)toprightfigures);
+            ImGui::Text(tiltvalue.c_str());
+
+            ImGui::Text(eccentricityinfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("How elliptical the orbit is. (Earth: 0.0167)");
+
+            ImGui::SameLine((float)topleftfigures);
+            ImGui::Text(eccentricityvalue.c_str());
+
+            ImGui::SameLine((float)rightalign);
+
+            ImGui::Text(perihelioninfo.c_str());
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("When the planet is closest to the sun. (Earth: January)");
+
+            ImGui::SameLine((float)toprightfigures);
+            ImGui::Text(perihelionvalue.c_str());
 
             ImGui::Text("   ");
 
             ImGui::Text(tempdecreaseinfo.c_str());
 
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Affects how much colder it gets higher up. (Earth: 6.5)");
+            string tempdecreasetip = "Affects how much colder it gets higher up. (Earth: 6.5" + degree + ")";
 
-            ImGui::SameLine(rightalign);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip(tempdecreasetip.c_str());
+
+            ImGui::SameLine((float)bottomleftfigures);
+            ImGui::Text(tempdecreasevalue.c_str());
+
+            ImGui::SameLine((float)rightalign);
 
             ImGui::Text(moistureinfo.c_str());
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Affects how much moisture wind picks up from the ocean. (Earth: 100)");
+                ImGui::SetTooltip("Affects how much moisture wind picks up from the ocean. (Earth: 1.0)");
+
+            ImGui::SameLine((float)bottomrightfigures);
+            ImGui::Text(moisturevalue.c_str());
 
             ImGui::Text("   ");
 
-            ImGui::Text(northpoleinfo.c_str());
+            ImGui::Text(averageinfo.c_str());
+
+            string avetip = "Earth: 14" + degree;
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Earth: -32");
+                ImGui::SetTooltip(avetip.c_str());
 
-            ImGui::SameLine(rightalign);
+            ImGui::SameLine((float)bottomleftfigures);
+            ImGui::Text(averagevalue.c_str());
+
+            ImGui::SameLine((float)rightalign);
 
             ImGui::Text(glacialinfo.c_str());
 
+            string glacialtip = "Areas below this average temperature may show signs of past glaciation. (Earth: 4" + degree + ")";
+
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Areas below this average temperature may show signs of past glaciation. (Earth: 4)");
+                ImGui::SetTooltip(glacialtip.c_str());
+
+            ImGui::SameLine((float)bottomrightfigures);
+            ImGui::Text(glacialvalue.c_str());
+
+            ImGui::Text(northpoleinfo.c_str());
+
+            string northtip = "Adjustment to north pole temperature. (Earth: +3" + degree + ")";
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip(northtip.c_str());
+
+            ImGui::SameLine((float)bottomleftfigures);
+            ImGui::Text(northpolevalue.c_str());
 
             ImGui::Text(southpoleinfo.c_str());
 
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Earth: -38");
-
-            ImGui::Text(equatorinfo.c_str());
+            string southtip = "Adjustment to south pole temperature. (Earth: -3" + degree + ")";
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Earth: 38");
+                ImGui::SetTooltip(southtip.c_str());
 
-            ImGui::SameLine(rightalign);
+            ImGui::SameLine((float)bottomleftfigures);
+            ImGui::Text(southpolevalue.c_str());
+
+            ImGui::SameLine((float)rightalign);
 
             if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
             {
@@ -3348,69 +4683,116 @@ int main()
             ImGui::End();
         }
 
-        // World edit properties screen, if shown.
+        // World edit properties screen, if being shown
 
         if (showworldeditproperties)
         {
-            int rightalign = 310;
+            int rightalign = 280;
 
-            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 460, main_viewport->WorkPos.y + 168), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(43, 242), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 420, main_viewport->WorkPos.y + 50), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(415, 427), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin("World properties##2");
+            ImGui::Begin("World properties##2", NULL, window_flags);
 
             ImGui::PushItemWidth(180);
 
             const char* rotationitems[] = { "East to west", "West to east" };
             static int item_current = 0;
-            ImGui::Combo("Rotation", &currentrotation, rotationitems,2);
+            ImGui::Combo("Rotation", &currentrotation, rotationitems, 2);
 
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Affects weather patterns. (Earth: west to east)");
 
-            ImGui::InputFloat("Axial tilt", &currenttilt, 0.01f, 1.0f, "%.3f");
+            const char* perihelionitems[] = { "January", "July" };
+            static int pitem_current = 0;
+            ImGui::Combo("Perihelion", &currentperihelion, perihelionitems, 2);
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Affects seasonal variation in temperature. (Earth: 22.5)");
+                ImGui::SetTooltip("When the planet is closest to the sun. (Earth: January)");
 
-            ImGui::InputInt("Moisture pickup rate", &currentwaterpickup);
+            ImGui::InputFloat("Eccentricity", &currenteccentricity, 0.01f, 1.0f, "%.3f");
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Affects how much moisture wind picks up from the ocean. (Earth: 100)");
+                ImGui::SetTooltip("How elliptical the orbit is. (Earth: 0.0167)");
+
+            ImGui::InputFloat("Obliquity", &currenttilt, 0.01f, 1.0f, "%.3f");
+
+            string tilttip = "Affects seasonal variation in temperature. (Earth: 22.5" + degree + ")";
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip(tilttip.c_str());
+
+            ImGui::InputFloat("Surface gravity", &currentgravity, 0.01f, 1.0f, "%.3f");
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects mountain and valley sizes. (Earth: 1.00g)");
+
+
+            ImGui::InputFloat("Lunar pull", &currentlunar, 0.01f, 1.0f, "%.3f");
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects tides and coastal regions. (Earth: 1.00)");
+
+            ImGui::InputFloat("Moisture pickup rate", &currentwaterpickup, 0.01f, 1.0f, "%.3f");
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Affects how much moisture wind picks up from the ocean. (Earth: 1.00)");
+
+            ImGui::InputFloat("Heat decrease per vertical km", &currenttempdecrease, 0.01f, 1.0f, "%.3f");
+
+            string tempdecreasetip = "Affects how much colder it gets higher up. (Earth: 6.5" + degree + ")";
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip(tempdecreasetip.c_str());
 
             ImGui::InputInt("Glaciation temperature", &currentglacialtemp);
 
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Areas below this average temperature may show signs of past glaciation. (Earth: 4)");
-
-            ImGui::InputFloat("Temperature decrease per vertical km", &currenttempdecrease, 0.01f, 1.0f, "%.3f");
+            string glacialtip = "Areas below this average temperature may show signs of past glaciation. (Earth: 4" + degree + ")";
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Affects how much colder it gets higher up. (Earth: 6.5)");
+                ImGui::SetTooltip(glacialtip.c_str());
 
-            ImGui::InputInt("Average north pole temperature", &currentnorthpolartemp);
+            ImGui::InputInt("Average global temperature", &currentaveragetemp);
 
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Earth: -32");
-
-            ImGui::InputInt("Average south pole temperature", &currentsouthpolartemp);
+            string avetip = "Earth: 14" + degree;
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Earth: -38");
+                ImGui::SetTooltip(avetip.c_str());
 
-            ImGui::InputInt("Average equator temperature", &currenteqtemp);
+            ImGui::InputInt("North pole adjustment", &currentnorthpolaradjust);
+
+            string northtip = "Adjustment to north pole temperature. (Earth: +3" + degree + ")";
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Earth: -38");
+                ImGui::SetTooltip(northtip.c_str());
+
+            ImGui::InputInt("South pole adjustment", &currentsouthpolaradjust);
+
+            string southtip = "Adjustment to south pole temperature. (Earth: -3" + degree + ")";
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip(southtip.c_str());
 
             ImGui::Text("   ");
 
             ImGui::Checkbox("Generate rivers", &currentrivers);
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Untick this if you don't want rivers and lakes to be generated.");
+                ImGui::SetTooltip("Untick this if you don't want rivers to be generated.");
 
-            ImGui::SameLine(rightalign);
+            ImGui::SameLine((float)rightalign);
+
+            ImGui::Checkbox("Generate lakes", &currentlakes);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Untick this if you don't want large lakes to be generated.");
+
+            ImGui::Checkbox("Generate deltas", &currentdeltas);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Untick this if you don't want river deltas to be generated.");
+
+            ImGui::SameLine((float)rightalign);
 
             if (ImGui::Button("Close", ImVec2(120.0f, 0.0f)))
             {
@@ -3419,15 +4801,589 @@ int main()
 
             ImGui::End();
 
-            if (currentwaterpickup < 0)
-                currentwaterpickup = 0;
+            if (currentgravity < 0.05f)
+                currentgravity = 0.05f;
 
-            if (currenttilt > 90.0)
-                currenttilt = 90.0;
+            if (currentgravity > 10.0f)
+                currentgravity = 10.0f;
+            
+            if (currentwaterpickup < 0.0f)
+                currentwaterpickup = 0.0f;
 
-            if (currenttilt < -90.0)
-                currenttilt = -90.0;
+            if (currenttilt > 90.0f)
+                currenttilt = 90.0f;
 
+            if (currenttilt < -90.0f)
+                currenttilt = -90.0f;
+
+            if (currenteccentricity < 0.0f)
+                currenteccentricity = 0.0f;
+
+            if (currenteccentricity > 0.999f)
+                currenteccentricity = 0.999f;
+
+            if (currentlunar < 0.0f)
+                currentlunar = 0.0f;
+
+            if (currentlunar > 10.0f)
+                currentlunar = 10.0f;
+
+            if (currentrivers == 0)
+            {
+                currentlakes = 0;
+                currentdeltas = 0;
+            }
+        }
+
+        // Global temperature chart, if being shown
+
+        if (showglobaltemperaturechart)
+        {           
+            float barwidth = 40.0f;
+            
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 680, main_viewport->WorkPos.y + 385), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(518, 139), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Temperature", NULL, window_flags);
+
+            float temp[12];
+
+            temp[0] = (float)world->jantemp(poix, poiy);
+            temp[3] = (float)world->aprtemp(poix, poiy);
+            temp[6] = (float)world->jultemp(poix, poiy);
+            temp[9] = (float)world->octtemp(poix, poiy);
+
+            temp[1] = (temp[0] * 2.0f + temp[3]) / 3.0f;
+            temp[2] = (temp[0] + temp[3] * 2.0f) / 3.0f;
+            temp[4] = (temp[3] * 2.0f + temp[6]) / 3.0f;
+            temp[5] = (temp[3] + temp[6] * 2.0f) / 3.0f;
+            temp[7] = (temp[6] * 2.0f + temp[9]) / 3.0f;
+            temp[8] = (temp[6] + temp[9] * 2.0f) / 3.0f;
+            temp[10] = (temp[9] * 2.0f + temp[0]) / 3.0f;
+            temp[11] = (temp[9] + temp[0] * 2.0f) / 3.0f;
+
+            float lowest = temp[0];
+            float highest = temp[0];
+
+            if (temp[3] < lowest)
+                lowest = temp[3];
+
+            if (temp[3] > highest)
+                highest = temp[3];
+
+            if (temp[6] < lowest)
+                lowest = temp[6];
+
+            if (temp[6] > highest)
+                highest = temp[6];
+
+            if (temp[9] < lowest)
+                lowest = temp[9];
+
+            if (temp[9] > highest)
+                highest = temp[9];
+
+            float subzero = 0.0f;
+
+            if (lowest < 0.0f) // Ensure that all values are at least 0
+            {
+                subzero = 0.0f - lowest;
+
+                for (int n = 0; n < 12; n++)
+                    temp[n] = temp[n] + subzero;
+
+                lowest = temp[0];
+                highest = temp[0];
+
+                if (temp[3] < lowest)
+                    lowest = temp[3];
+
+                if (temp[3] > highest)
+                    highest = temp[3];
+
+                if (temp[6] < lowest)
+                    lowest = temp[6];
+
+                if (temp[6] > highest)
+                    highest = temp[6];
+
+                if (temp[9] < lowest)
+                    lowest = temp[9];
+
+                if (temp[9] > highest)
+                    highest = temp[9];
+            }
+
+            float temprange = highest - lowest;
+
+            for (int n = 0; n < 13; n++)
+            {
+                ImGui::SameLine((float)barwidth * (float)n + barwidth / 2.0f);
+
+                float value;
+
+                if (n < 12)
+                    value = temp[n];
+                else
+                    value = 0.0f;
+
+                float temparr[] = { value / highest };
+
+                float colour1 = 0.0f;
+                float colour2 = 0.0f;
+                float colour3 = 0.0f;
+
+                float temperature = value - subzero;
+
+                if (temperature > 0.0f)
+                {
+                    colour1 = 250.0f;
+                    colour2 = 250.0f - temperature * 3.0f;
+                    colour3 = 250.0f - temperature * 7.0f;
+                }
+                else
+                {
+                    temperature = abs(temperature);
+
+                    colour1 = 250.0f - temperature * 7.0f;
+                    colour2 = 250.0f - temperature * 7.0f;
+                    colour3 = 250.0f;
+                }
+
+                if (colour1 < 0.0f)
+                    colour1 = 0.0f;
+
+                if (colour2 < 0.0f)
+                    colour2 = 0.0f;
+
+                if (colour3 < 0.0f)
+                    colour3 = 0.0f;
+
+                colour1 = colour1 / 255.0f;
+                colour2 = colour2 / 255.0f;
+                colour3 = colour3 / 255.0f;
+
+                Style.Colors[ImGuiCol_PlotHistogram] = ImVec4(colour1, colour2, colour3, 1.00f);
+                Style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(colour1, colour2, colour3, 1.00f);
+
+                ImGui::PlotHistogram(" ", temparr, IM_ARRAYSIZE(temparr), 0, NULL, 0.0f, 1.0f, ImVec2(0.0f, barwidth));
+            }
+
+            ImGui::Text(" ");
+
+            for (int n = 0; n < 12; n++)
+            {
+                string tempinfotext = formatnumber((int)temp[n] - (int)subzero);
+
+                ImGui::SameLine((float)barwidth * (n + 1) - (ImGui::CalcTextSize(tempinfotext.c_str()).x) / 2);
+
+                ImGui::Text(tempinfotext.c_str());
+            }
+
+            ImGui::Text(" ");
+
+            for (int n = 0; n < 12; n++)
+            {
+                string datetext = month[n];
+
+                ImGui::SameLine((float)barwidth* (n + 1) - (ImGui::CalcTextSize(datetext.c_str()).x) / 2);
+
+                ImGui::Text(datetext.c_str());
+            }
+
+            ImGui::End();
+        }
+
+        // Global precipitation chart, if being shown
+
+        if (showglobalrainfallchart)
+        {
+            float barwidth = 40.0f;
+
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 680, main_viewport->WorkPos.y + 246), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(518, 139), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Precipitation", NULL, window_flags);
+
+            float rain[12];
+
+            rain[0] = (float)world->janrain(poix, poiy);
+            rain[3] = (float)world->aprrain(poix, poiy);
+            rain[6] = (float)world->julrain(poix, poiy);
+            rain[9] = (float)world->octrain(poix, poiy);
+
+            rain[1] = (rain[0] * 2.0f + rain[3]) / 3.0f;
+            rain[2] = (rain[0] + rain[3] * 2.0f) / 3.0f;
+            rain[4] = (rain[3] * 2.0f + rain[6]) / 3.0f;
+            rain[5] = (rain[3] + rain[6] * 2.0f) / 3.0f;
+            rain[7] = (rain[6] * 2.0f + rain[9]) / 3.0f;
+            rain[8] = (rain[6] + rain[9] * 2.0f) / 3.0f;
+            rain[10] = (rain[9] * 2.0f + rain[0]) / 3.0f;
+            rain[11] = (rain[9] + rain[0] * 2.0f) / 3.0f;
+
+            float lowest = rain[0];
+            float highest = rain[0];
+
+            if (rain[3] < lowest)
+                lowest = rain[3];
+
+            if (rain[3] > highest)
+                highest = rain[3];
+
+            if (rain[6] < lowest)
+                lowest = rain[6];
+
+            if (rain[6] > highest)
+                highest = rain[6];
+
+            if (rain[9] < lowest)
+                lowest = rain[9];
+
+            if (rain[9] > highest)
+                highest = rain[9];
+
+            float rainrange = highest - lowest;
+
+            for (int n = 0; n < 13; n++)
+            {
+                ImGui::SameLine((float)barwidth * (float)n + barwidth / 2.0f);
+
+                float value;
+
+                if (n < 12)
+                    value = rain[n];
+                else
+                    value = 0.0f;
+
+                float rainarr[] = { value / highest };
+
+                float colour1 = 0.0f;
+                float colour2 = 0.0f;
+                float colour3 = 0.0f;
+
+                float rainfall = rain[n];
+                rainfall = rainfall / 2.0f;
+
+                colour1 = 255.0f - rainfall;
+                colour2 = 255.0f - rainfall;
+                colour3 = 255.0f;
+
+                if (colour1 < 0.0f)
+                    colour1 = 0.0f;
+
+                if (colour2 < 0.0f)
+                    colour2 = 0.0f;
+
+                colour1 = colour1 / 255.0f;
+                colour2 = colour2 / 255.0f;
+                colour3 = colour3 / 255.0f;
+
+                Style.Colors[ImGuiCol_PlotHistogram] = ImVec4(colour1, colour2, colour3, 1.00f);
+                Style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(colour1, colour2, colour3, 1.00f);
+
+                ImGui::PlotHistogram(" ", rainarr, IM_ARRAYSIZE(rainarr), 0, NULL, 0.0f, 1.0f, ImVec2(0.0f, barwidth));
+            }
+
+            ImGui::Text(" ");
+
+            for (int n = 0; n < 12; n++)
+            {
+                string raininfotext = formatnumber((int)rain[n]);
+
+                ImGui::SameLine((float)barwidth* (n + 1) - (ImGui::CalcTextSize(raininfotext.c_str()).x) / 2);
+
+                ImGui::Text(raininfotext.c_str());
+            }
+
+            ImGui::Text(" ");
+
+            for (int n = 0; n < 12; n++)
+            {
+                string datetext = month[n];
+
+                ImGui::SameLine((float)barwidth * (n + 1) - (ImGui::CalcTextSize(datetext.c_str()).x) / 2);
+
+                ImGui::Text(datetext.c_str());
+            }
+
+            ImGui::End();
+        }
+
+        // Regional temperature chart, if being shown
+
+        if (showregionaltemperaturechart)
+        {
+            float barwidth = 40.0f;
+
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 680, main_viewport->WorkPos.y + 385), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(518, 139), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Temperature##regional", NULL, window_flags);
+
+            int xx = region->leftx() + poix / 16;
+            int yy = region->lefty() + poiy / 16; // Coordinates of the gobal cell we're in.
+
+            float temp[12];
+
+            temp[0] = (float)region->jantemp(poix, poiy);
+            temp[3] = (float)region->aprtemp(poix, poiy, yy, world->height(), world->tilt(), world->eccentricity(), world->perihelion());
+            temp[6] = (float)region->jultemp(poix, poiy);
+            temp[9] = temp[3]; // October is the same as April.
+
+            temp[1] = (temp[0] * 2.0f + temp[3]) / 3.0f;
+            temp[2] = (temp[0] + temp[3] * 2.0f) / 3.0f;
+            temp[4] = (temp[3] * 2.0f + temp[6]) / 3.0f;
+            temp[5] = (temp[3] + temp[6] * 2.0f) / 3.0f;
+            temp[7] = (temp[6] * 2.0f + temp[9]) / 3.0f;
+            temp[8] = (temp[6] + temp[9] * 2.0f) / 3.0f;
+            temp[10] = (temp[9] * 2.0f + temp[0]) / 3.0f;
+            temp[11] = (temp[9] + temp[0] * 2.0f) / 3.0f;
+
+            float lowest = temp[0];
+            float highest = temp[0];
+
+            if (temp[3] < lowest)
+                lowest = temp[3];
+
+            if (temp[3] > highest)
+                highest = temp[3];
+
+            if (temp[6] < lowest)
+                lowest = temp[6];
+
+            if (temp[6] > highest)
+                highest = temp[6];
+
+            if (temp[9] < lowest)
+                lowest = temp[9];
+
+            if (temp[9] > highest)
+                highest = temp[9];
+
+            float subzero = 0.0f;
+
+            if (lowest < 0.0f) // Ensure that all values are at least 0
+            {
+                subzero = 0.0f - lowest;
+
+                for (int n = 0; n < 12; n++)
+                    temp[n] = temp[n] + subzero;
+
+                lowest = temp[0];
+                highest = temp[0];
+
+                if (temp[3] < lowest)
+                    lowest = temp[3];
+
+                if (temp[3] > highest)
+                    highest = temp[3];
+
+                if (temp[6] < lowest)
+                    lowest = temp[6];
+
+                if (temp[6] > highest)
+                    highest = temp[6];
+
+                if (temp[9] < lowest)
+                    lowest = temp[9];
+
+                if (temp[9] > highest)
+                    highest = temp[9];
+            }
+
+            float temprange = highest - lowest;
+
+            for (int n = 0; n < 13; n++)
+            {
+                ImGui::SameLine((float)barwidth * (float)n + barwidth / 2.0f);
+
+                float value;
+
+                if (n < 12)
+                    value = temp[n];
+                else
+                    value = 0.0f;
+
+                float temparr[] = { value / highest };
+
+                float colour1 = 0.0f;
+                float colour2 = 0.0f;
+                float colour3 = 0.0f;
+
+                float temperature = value - subzero;
+
+                if (temperature > 0.0f)
+                {
+                    colour1 = 250.0f;
+                    colour2 = 250.0f - temperature * 3.0f;
+                    colour3 = 250.0f - temperature * 7.0f;
+                }
+                else
+                {
+                    temperature = abs(temperature);
+
+                    colour1 = 250.0f - temperature * 7.0f;
+                    colour2 = 250.0f - temperature * 7.0f;
+                    colour3 = 250.0f;
+                }
+
+                if (colour1 < 0.0f)
+                    colour1 = 0.0f;
+
+                if (colour2 < 0.0f)
+                    colour2 = 0.0f;
+
+                if (colour3 < 0.0f)
+                    colour3 = 0.0f;
+
+                colour1 = colour1 / 255.0f;
+                colour2 = colour2 / 255.0f;
+                colour3 = colour3 / 255.0f;
+
+                Style.Colors[ImGuiCol_PlotHistogram] = ImVec4(colour1, colour2, colour3, 1.00f);
+                Style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(colour1, colour2, colour3, 1.00f);
+
+                ImGui::PlotHistogram(" ", temparr, IM_ARRAYSIZE(temparr), 0, NULL, 0.0f, 1.0f, ImVec2(0.0f, barwidth));
+            }
+
+            ImGui::Text(" ");
+
+            for (int n = 0; n < 12; n++)
+            {
+                string tempinfotext = formatnumber((int)temp[n] - (int)subzero);
+
+                ImGui::SameLine((float)barwidth * (n + 1) - (ImGui::CalcTextSize(tempinfotext.c_str()).x) / 2);
+
+                ImGui::Text(tempinfotext.c_str());
+            }
+
+            ImGui::Text(" ");
+
+            for (int n = 0; n < 12; n++)
+            {
+                string datetext = month[n];
+
+                ImGui::SameLine((float)barwidth* (n + 1) - (ImGui::CalcTextSize(datetext.c_str()).x) / 2);
+
+                ImGui::Text(datetext.c_str());
+            }
+
+            ImGui::End();
+        }
+
+        // Regional precipitation chart, if being shown
+
+        if (showregionalrainfallchart)
+        {
+            float barwidth = 40.0f;
+
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 680, main_viewport->WorkPos.y + 246), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(518, 139), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Precipitation##regional", NULL, window_flags);
+
+            float rain[12];
+
+            rain[0] = (float)region->janrain(poix, poiy);
+            rain[3] = (float)region->aprrain(poix, poiy);
+            rain[6] = (float)region->julrain(poix, poiy);
+            rain[9] = (float)region->octrain(poix, poiy);
+
+            rain[1] = (rain[0] * 2.0f + rain[3]) / 3.0f;
+            rain[2] = (rain[0] + rain[3] * 2.0f) / 3.0f;
+            rain[4] = (rain[3] * 2.0f + rain[6]) / 3.0f;
+            rain[5] = (rain[3] + rain[6] * 2.0f) / 3.0f;
+            rain[7] = (rain[6] * 2.0f + rain[9]) / 3.0f;
+            rain[8] = (rain[6] + rain[9] * 2.0f) / 3.0f;
+            rain[10] = (rain[9] * 2.0f + rain[0]) / 3.0f;
+            rain[11] = (rain[9] + rain[0] * 2.0f) / 3.0f;
+
+            float lowest = rain[0];
+            float highest = rain[0];
+
+            if (rain[3] < lowest)
+                lowest = rain[3];
+
+            if (rain[3] > highest)
+                highest = rain[3];
+
+            if (rain[6] < lowest)
+                lowest = rain[6];
+
+            if (rain[6] > highest)
+                highest = rain[6];
+
+            if (rain[9] < lowest)
+                lowest = rain[9];
+
+            if (rain[9] > highest)
+                highest = rain[9];
+
+            float rainrange = highest - lowest;
+
+            for (int n = 0; n < 13; n++)
+            {
+                ImGui::SameLine((float)barwidth * (float)n + barwidth / 2.0f);
+
+                float value;
+
+                if (n < 12)
+                    value = rain[n];
+                else
+                    value = 0.0f;
+
+                float rainarr[] = { value / highest };
+
+                float colour1 = 0.0f;
+                float colour2 = 0.0f;
+                float colour3 = 0.0f;
+
+                float rainfall = rain[n];
+                rainfall = rainfall / 2.0f;
+
+                colour1 = 255.0f - rainfall;
+                colour2 = 255.0f - rainfall;
+                colour3 = 255.0f;
+
+                if (colour1 < 0.0f)
+                    colour1 = 0.0f;
+
+                if (colour2 < 0.0f)
+                    colour2 = 0.0f;
+
+                colour1 = colour1 / 255.0f;
+                colour2 = colour2 / 255.0f;
+                colour3 = colour3 / 255.0f;
+
+                Style.Colors[ImGuiCol_PlotHistogram] = ImVec4(colour1, colour2, colour3, 1.00f);
+                Style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(colour1, colour2, colour3, 1.00f);
+
+                ImGui::PlotHistogram(" ", rainarr, IM_ARRAYSIZE(rainarr), 0, NULL, 0.0f, 1.0f, ImVec2(0.0f, barwidth));
+            }
+
+            ImGui::Text(" ");
+
+            for (int n = 0; n < 12; n++)
+            {
+                string raininfotext = formatnumber((int)rain[n]);
+
+                ImGui::SameLine((float)barwidth * (n+1)- (ImGui::CalcTextSize(raininfotext.c_str()).x) / 2);
+
+                ImGui::Text(raininfotext.c_str());
+            }
+
+            ImGui::Text(" ");
+
+            for (int n = 0; n < 12; n++)
+            {
+                string datetext = month[n];
+
+                ImGui::SameLine((float)barwidth * (n + 1) - (ImGui::CalcTextSize(datetext.c_str()).x) / 2);
+
+                ImGui::Text(datetext.c_str());
+            }
+
+            ImGui::End();
         }
 
         // Now draw the graphical elements.
@@ -3439,16 +5395,18 @@ int main()
         {
             if (areaswx != -1)
             {
-                int sizex = (areanex - areanwx) / 2;
-                int sizey = (areaswy - areanwy) / 2;
+                float mult = ((float)world->width() + 1.0f) / (float)DISPLAYMAPSIZEX;
+                
+                float sizex = ((float)areanex - (float)areanwx) / mult;
+                float sizey = ((float)areaswy - (float)areanwy) / mult;
 
                 arearectangle->setSize(sf::Vector2f(sizex, sizey));
                 arearectangle->setOutlineColor(sf::Color(world->highlight1(), world->highlight2(), world->highlight3()));
 
                 sf::Vector2f position;
 
-                position.x = areanwx / 2 + globalmapxpos;
-                position.y = areanwy / 2 + globalmapypos;
+                position.x = (float)areanwx / mult + (float)globalmapxpos;
+                position.y = (float)areanwy / mult + (float)globalmapypos;
 
                 arearectangle->setPosition(position);
 
@@ -3462,10 +5420,18 @@ int main()
 
             window.draw(*minimap);
 
-            minihighlight->setPosition(sf::Vector2f(minimapxpos + region->centrex() / 4, minimapypos + region->centrey() / 4));
+            float mult = (float)DISPLAYMAPSIZEX / ((float)world->width() + 1.0f);
+            mult = mult * 0.5f;
+
+            float posx = (float)minimapxpos + (float)region->centrex() * mult;
+            float posy = (float)minimapypos + (float)region->centrey() * mult;
+
+            minihighlight->setPosition(sf::Vector2f(posx, posy));
 
             if (screenmode != generatingregionscreen)
+            {
                 window.draw(*minihighlight);
+            }
         }
 
         if (screenmode == globalmapscreen || screenmode == regionalmapscreen)
@@ -3626,6 +5592,26 @@ int main()
                         rivercolour.z = (float)world->river3() / 255.f;
                         rivercolour.w = 1.f;
 
+                        mudcolour.x = (float)world->mud1() / 255.f;
+                        mudcolour.y = (float)world->mud2() / 255.f;
+                        mudcolour.z = (float)world->mud3() / 255.f;
+                        mudcolour.w = 1.f;
+
+                        sandcolour.x = (float)world->sand1() / 255.f;
+                        sandcolour.y = (float)world->sand2() / 255.f;
+                        sandcolour.z = (float)world->sand3() / 255.f;
+                        sandcolour.w = 1.f;
+
+                        shinglecolour.x = (float)world->shingle1() / 255.f;
+                        shinglecolour.y = (float)world->shingle2() / 255.f;
+                        shinglecolour.z = (float)world->shingle3() / 255.f;
+                        shinglecolour.w = 1.f;
+
+                        mangrovecolour.x = (float)world->mangrove1() / 255.f;
+                        mangrovecolour.y = (float)world->mangrove2() / 255.f;
+                        mangrovecolour.z = (float)world->mangrove3() / 255.f;
+                        mangrovecolour.w = 1.f;
+
                         highlightcolour.x = (float)world->highlight1() / 255.f;
                         highlightcolour.y = (float)world->highlight2() / 255.f;
                         highlightcolour.z = (float)world->highlight3() / 255.f;
@@ -3658,6 +5644,8 @@ int main()
 
                         snowchange = world->snowchange() - 1;
                         seaiceappearance = world->seaiceappearance() - 1;
+                        colourcliffs = world->colourcliffs();
+                        mangroves = world->showmangroves();
 
                         drawhighlightobjects(*world, *highlightimage, highlightsize, *minihighlightimage, minihighlightsize);
 
@@ -3666,9 +5654,15 @@ int main()
 
                         minihighlighttexture->loadFromImage(*minihighlightimage);
                         minihighlight->setTexture(*minihighlighttexture);
+                        minihighlight->setOrigin((float)minihighlightsize / 2.0f, (float)minihighlightsize / 2.0f);
 
                         colourschanged = 1;
                         loadingsettings = 0;
+                    }
+                    else
+                    {
+                        oldscreenmode = screenmode;
+                        screenmode = settingsloadfailure;
                     }
                 }
             }
@@ -3868,6 +5862,8 @@ int main()
 
                                     world->setnom(i, j, elev);
                                 }
+                                else
+                                    world->setnom(i, j, sealevel - 5000);
                             }
                         }
 
@@ -3992,7 +5988,7 @@ int main()
 
                         // Now turn the raw mountains array into actual mountains.
 
-                        createmountainsfromraw(*world, rawmountains);
+                        createmountainsfromraw(*world, rawmountains, OKmountains);
 
                         // Now redraw the map.
 
@@ -4081,36 +6077,74 @@ int main()
             ImGuiFileDialog::Instance()->Close();
         }
 
-        // Warning window
+        // Set size window, for custom worlds.
 
-        if (showwarning == 1)
+        if (showsetsize == 1)
         {
-            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 469, main_viewport->WorkPos.y + 202), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(330, 85), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 427, main_viewport->WorkPos.y + 174), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(323, 152), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin("Create custom world?");
+            ImGui::Begin("Create custom world?", NULL, window_flags);
 
-            ImGui::Text("This will delete the current world. Proceed?");
+            string introtext = "This will delete the current world.";
+
+            if (brandnew)
+                introtext = "Please select a size for the new world.";
+
+            ImGui::Text(introtext.c_str());
+            ImGui::Text(" ");
+
+            const char* sizeitems[] = { "Small", "Medium", "Large"};
+            static int pitem_current = 2;
+            ImGui::Combo("World size", &currentsize, sizeitems, 3);
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Earth: large; Mars: medium; Moon: small.");
+
             ImGui::Text(" ");
             ImGui::Text(" ");
 
-            ImGui::SameLine(100);
+            ImGui::SameLine((float)100);
 
             if (ImGui::Button("OK"))
             {
                 initialiseworld(*world);
                 world->clear();
 
+                world->setsize(currentsize);
+
+                adjustforsize(*world, globaltexturesize, *globalelevationimage, *globaltemperatureimage, *globalprecipitationimage, *globalclimateimage, *globalriversimage, *globalreliefimage, *highlightimage, highlightsize, *minihighlightimage, minihighlightsize);
+
+                minihighlighttexture->loadFromImage(*minihighlightimage);
+                minihighlight->setTexture(*minihighlighttexture);
+                minihighlight->setOrigin((float)minihighlightsize / 2.0f, (float)minihighlightsize / 2.0f);
+
+                world->setgravity(1.0f); // Set initial gravity that roughly matches the world size.
+
+                if (currentsize==1)
+                    world->setgravity(0.4f);
+
+                if (currentsize == 0)
+                    world->setgravity(0.15f);
+
+                landmass = 5;
+                mergefactor = 15;
+                currentsize = world->size();
+                currentgravity = world->gravity();
                 currentrotation = world->rotation();
                 currenttilt = world->tilt();
+                currenteccentricity = world->eccentricity();
+                currentperihelion = world->perihelion();
+                currentlunar = world->lunar();
                 currenttempdecrease = world->tempdecrease();
-                currentnorthpolartemp = world->northpolartemperature();
-                currentsouthpolartemp = world->southpolartemperature();
-                currenteqtemp = world->eqtemperature();
+                currentnorthpolaradjust = world->northpolaradjust();
+                currentsouthpolaradjust = world->southpolaradjust();
+                currentaveragetemp = world->averagetemp();
                 currentwaterpickup = world->waterpickup();
                 currentglacialtemp = world->glacialtemp();
                 currentrivers = 1;
-
+                currentlakes = 1;
+                currentdeltas = 1;
                 int width = world->width();
                 int height = world->height();
                 int val = world->sealevel() - 5000;
@@ -4136,9 +6170,9 @@ int main()
                 for (int n = 1; n <= 7; n++)
                 {
                     if (n == 7)
-                        seed = seed + (random(1, 9) * pow(10, n));
+                        seed = seed + (random(1, 9) * (int)pow(10, n));
                     else
-                        seed = seed + (random(0, 9) * pow(10, n));
+                        seed = seed + (random(0, 9) * (int)pow(10, n));
                 }
 
                 seed = 0 - seed;
@@ -4146,27 +6180,27 @@ int main()
                 world->setseed(seed);
 
                 screenmode = importscreen;
-                showwarning = 0;
+                showsetsize = 0;
             }
 
-            ImGui::SameLine(180);
+            ImGui::SameLine((float)180);
 
             if (ImGui::Button("Cancel"))
             {
-                showwarning = 0;
+                showsetsize = 0;
             }
 
             ImGui::End();
         }
 
-        // Custom continents window
+        // Window for creating custom tectonic-based worlds.
 
-        if (showcontinents == 1)
+        if (showtectonicchooser == 1)
         {
             ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 428, main_viewport->WorkPos.y + 167), ImGuiCond_FirstUseEver);
-            ImGui::SetNextWindowSize(ImVec2(370, 162), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(405, 200), ImGuiCond_FirstUseEver);
 
-            ImGui::Begin("Generate world terrain");
+            ImGui::Begin("Generate world terrain", NULL, window_flags);
 
             /*
             ImVec2 pos = ImGui::GetWindowPos();
@@ -4181,9 +6215,9 @@ int main()
             ImGui::Text("This will overwrite any existing terrain.");
             ImGui::Text(" ");
 
-            ImGui::SliderInt("Continental mass", &landmass, 1, 10);
+            ImGui::SliderInt("Continental mass", &landmass, 0, 10);
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("The (very approximate) amount of land mass.");
+                ImGui::SetTooltip("The (very approximate) amount of land mass, compared to sea.");
 
             ImGui::Text(" ");
 
@@ -4194,21 +6228,158 @@ int main()
             ImGui::Text(" ");
             ImGui::Text(" ");
 
-            ImGui::SameLine(100);
+            ImGui::SameLine((float)100);
 
             if (ImGui::Button("OK"))
             {
-                screenmode = generatingcontinentsscreen;
-                generatingcontinentspass = 0;
+                screenmode = generatingtectonicscreen;
+                generatingtectonicpass = 0;
 
-                showcontinents = 0;
+                showtectonicchooser = 0;
             }
 
-            ImGui::SameLine(220);
+            ImGui::SameLine((float)270);
 
             if (ImGui::Button("Cancel"))
             {
-                showcontinents = 0;
+                showtectonicchooser = 0;
+            }
+
+            ImGui::End();
+        }
+
+        // Window for creating custom non-tectonic-based worlds.
+
+        if (shownontectonicchooser == 1)
+        {
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 428, main_viewport->WorkPos.y + 167), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(405, 200), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Generate world terrain##nontectonic", NULL, window_flags);
+
+            ImGui::Text("This will overwrite any existing terrain.");
+            ImGui::Text(" ");
+
+            ImGui::SliderInt("Sea level", &sealeveleditable, 0, 10);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("The approximate sea level. The higher it is, the more sea (very roughly) there is likely to be.");
+
+            ImGui::Text(" ");
+
+            ImGui::SliderInt("Variation", &iterations, 1, 10);
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("The amount of variation in terrain type. The higher this is, the more chaotic the terrain may become.");
+
+            ImGui::Text(" ");
+            ImGui::Text(" ");
+
+            ImGui::SameLine((float)100);
+
+            if (ImGui::Button("OK"))
+            {
+                screenmode = generatingnontectonicscreen;
+                generatingnontectonicpass = 0;
+
+                shownontectonicchooser = 0;
+            }
+
+            ImGui::SameLine((float)270);
+
+            if (ImGui::Button("Cancel"))
+            {
+                shownontectonicchooser = 0;
+            }
+
+            ImGui::End();
+        }
+
+        // Warning window for over-large area maps.
+
+        if (showareawarning == 1)
+        {
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 492, main_viewport->WorkPos.y + 156), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(218, 174), ImGuiCond_FirstUseEver);
+
+            ImGui::Begin("Warning!##areawarning", NULL, window_flags);
+
+            ImGui::Text("This is a very large area,");
+            ImGui::Text("and may crash the program.");
+            ImGui::Text(" ");
+            ImGui::Text("Proceed?");
+
+            ImGui::Text(" ");
+            ImGui::Text(" ");
+
+            ImGui::SameLine((float)40);
+
+            if (ImGui::Button("OK"))
+            {
+                ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".png", ".");
+
+                exportingareamaps = 1;
+
+                showareawarning = 0;
+            }
+
+            ImGui::SameLine((float)130);
+
+            if (ImGui::Button("Cancel"))
+            {
+                showareawarning = 0;
+            }
+
+            ImGui::End();
+        }
+
+        // Window for displaying information about the program.
+
+        if (showabout == 1)
+        {
+            ImGui::SetNextWindowPos(ImVec2(main_viewport->WorkPos.x + 501, main_viewport->WorkPos.y + 111), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(343, 373), ImGuiCond_FirstUseEver);
+
+            stringstream ss;
+
+            ss << fixed << setprecision(2) << currentversion;
+
+            string title = "Undiscovered Worlds version " + ss.str();
+
+            ImGui::Begin(title.c_str(), NULL, window_flags);
+
+            ImGui::Text("Undiscovered Worlds is designed and written");
+            ImGui::Text("in inelegant C++ by Jonathan Hill. The");
+            ImGui::Text("interface uses Dear ImGUI and SFML.");
+            ImGui::Text(" ");            
+            ImGui::Text("Special thanks to Frank Gennari for testing,");
+            ImGui::Text("debugging, and advice, and also to");
+            ImGui::Text("u/Iron-Phoenix2307 for the application icon.");
+            ImGui::Text(" ");
+            ImGui::Text("For more information and instructions for use,");
+            ImGui::Text("please visit the website.");
+            ImGui::Text(" ");
+            ImGui::Text("The source code for this application is available");
+            ImGui::Text("under the GNU General Public License.");
+            ImGui::Text(" ");
+
+            if (ImGui::Button("Website"))
+            {
+                ShellExecute(0, 0, L"https://undiscoveredworlds.blogspot.com/2019/01/what-is-undiscovered-worlds.html", 0, 0, SW_SHOW);
+
+            }
+
+            ImGui::SameLine((float)140);
+
+            if (ImGui::Button("Source"))
+            {
+                ShellExecute(0, 0, L"https://github.com/JonathanCRH/Undiscovered_Worlds", 0, 0, SW_SHOW);
+
+            }
+
+            ImGui::SameLine((float)280);
+
+            if (ImGui::Button("Close"))
+            {
+                showabout = 0;
             }
 
             ImGui::End();
@@ -4290,13 +6461,25 @@ int main()
         if (world->river1() != rivercolour.x * 255.f || world->river2() != rivercolour.y * 255.f || world->river3() != rivercolour.z * 255.f)
             colourschanged = 1;
 
+        if (world->mud1() != mudcolour.x * 255.f || world->mud2() != mudcolour.y * 255.f || world->mud3() != mudcolour.z * 255.f)
+            colourschanged = 1;
+
+        if (world->sand1() != sandcolour.x * 255.f || world->sand2() != sandcolour.y * 255.f || world->sand3() != sandcolour.z * 255.f)
+            colourschanged = 1;
+
+        if (world->shingle1() != shinglecolour.x * 255.f || world->shingle2() != shinglecolour.y * 255.f || world->shingle3() != shinglecolour.z * 255.f)
+            colourschanged = 1;
+
+        if (world->mangrove1() != mangrovecolour.x * 255.f || world->mangrove2() != mangrovecolour.y * 255.f || world->mangrove3() != mangrovecolour.z * 255.f)
+            colourschanged = 1;
+
         if (world->highlight1() != highlightcolour.x * 255.f || world->highlight2() != highlightcolour.y * 255.f || world->highlight3() != highlightcolour.z * 255.f)
         {
             // This one's different as it doesn't involve redrawing the map - just redrawing the highlight sprites.
 
-            world->sethighlight1(highlightcolour.x * 255.f);
-            world->sethighlight2(highlightcolour.y * 255.f);
-            world->sethighlight3(highlightcolour.z * 255.f);
+            world->sethighlight1((int)(highlightcolour.x * 255.f));
+            world->sethighlight2((int)(highlightcolour.y * 255.f));
+            world->sethighlight3((int)(highlightcolour.z * 255.f));
 
             drawhighlightobjects(*world, *highlightimage, highlightsize, *minihighlightimage, minihighlightsize);
 
@@ -4305,6 +6488,7 @@ int main()
 
             minihighlighttexture->loadFromImage(*minihighlightimage);
             minihighlight->setTexture(*minihighlighttexture);
+            minihighlight->setOrigin((float)minihighlightsize / 2.0f, (float)minihighlightsize / 2.0f);
 
             highlightcolour.x = (float)world->highlight1() / 255.f;
             highlightcolour.y = (float)world->highlight2() / 255.f;
@@ -4320,86 +6504,102 @@ int main()
         if (world->minriverflowglobal() != globalriversentry || world->minriverflowregional() != regionalriversentry)
             colourschanged = 1;
 
-        if (world->shadingdir() != shadingdircorrected || world->snowchange() != snowchange + 1 || world->seaiceappearance() != seaiceappearance + 1)
+        if (world->shadingdir() != shadingdircorrected || world->snowchange() != snowchange + 1 || world->seaiceappearance() != seaiceappearance + 1 || world->colourcliffs() != colourcliffs || world->showmangroves() != mangroves)
             colourschanged = 1;
 
         if (showcolouroptions == 1 && colourschanged == 1)
         {
-            world->setocean1(oceancolour.x * 255.f);
-            world->setocean2(oceancolour.y * 255.f);
-            world->setocean3(oceancolour.z * 255.f);
+            world->setocean1((int)(oceancolour.x * 255.f));
+            world->setocean2((int)(oceancolour.y * 255.f));
+            world->setocean3((int)(oceancolour.z * 255.f));
 
-            world->setdeepocean1(deepoceancolour.x * 255.f);
-            world->setdeepocean2(deepoceancolour.y * 255.f);
-            world->setdeepocean3(deepoceancolour.z * 255.f);
+            world->setdeepocean1((int)(deepoceancolour.x * 255.f));
+            world->setdeepocean2((int)(deepoceancolour.y * 255.f));
+            world->setdeepocean3((int)(deepoceancolour.z * 255.f));
 
-            world->setbase1(basecolour.x * 255.f);
-            world->setbase2(basecolour.y * 255.f);
-            world->setbase3(basecolour.z * 255.f);
+            world->setbase1((int)(basecolour.x * 255.f));
+            world->setbase2((int)(basecolour.y * 255.f));
+            world->setbase3((int)(basecolour.z * 255.f));
 
-            world->setgrass1(grasscolour.x * 255.f);
-            world->setgrass2(grasscolour.y * 255.f);
-            world->setgrass3(grasscolour.z * 255.f);
+            world->setgrass1((int)(grasscolour.x * 255.f));
+            world->setgrass2((int)(grasscolour.y * 255.f));
+            world->setgrass3((int)(grasscolour.z * 255.f));
 
-            world->setbasetemp1(basetempcolour.x * 255.f);
-            world->setbasetemp2(basetempcolour.y * 255.f);
-            world->setbasetemp3(basetempcolour.z * 255.f);
+            world->setbasetemp1((int)(basetempcolour.x * 255.f));
+            world->setbasetemp2((int)(basetempcolour.y * 255.f));
+            world->setbasetemp3((int)(basetempcolour.z * 255.f));
 
-            world->sethighbase1(highbasecolour.x * 255.f);
-            world->sethighbase2(highbasecolour.y * 255.f);
-            world->sethighbase3(highbasecolour.z * 255.f);
+            world->sethighbase1((int)(highbasecolour.x * 255.f));
+            world->sethighbase2((int)(highbasecolour.y * 255.f));
+            world->sethighbase3((int)(highbasecolour.z * 255.f));
 
-            world->setdesert1(desertcolour.x * 255.f);
-            world->setdesert2(desertcolour.y * 255.f);
-            world->setdesert3(desertcolour.z * 255.f);
+            world->setdesert1((int)(desertcolour.x * 255.f));
+            world->setdesert2((int)(desertcolour.y * 255.f));
+            world->setdesert3((int)(desertcolour.z * 255.f));
 
-            world->sethighdesert1(highdesertcolour.x * 255.f);
-            world->sethighdesert2(highdesertcolour.y * 255.f);
-            world->sethighdesert3(highdesertcolour.z * 255.f);
+            world->sethighdesert1((int)(highdesertcolour.x * 255.f));
+            world->sethighdesert2((int)(highdesertcolour.y * 255.f));
+            world->sethighdesert3((int)(highdesertcolour.z * 255.f));
 
-            world->setcolddesert1(colddesertcolour.x * 255.f);
-            world->setcolddesert2(colddesertcolour.y * 255.f);
-            world->setcolddesert3(colddesertcolour.z * 255.f);
+            world->setcolddesert1((int)(colddesertcolour.x * 255.f));
+            world->setcolddesert2((int)(colddesertcolour.y * 255.f));
+            world->setcolddesert3((int)(colddesertcolour.z * 255.f));
 
-            world->seteqtundra1(eqtundracolour.x * 255.f);
-            world->seteqtundra2(eqtundracolour.y * 255.f);
-            world->seteqtundra3(eqtundracolour.z * 255.f);
+            world->seteqtundra1((int)(eqtundracolour.x * 255.f));
+            world->seteqtundra2((int)(eqtundracolour.y * 255.f));
+            world->seteqtundra3((int)(eqtundracolour.z * 255.f));
 
-            world->settundra1(tundracolour.x * 255.f);
-            world->settundra2(tundracolour.y * 255.f);
-            world->settundra3(tundracolour.z * 255.f);
+            world->settundra1((int)(tundracolour.x * 255.f));
+            world->settundra2((int)(tundracolour.y * 255.f));
+            world->settundra3((int)(tundracolour.z * 255.f));
 
-            world->setcold1(coldcolour.x * 255.f);
-            world->setcold2(coldcolour.y * 255.f);
-            world->setcold3(coldcolour.z * 255.f);
+            world->setcold1((int)(coldcolour.x * 255.f));
+            world->setcold2((int)(coldcolour.y * 255.f));
+            world->setcold3((int)(coldcolour.z * 255.f));
 
-            world->setseaice1(seaicecolour.x * 255.f);
-            world->setseaice2(seaicecolour.y * 255.f);
-            world->setseaice3(seaicecolour.z * 255.f);
+            world->setseaice1((int)(seaicecolour.x * 255.f));
+            world->setseaice2((int)(seaicecolour.y * 255.f));
+            world->setseaice3((int)(seaicecolour.z * 255.f));
 
-            world->setglacier1(glaciercolour.x * 255.f);
-            world->setglacier2(glaciercolour.y * 255.f);
-            world->setglacier3(glaciercolour.z * 255.f);
+            world->setglacier1((int)(glaciercolour.x * 255.f));
+            world->setglacier2((int)(glaciercolour.y * 255.f));
+            world->setglacier3((int)(glaciercolour.z * 255.f));
 
-            world->setsaltpan1(saltpancolour.x * 255.f);
-            world->setsaltpan2(saltpancolour.y * 255.f);
-            world->setsaltpan3(saltpancolour.z * 255.f);
+            world->setsaltpan1((int)(saltpancolour.x * 255.f));
+            world->setsaltpan2((int)(saltpancolour.y * 255.f));
+            world->setsaltpan3((int)(saltpancolour.z * 255.f));
 
-            world->seterg1(ergcolour.x * 255.f);
-            world->seterg2(ergcolour.y * 255.f);
-            world->seterg3(ergcolour.z * 255.f);
+            world->seterg1((int)(ergcolour.x * 255.f));
+            world->seterg2((int)(ergcolour.y * 255.f));
+            world->seterg3((int)(ergcolour.z * 255.f));
 
-            world->setwetlands1(wetlandscolour.x * 255.f);
-            world->setwetlands2(wetlandscolour.y * 255.f);
-            world->setwetlands3(wetlandscolour.z * 255.f);
+            world->setwetlands1((int)(wetlandscolour.x * 255.f));
+            world->setwetlands2((int)(wetlandscolour.y * 255.f));
+            world->setwetlands3((int)(wetlandscolour.z * 255.f));
 
-            world->setlake1(lakecolour.x * 255.f);
-            world->setlake2(lakecolour.y * 255.f);
-            world->setlake3(lakecolour.z * 255.f);
+            world->setlake1((int)(lakecolour.x * 255.f));
+            world->setlake2((int)(lakecolour.y * 255.f));
+            world->setlake3((int)(lakecolour.z * 255.f));
 
-            world->setriver1(rivercolour.x * 255.f);
-            world->setriver2(rivercolour.y * 255.f);
-            world->setriver3(rivercolour.z * 255.f);
+            world->setriver1((int)(rivercolour.x * 255.f));
+            world->setriver2((int)(rivercolour.y * 255.f));
+            world->setriver3((int)(rivercolour.z * 255.f));
+
+            world->setmud1((int)(mudcolour.x * 255.f));
+            world->setmud2((int)(mudcolour.y * 255.f));
+            world->setmud3((int)(mudcolour.z * 255.f));
+
+            world->setsand1((int)(sandcolour.x * 255.f));
+            world->setsand2((int)(sandcolour.y * 255.f));
+            world->setsand3((int)(sandcolour.z * 255.f));
+
+            world->setshingle1((int)(shinglecolour.x * 255.f));
+            world->setshingle2((int)(shinglecolour.y * 255.f));
+            world->setshingle3((int)(shinglecolour.z * 255.f));
+
+            world->setmangrove1((int)(mangrovecolour.x * 255.f));
+            world->setmangrove2((int)(mangrovecolour.y * 255.f));
+            world->setmangrove3((int)(mangrovecolour.z * 255.f));
 
             world->setlandshading(shadingland);
             world->setlakeshading(shadinglake);
@@ -4415,6 +6615,8 @@ int main()
             world->setshadingdir(shadingdircorrected);
             world->setsnowchange(snowchange + 1);
             world->setseaiceappearance(seaiceappearance + 1);
+            world->setcolourcliffs(colourcliffs);
+            world->setshowmangroves(mangroves);
 
             // Copy them back again to ensure that there aren't any stray floating points.
 
@@ -4494,6 +6696,22 @@ int main()
             rivercolour.y = (float)world->river2() / 255.f;
             rivercolour.z = (float)world->river3() / 255.f;
 
+            mudcolour.x = (float)world->mud1() / 255.f;
+            mudcolour.y = (float)world->mud2() / 255.f;
+            mudcolour.z = (float)world->mud3() / 255.f;
+
+            sandcolour.x = (float)world->sand1() / 255.f;
+            sandcolour.y = (float)world->sand2() / 255.f;
+            sandcolour.z = (float)world->sand3() / 255.f;
+
+            shinglecolour.x = (float)world->shingle1() / 255.f;
+            shinglecolour.y = (float)world->shingle2() / 255.f;
+            shinglecolour.z = (float)world->shingle3() / 255.f;
+
+            mangrovecolour.x = (float)world->mangrove1() / 255.f;
+            mangrovecolour.y = (float)world->mangrove2() / 255.f;
+            mangrovecolour.z = (float)world->mangrove3() / 255.f;
+
             mapview = relief;
             globalmapimagecreated[6] = 0;
 
@@ -4523,9 +6741,103 @@ int main()
     return 0;
 }
 
+// This looks up the latest version of the program. Based on code by Parveen: https://hoven.in/cpp-network/c-program-download-file-from-url.html
+
+float getlatestversion()
+{
+    IStream* stream;
+
+    const char* URL = "https://raw.githubusercontent.com/JonathanCRH/Undiscovered_Worlds/main/version.txt";
+
+    if (getURL(0, URL, &stream, 0, 0)) // Didn't work for some reason.
+        return 0.0f;
+
+    // this char array will be cyclically filled with bytes from URL
+    char buff[100];
+
+    // we shall keep appending the bytes to this string
+    string s;
+
+    unsigned long bytesRead;
+
+    while (true)
+    {
+        // Reads a specified number of bytes from the stream object into char array and stores the actual bytes read to "bytesRead"
+        stream->Read(buff, 100, &bytesRead);
+
+        if (0U == bytesRead)
+            break;
+
+        // append and collect to the string
+        s.append(buff, bytesRead);
+    };
+
+    // release the interface
+    stream->Release();
+
+    float val = stof(s);
+
+    return val;
+}
+
+// This makes adjustments to accommodate different world sizes. (Basically resize the map images.)
+
+void adjustforsize(planet& world, sf::Vector2i& globaltexturesize, sf::Image& globalelevationimage, sf::Image& globaltemperatureimage, sf::Image& globalprecipitationimage, sf::Image& globalclimateimage, sf::Image& globalriversimage, sf::Image& globalreliefimage, sf::Image& highlightimage, int highlightsize, sf::Image& minihighlightimage, int& minihighlightsize)
+{
+    int size = world.size();
+    int width = 0;
+    int height = 0;
+
+    if (size == 0) // Small
+    {
+        width = 511;
+        height = 256;
+    }
+
+    if (size == 1) // Medium
+    {
+        width = 1023;
+        height = 512;
+    }
+
+    if (size == 2) // Large
+    {
+        width = 2047;
+        height = 1024;
+    }
+
+    world.setwidth(width);
+    world.setheight(height);
+
+    globaltexturesize.x = world.width() + 1;
+    globaltexturesize.y = world.height() + 2;
+
+    globalelevationimage.create(globaltexturesize.x, globaltexturesize.y);
+    globaltemperatureimage.create(globaltexturesize.x, globaltexturesize.y);
+    globalprecipitationimage.create(globaltexturesize.x, globaltexturesize.y);
+    globalclimateimage.create(globaltexturesize.x, globaltexturesize.y);
+    globalriversimage.create(globaltexturesize.x, globaltexturesize.y);
+    globalreliefimage.create(globaltexturesize.x, globaltexturesize.y);
+
+    for (int i = 0; i < globaltexturesize.x; i++)
+    {
+        for (int j = 0; j < globaltexturesize.y; j++)
+        {
+            globalelevationimage.setPixel(i, j, sf::Color::Black);
+            globaltemperatureimage.setPixel(i, j, sf::Color::Black);
+            globalprecipitationimage.setPixel(i, j, sf::Color::Black);
+            globalclimateimage.setPixel(i, j, sf::Color::Black);
+            globalriversimage.setPixel(i, j, sf::Color::Black);
+            globalreliefimage.setPixel(i, j, sf::Color::Black);
+        }
+    }
+
+    drawhighlightobjects(world, highlightimage, highlightsize, minihighlightimage, minihighlightsize);
+}
+
 // This draws the highlight objects.
 
-void drawhighlightobjects(planet& world, sf::Image& highlightimage, int highlightsize, sf::Image& minihighlightimage, int minihighlightsize)
+void drawhighlightobjects(planet& world, sf::Image& highlightimage, int highlightsize, sf::Image& minihighlightimage, int& minihighlightsize)
 {
     sf::Color currenthighlightcolour;
 
@@ -4535,7 +6847,6 @@ void drawhighlightobjects(planet& world, sf::Image& highlightimage, int highligh
 
     // Do the highlight point
 
-
     for (int i = 0; i < highlightsize; i++)
     {
         for (int j = 0; j < highlightsize; j++)
@@ -4544,9 +6855,22 @@ void drawhighlightobjects(planet& world, sf::Image& highlightimage, int highligh
 
     // And the minimap highlight
 
-    for (int i = 1; i < minihighlightsize - 1; i++)
+    int size = world.size();
+
+    if (size == 0)
+        minihighlightsize = 32;
+
+    if (size == 1)
+        minihighlightsize = 16;
+
+    if (size == 2)
+        minihighlightsize = 8;
+
+    minihighlightimage.create(32, 32);
+
+    for (int i = 0; i < 32; i++)
     {
-        for (int j = 1; j < minihighlightsize - 1; j++)
+        for (int j = 0; j < 32; j++)
             minihighlightimage.setPixel(i, j, sf::Color::Transparent);
     }
 
@@ -4661,9 +6985,6 @@ void drawglobalelevationmapimage(planet& world, sf::Image& globalelevationimage,
         {
             int heightpoint = world.map(i, j);
 
-            if (world.lakesurface(i, j) != 0 && world.special(i, j) == 0)
-                heightpoint = world.lakesurface(i, j);
-
             colour1 = heightpoint / div;
 
             if (colour1 > 255)
@@ -4676,15 +6997,21 @@ void drawglobalelevationmapimage(planet& world, sf::Image& globalelevationimage,
         }
     }
 
-    int mapdiv = (width + 1) / DISPLAYMAPSIZEX;
+    float displayx = DISPLAYMAPSIZEX;
 
-    for (int i = 0; i < DISPLAYMAPSIZEX; i++)
+    float mapdiv = ((float)width + 1.0f) / displayx;
+
+    for (float i = 0.0f; i < DISPLAYMAPSIZEX; i++)
     {
-        for (int j = 0; j < DISPLAYMAPSIZEY; j++)
+        float pixelx = i * mapdiv;
+        
+        for (float j = 0.0f; j < DISPLAYMAPSIZEY; j++)
         {
-            sf::Color thispixel = globalelevationimage.getPixel(i * mapdiv, j * mapdiv);
+            float pixely = j * mapdiv;
+            
+            sf::Color thispixel = globalelevationimage.getPixel((int)pixelx, (int)pixely);
 
-            displayglobalelevationimage.setPixel(i, j, thispixel);
+            displayglobalelevationimage.setPixel((int)i, (int)j, thispixel);
         }
     }
 }
@@ -4715,7 +7042,11 @@ void drawglobaltemperaturemapimage(planet& world, sf::Image& globaltemperatureim
             }
             else
             {
-                int temperature = (world.mintemp(i, j) + world.maxtemp(i, j)) / 2;
+                int jantemp = world.jantemp(i, j);
+                int jultemp = world.jultemp(i, j);
+                int aprtemp = world.aprtemp(i, j);
+                
+                int temperature = (jantemp + aprtemp + jultemp + aprtemp) / 4; // April appears twice, as it's the same as October
 
                 temperature = temperature + 10;
 
@@ -4748,22 +7079,27 @@ void drawglobaltemperaturemapimage(planet& world, sf::Image& globaltemperatureim
         }
     }
 
-    int mapdiv = (width + 1) / DISPLAYMAPSIZEX;
+    float displayx = DISPLAYMAPSIZEX;
 
-    for (int i = 0; i < DISPLAYMAPSIZEX; i++)
+    float mapdiv = ((float)width + 1.0f) / displayx;
+
+    for (float i = 0.0f; i < DISPLAYMAPSIZEX; i++)
     {
-        for (int j = 0; j < DISPLAYMAPSIZEY; j++)
+        float pixelx = i * mapdiv;
+        int sourcei = (int)pixelx;
+
+        for (float j = 0.0f; j < DISPLAYMAPSIZEY; j++)
         {
-            int sourcei = i * mapdiv;
-            int sourcej = j * mapdiv;
+            float pixely = j * mapdiv;
+            int sourcej = (int)pixely;
 
             sf::Color thispixel = globaltemperatureimage.getPixel(sourcei, sourcej);
 
-            displayglobaltemperatureimage.setPixel(i, j, thispixel);
+            displayglobaltemperatureimage.setPixel((int)i, (int)j, thispixel);
 
             // If there's an outline pixel nearby, use that instead.
 
-            if (sourcei > 0 && sourcej > 0)
+            if (width > DISPLAYMAPSIZEX && sourcei > 0 && sourcej > 0)
             {
                 for (int k = sourcei - 1; k <= sourcei; k++)
                 {
@@ -4772,7 +7108,7 @@ void drawglobaltemperaturemapimage(planet& world, sf::Image& globaltemperatureim
                         sf::Color newpixel = globaltemperatureimage.getPixel(k, l);
 
                         if (newpixel.r == 0 && newpixel.g == 0 && newpixel.b == 0)
-                            displayglobaltemperatureimage.setPixel(i, j, newpixel);
+                            displayglobaltemperatureimage.setPixel((int)i, (int)j, newpixel);
                     }
                 }
             }
@@ -4828,22 +7164,27 @@ void drawglobalprecipitationmapimage(planet& world, sf::Image& globalprecipitati
         }
     }
 
-    int mapdiv = (width + 1) / DISPLAYMAPSIZEX;
+    float displayx = DISPLAYMAPSIZEX;
 
-    for (int i = 0; i < DISPLAYMAPSIZEX; i++)
+    float mapdiv = ((float)width + 1.0f) / displayx;
+
+    for (float i = 0.0f; i < DISPLAYMAPSIZEX; i++)
     {
-        for (int j = 0; j < DISPLAYMAPSIZEY; j++)
+        float pixelx = i * mapdiv;
+        int sourcei = (int)pixelx;
+
+        for (float j = 0.0f; j < DISPLAYMAPSIZEY; j++)
         {
-            int sourcei = i * mapdiv;
-            int sourcej = j * mapdiv;
+            float pixely = j * mapdiv;
+            int sourcej = (int)pixely;
 
             sf::Color thispixel = globalprecipitationimage.getPixel(sourcei, sourcej);
 
-            displayglobalprecipitationimage.setPixel(i, j, thispixel);
+            displayglobalprecipitationimage.setPixel((int)i, (int)j, thispixel);
 
             // If there's an outline pixel nearby, use that instead.
 
-            if (sourcei > 0 && sourcej > 0)
+            if (width > DISPLAYMAPSIZEX && sourcei > 0 && sourcej > 0)
             {
                 for (int k = sourcei - 1; k <= sourcei; k++)
                 {
@@ -4852,7 +7193,7 @@ void drawglobalprecipitationmapimage(planet& world, sf::Image& globalprecipitati
                         sf::Color newpixel = globalprecipitationimage.getPixel(k, l);
 
                         if (newpixel.r == 0 && newpixel.g == 0 && newpixel.b == 0)
-                            displayglobalprecipitationimage.setPixel(i, j, newpixel);
+                            displayglobalprecipitationimage.setPixel((int)i, (int)j, newpixel);
                     }
                 }
             }
@@ -4914,18 +7255,39 @@ void drawglobalclimatemapimage(planet& world, sf::Image& globalclimateimage, sf:
         }
     }
 
-    int mapdiv = (width + 1) / DISPLAYMAPSIZEX;
+    float displayx = DISPLAYMAPSIZEX;
 
-    for (int i = 0; i < DISPLAYMAPSIZEX; i++)
+    float mapdiv = ((float)width + 1.0f) / displayx;
+
+    for (float i = 0.0f; i < DISPLAYMAPSIZEX; i++)
     {
-        for (int j = 0; j < DISPLAYMAPSIZEY; j++)
+        float pixelx = i * mapdiv;
+        int sourcei = (int)pixelx;
+
+        for (float j = 0.0f; j < DISPLAYMAPSIZEY; j++)
         {
-            int sourcei = i * mapdiv;
-            int sourcej = j * mapdiv;
+            float pixely = j * mapdiv;
+            int sourcej = (int)pixely;
 
             sf::Color thispixel = globalclimateimage.getPixel(sourcei, sourcej);
 
-            displayglobalclimateimage.setPixel(i, j, thispixel);
+            displayglobalclimateimage.setPixel((int)i, (int)j, thispixel);
+
+            // If there's an outline pixel nearby, use that instead.
+
+            if (width > DISPLAYMAPSIZEX && sourcei > 0 && sourcej > 0)
+            {
+                for (int k = sourcei - 1; k <= sourcei; k++)
+                {
+                    for (int l = sourcej - 1; l <= sourcej; l++)
+                    {
+                        sf::Color newpixel = globalclimateimage.getPixel(k, l);
+
+                        if (newpixel.r == 0 && newpixel.g == 0 && newpixel.b == 0)
+                            displayglobalclimateimage.setPixel((int)i, (int)j, newpixel);
+                    }
+                }
+            }
         }
     }
 }
@@ -5043,52 +7405,91 @@ void drawglobalriversmapimage(planet& world, sf::Image& globalriversimage, sf::I
         }
     }
 
-    int mapdiv = (width + 1) / DISPLAYMAPSIZEX;
-
-    for (int i = 0; i < DISPLAYMAPSIZEX; i++)
+    if (world.size() == 0)
     {
-        for (int j = 0; j < DISPLAYMAPSIZEY; j++)
+        for (int i = 0; i < DISPLAYMAPSIZEX; i++)
         {
-            int sourcei = i * mapdiv;
-            int sourcej = j * mapdiv;
-
-            sf::Color thispixel = globalriversimage.getPixel(sourcei, sourcej);
-
-            displayglobalriversimage.setPixel(i, j, thispixel);
-
-            // Check for the largest river pixel nearby.
-
-            if (sourcei > 0 && sourcej > 0)
+            for (int j = 0; j < DISPLAYMAPSIZEY; j++)
             {
-                int lowestred = 255;
-
-                for (int k = sourcei - 1; k <= sourcei; k++)
-                {
-                    for (int l = sourcej - 1; l <= sourcej; l++)
-                    {
-                        sf::Color newpixel = globalriversimage.getPixel(k, l);
-
-                        if (newpixel.r < lowestred && newpixel.r == newpixel.g)
-                            lowestred = newpixel.r;
-                    }
-                }
-
-                if (lowestred < 255)
-                    displayglobalriversimage.setPixel(i, j, sf::Color(lowestred, lowestred, 255));
+                sf::Color thispixel = globalriversimage.getPixel(i/2, j/2);
+                displayglobalriversimage.setPixel(i, j, thispixel);
             }
-
-            // If there's an outline pixel nearby, use that instead.
-
-            if (sourcei > 0 && sourcej > 0)
+        }
+    }
+    else
+    {
+        if (world.size() == 1)
+        {
+            for (int i = 0; i < DISPLAYMAPSIZEX; i++)
             {
-                for (int k = sourcei - 1; k <= sourcei; k++)
+                for (int j = 0; j < DISPLAYMAPSIZEY; j++)
                 {
-                    for (int l = sourcej - 1; l <= sourcej; l++)
-                    {
-                        sf::Color newpixel = globalriversimage.getPixel(k, l);
+                    sf::Color thispixel = globalriversimage.getPixel(i, j);
+                    displayglobalriversimage.setPixel(i, j, thispixel);
+                }
+            }
+        }
+        else
+        {
+            float displayx = DISPLAYMAPSIZEX;
 
-                        if (newpixel.r == 0 && newpixel.g == 0 && newpixel.b == 0)
-                            displayglobalriversimage.setPixel(i, j, newpixel);
+            float mapdiv = ((float)width + 1.0f) / displayx;
+
+            for (float i = 0.0f; i < DISPLAYMAPSIZEX; i++)
+            {
+                float pixelx = i * mapdiv;
+                int sourcei = (int)pixelx;
+
+                for (float j = 0.0f; j < DISPLAYMAPSIZEY; j++)
+                {
+                    float pixely = j * mapdiv;
+                    int sourcej = (int)pixely;
+
+                    sf::Color thispixel = globalriversimage.getPixel(sourcei, sourcej);
+
+                    displayglobalriversimage.setPixel((int)i, (int)j, thispixel);
+
+                    // Check for the largest river pixel nearby.
+
+                    if (sourcei > 0 && sourcej > 0)
+                    {
+                        int lowestred = 255;
+                        int lowestgreen = 255;
+                        int lowestblue = 255;
+
+                        for (int k = sourcei - 1; k <= sourcei; k++)
+                        {
+                            for (int l = sourcej - 1; l <= sourcej; l++)
+                            {
+                                sf::Color newpixel = globalriversimage.getPixel(k, l);
+
+                                if (newpixel.r < lowestred && newpixel.r == newpixel.g)
+                                {
+                                    lowestred = newpixel.r;
+                                    lowestgreen = newpixel.g;
+                                    lowestblue = newpixel.b;
+                                }
+                            }
+                        }
+
+                        if (lowestred < 255)
+                            displayglobalriversimage.setPixel((int)i, (int)j, sf::Color(lowestred, lowestgreen, lowestblue));
+                    }
+
+                    // If there's an outline pixel nearby, use that instead.
+
+                    if (width > DISPLAYMAPSIZEX && sourcei > 0 && sourcej > 0)
+                    {
+                        for (int k = sourcei - 1; k <= sourcei; k++)
+                        {
+                            for (int l = sourcej - 1; l <= sourcej; l++)
+                            {
+                                sf::Color newpixel = globalriversimage.getPixel(k, l);
+
+                                if (newpixel.r == 0 && newpixel.g == 0 && newpixel.b == 0)
+                                    displayglobalriversimage.setPixel((int)i, (int)j, newpixel);
+                            }
+                        }
                     }
                 }
             }
@@ -5101,6 +7502,7 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
     int width = world.width();
     int height = world.height();
     int sealevel = world.sealevel();
+    int type = world.type();
 
     int colour1, colour2, colour3;
 
@@ -5119,6 +7521,7 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
     float seashading = world.seashading();
 
     int shadingdir = world.shadingdir();
+    bool colourcliffs = world.colourcliffs();
 
     vector<vector<short>> reliefmap1(ARRAYWIDTH, vector<short>(ARRAYHEIGHT, 0));
     vector<vector<short>> reliefmap2(ARRAYWIDTH, vector<short>(ARRAYHEIGHT, 0));
@@ -5226,44 +7629,82 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
 
                         // Now, adjust for the presence of monsoon.
 
-                        float winterrain = world.winterrain(i, j);
-                        float summerrain = world.summerrain(i, j);
+                        float winterrain = (float)world.winterrain(i, j);
+                        float summerrain = (float)world.summerrain(i, j);
 
                         float totalrain = winterrain + summerrain;
 
-                        float monsoon = 0;
+                        float monsoon = 0.0f;
 
-                        if (winterrain < 1)
-                            winterrain = 1;
+                        if (winterrain < 1.0f)
+                            winterrain = 1.0f;
 
                         if (winterrain < summerrain)
                         {
                             monsoon = summerrain - winterrain;
 
-                            monsoon = monsoon / 1000; // 410
+                            monsoon = monsoon / 1000.0f; // 410
 
-                            if (monsoon > 0.99)
-                                monsoon = 0.99;
+                            if (monsoon > 0.99f)
+                                monsoon = 0.99f;
                         }
 
                         // The closer it is to tropical rainforest, the more we intensify the rain effect.
 
-                        float rainforestmult = world.mintemp(i, j) / 18.0; //9.0;
+                        float rainforestmult = (float)world.mintemp(i, j) / 18.0f; //9.0f;
 
-                        rainforestmult = rainforestmult * world.winterrain(i, j) / 80.0;
+                        rainforestmult = rainforestmult * (float)world.winterrain(i, j) / 80.0f;
 
-                        if (rainforestmult < 1)
-                            rainforestmult = 1;
+                        if (rainforestmult < 1.0f)
+                            rainforestmult = 1.0f;
 
                         totalrain = totalrain * rainforestmult;
 
                         // Now adjust the colours for height.
 
                         int mapelev = world.map(i, j) - sealevel;
+                        int desertmapelev = mapelev; // We won't mess about with this one.
+
+                        // If this setting is chosen, pretend that the elevation is much lower for flat areas.
+
+                        if (colourcliffs == 1)
+                        {
+                            int biggestslope = 0;
+
+                            for (int k = i - 1; k <= i + 1; k++)
+                            {
+                                int kk = k;
+
+                                if (kk<0 || kk>width)
+                                    kk = wrap(kk, width);
+
+                                for (int l = j - 1; l <= j + 1; l++)
+                                {
+                                    if (l >= 0 && l <= height)
+                                    {
+                                        int thisslope = mapelev + sealevel - world.map(kk, l);
+
+                                        if (thisslope > biggestslope)
+                                            biggestslope = thisslope;
+                                    }
+                                }
+                            }
+
+                            biggestslope = biggestslope - 240; // 180
+
+                            if (biggestslope < 0)
+                                biggestslope = 0;
+
+                            float adjustedelev = (float)mapelev;
+
+                            adjustedelev = adjustedelev * (biggestslope / 240.0f);
+
+                            mapelev = (int)adjustedelev;
+                        }
 
                         int newbase1, newbase2, newbase3, newgrass1, newgrass2, newgrass3;
 
-                        if (mapelev > 2000)
+                        if (desertmapelev > 2000)
                         {
                             newdesert1 = world.highdesert1();
                             newdesert2 = world.highdesert2();
@@ -5271,7 +7712,7 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
                         }
                         else
                         {
-                            int highno = mapelev / 50;
+                            int highno = desertmapelev / 50;
                             int lowno = 40 - highno;
 
                             newdesert1 = (highno * world.highdesert1() + lowno * newdesert1) / 40;
@@ -5305,17 +7746,17 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
 
                         // Now we need to mix these according to how dry the location is.
 
-                        if (totalrain > 800) // 800
+                        if (totalrain > 800.0f) // 800
                         {
                             colour1 = newbase1;
                             colour2 = newbase2;
                             colour3 = newbase3;
                         }
                         else
-                        { // That's it!
-                            if (totalrain > 200) //400
+                        {
+                            if (totalrain > 200.0f) //400
                             {
-                                int wetno = (totalrain - 200) / 40; //400 20
+                                int wetno = ((int)totalrain - 200) / 40; //400 20
                                 if (wetno > 20)
                                     wetno = 20;
                                 int dryno = 20 - wetno;
@@ -5326,22 +7767,22 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
                             }
                             else
                             {
-                                float ftotalrain = 200 - totalrain; // 400
+                                float ftotalrain = 200.0f - totalrain; // 400
 
-                                ftotalrain = ftotalrain / 200.0; // 400
+                                ftotalrain = ftotalrain / 200.0f; // 400
 
-                                int powamount = totalrain - 150; // 350 This is to make a smoother transition.
+                                int powamount = (int)totalrain - 150; // 350 This is to make a smoother transition.
 
                                 if (powamount < 3)
                                     powamount = 3;
 
-                                ftotalrain = pow(ftotalrain, powamount);
+                                ftotalrain = (float)pow(ftotalrain, powamount);
 
-                                ftotalrain = ftotalrain * 200; // 400
+                                ftotalrain = ftotalrain * 200.0f; // 400
 
-                                totalrain = 200 - ftotalrain; // 400
+                                totalrain = 200.0f - ftotalrain; // 400
 
-                                int wetno = totalrain;
+                                int wetno = (int)totalrain;
                                 int dryno = 200 - wetno;
 
                                 colour1 = (wetno * newgrass1 + dryno * newdesert1) / 200;
@@ -5362,7 +7803,13 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
                         {
                             // Get the right tundra colour, depending on latitude.
 
-                            int lat = world.latitude(i, j);
+                            int lat = 0;
+                            int latminutes = 0;
+                            int latseconds = 0;
+                            bool latneg = 0;
+
+                            world.latitude(j, lat, latminutes, latseconds,latneg);
+
                             int lat2 = 90 - lat;
 
                             int thistundra1 = (lat * world.tundra1() + lat2 * world.eqtundra1()) / 90;
@@ -5599,14 +8046,13 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
                             totalslope = -40;
 
                         if (world.sea(i, j) == 1)
-                            totalslope = totalslope * seashading * 2;
+                            totalslope = (int)((float)totalslope * (seashading * 2.0f));
                         else
                         {
                             if (world.truelake(i, j) == 1)
-                                totalslope = totalslope * lakeshading * 2;
+                                totalslope = (int)((float)totalslope * (lakeshading * 2.0f));
                             else
-                                totalslope = totalslope * landshading * 2;
-
+                                totalslope = (int)((float)totalslope * (landshading * 2.0f));
                         }
 
                         if (world.map(i, j) <= sealevel && world.oceanrifts(i, j) == 0) // Reduce the shading effect around ocean ridges.
@@ -5687,22 +8133,25 @@ void drawglobalreliefmapimage(planet& world, sf::Image& globalreliefimage, sf::I
                 }
             }
 
-            globalreliefimage.setPixel(i, j, sf::Color(r, g, b));
+            globalreliefimage.setPixel(i, j, sf::Color((sf::Uint8)r, (sf::Uint8)g, (sf::Uint8)b));
         }
     }
 
-    int mapdiv = (width + 1) / DISPLAYMAPSIZEX;
+    float displayx = DISPLAYMAPSIZEX;
 
-    for (int i = 0; i < DISPLAYMAPSIZEX; i++)
+    float mapdiv = ((float)width + 1.0f) / displayx;
+
+    for (float i = 0.0f; i < DISPLAYMAPSIZEX; i++)
     {
-        for (int j = 0; j < DISPLAYMAPSIZEY; j++)
+        float pixelx = i * mapdiv;
+
+        for (float j = 0.0f; j < DISPLAYMAPSIZEY; j++)
         {
-            int sourcei = i * mapdiv;
-            int sourcej = j * mapdiv;
+            float pixely = j * mapdiv;
 
-            sf::Color thispixel = globalreliefimage.getPixel(sourcei, sourcej);
+            sf::Color thispixel = globalreliefimage.getPixel((int)pixelx, (int)pixely);
 
-            displayglobalreliefimage.setPixel(i, j, thispixel);
+            displayglobalreliefimage.setPixel((int)i, (int)j, thispixel);
         }
     }
 }
@@ -6148,6 +8597,13 @@ void drawregionalprecipitationmapimage(planet& world, region& region, sf::Image&
                     colour2 = 0;
             }
 
+            if (region.test(i, j) != 0)
+            {
+                colour1 = 255;
+                colour2 = 0;
+                colour3 = 255;
+            }
+
             regionalprecipitationimage.setPixel(i - origregwidthbegin, j - origregheightbegin, sf::Color(colour1, colour2, colour3));
         }
     }
@@ -6246,9 +8702,8 @@ void drawregionalriversmapimage(planet& world, region& region, sf::Image& region
             {
                 int flow = region.riveraveflow(i, j);
 
-                if (flow > 0 && region.sea(i, j) == 0)
+                if (flow > 0) // && region.sea(i, j) == 0)
                 {
-
                     flow = flow * 100;
 
                     colour1 = 255 - (flow / mult);
@@ -6276,6 +8731,7 @@ void drawregionalriversmapimage(planet& world, region& region, sf::Image& region
                     colour1 = 240;
                     colour2 = 0;
                     colour3 = 0;
+                    colour3 = 0;
                 }
 
                 if (colour1 == 255 && colour2 == 255 && colour3 == 255)
@@ -6287,6 +8743,20 @@ void drawregionalriversmapimage(planet& world, region& region, sf::Image& region
                         colour1 = 30;
                         colour2 = 250;
                         colour3 = 150;
+                    }
+
+                    if (region.mud(i, j))
+                    {
+                        colour1 = 131;
+                        colour2 = 98;
+                        colour3 = 75;
+                    }
+
+                    if (region.sand(i, j) || region.shingle(i, j))
+                    {
+                        colour1 = 255;
+                        colour2 = 255;
+                        colour3 = 50;
                     }
                 }
             }
@@ -6314,14 +8784,13 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
 
     int mult = world.maxriverflow() / 400;
 
-    //int regwidthbegin=region.regwidthbegin();
-
     int leftx = region.leftx();
     int lefty = region.lefty();
 
     int rwidth = region.rwidth();
     int rheight = region.rheight();
 
+    int type = world.type();
     int sealevel = world.sealevel();
     int minriverflow = world.minriverflowregional(); // Rivers of this size or larger will be shown on the map.
     int shadingdir = world.shadingdir();
@@ -6333,6 +8802,8 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
     float landmarbling = world.landmarbling() * 2;
     float lakemarbling = world.lakemarbling() * 2;
     float seamarbling = world.seamarbling() * 2;
+
+    bool colourcliffs = world.colourcliffs();
 
     int width = world.width();
     int height = world.height();
@@ -6350,8 +8821,6 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
     vector<vector<int>> source(ARRAYWIDTH, vector<int>(ARRAYHEIGHT, 0));
     vector<vector<int>> stripefractal(RARRAYWIDTH, vector<int>(RARRAYHEIGHT, -5000));
 
-    int coords[4][2];
-
     for (int i = 0; i <= width; i++)
     {
         for (int j = 0; j <= height; j++)
@@ -6363,34 +8832,13 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
         }
     }
 
-    for (int x = xleft; x <= xright; x++)
-    {
-        int xx = leftx + x;
-
-        if (xx<0 || xx>width)
-            xx = wrap(xx, width);
-
-        for (int y = ytop; y <= ybottom; y++) // xx and yy are the coordinates of the current pixel being expanded.
-        {
-            int yy = lefty + y;
-
-            float valuemod = 0.04; //0.02;
-
-            makegenerictile(world, x * 16, y * 16, xx, yy, valuemod, coords, source, stripefractal, 100000, 0, 0);
-        }
-    }
-
-    for (int i = 0; i < RARRAYWIDTH; i++)
-    {
-        for (int j = 0; j < RARRAYHEIGHT; j++)
-        {
-            reliefmap1[i][j] = 0;
-            reliefmap2[i][j] = 0;
-            reliefmap3[i][j] = 0;
-        }
-    }
-
     int var = 0; // Amount colours may be varied to make the map seem more speckledy.
+
+    int lat = 0;
+    int lat2 = 0;
+    int latminutes = 0;
+    int latseconds = 0;
+    bool latneg = 0;
 
     for (int i = regwidthbegin; i <= regwidthend; i++)
     {
@@ -6406,6 +8854,9 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
             avetemp = avetemp + 1000;
 
             int totalrain = region.summerrain(i, j) + region.winterrain(i, j);
+
+            if (region.special(i, j) == 120)
+                totalrain = totalrain / 4;
 
             var = 10;
 
@@ -6456,335 +8907,438 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
                     }
                     else
                     {
-                        // First, adjust the base colours depending on temperature.
-
-                        int thisbase1, thisbase2, thisbase3, newdesert1, newdesert2, newdesert3;
-
-                        if (avetemp > 3000)
+                        if (region.sand(i, j) || region.shingle(i,j))
                         {
-                            thisbase1 = world.base1();
-                            thisbase2 = world.base2();
-                            thisbase3 = world.base3();
-                        }
-                        else
-                        {
-                            int hotno = avetemp / 3;
-                            int coldno = 1000 - hotno;
-
-                            thisbase1 = (hotno * world.base1() + coldno * world.basetemp1()) / 1000;
-                            thisbase2 = (hotno * world.base2() + coldno * world.basetemp2()) / 1000;
-                            thisbase3 = (hotno * world.base3() + coldno * world.basetemp3()) / 1000;
-                        }
-
-                        if (avetemp > 30)
-                        {
-                            newdesert1 = world.desert1();
-                            newdesert2 = world.desert2();
-                            newdesert3 = world.desert3();
-                        }
-                        else
-                        {
-                            if (avetemp <= 10)
+                            if (region.sand(i, j) && region.shingle(i, j) == 0)
                             {
-                                newdesert1 = world.colddesert1();
-                                newdesert2 = world.colddesert2();
-                                newdesert3 = world.colddesert3();
+                                colour1 = world.sand1();
+                                colour2 = world.sand2();
+                                colour3 = world.sand3();
+
+                                var = 5;
+                            }
+
+                            if (region.shingle(i, j) && region.sand(i, j) == 0)
+                            {
+                                colour1 = world.shingle1();
+                                colour2 = world.shingle2();
+                                colour3 = world.shingle3();
+
+                                var = 40;
+                            }
+
+                            if (region.sand(i, j) && region.shingle(i, j))
+                            {
+                                colour1 = (world.sand1() + world.shingle1()) / 2;
+                                colour2 = (world.sand2() + world.shingle2()) / 2;
+                                colour3 = (world.sand3() + world.shingle3()) / 2;
+
+                                var = 20;
+                            }
+
+                            if (region.mud(i, j))
+                            {
+                                colour1 = (colour1 + world.mud1()) / 2;
+                                colour2 = (colour2 + world.mud2()) / 2;
+                                colour3 = (colour3 + world.mud3()) / 2;
+                            }
+                        }
+                        else
+                        {
+                            if (region.mangrove(i, j) && world.showmangroves())
+                            {
+                                colour1 = world.mangrove1();
+                                colour2 = world.mangrove2();
+                                colour3 = world.mangrove3();
+
+                                var = 20;
                             }
                             else
                             {
-                                int hotno = avetemp - 10;
-                                int coldno = 20 - hotno;
+                                // First, adjust the base colours depending on temperature.
 
-                                newdesert1 = (hotno * world.desert1() + coldno * world.colddesert1()) / 20;
-                                newdesert2 = (hotno * world.desert2() + coldno * world.colddesert2()) / 20;
-                                newdesert3 = (hotno * world.desert3() + coldno * world.colddesert3()) / 20;
-                            }
-                        }
+                                int thisbase1, thisbase2, thisbase3, newdesert1, newdesert2, newdesert3;
 
-                        // The closer it is to tropical rainforest, the more we intensify the rain effect.
-
-                        float rainforestmult = region.mintemp(i, j) / 18.0;
-
-                        rainforestmult = rainforestmult * region.winterrain(i, j) / 80.0; //30.0;
-
-                        if (rainforestmult < 1)
-                            rainforestmult = 1;
-
-                        totalrain = totalrain * rainforestmult;
-
-                        // Now adjust the colours for height.
-
-                        int mapelev = region.map(i, j) - sealevel;
-
-                        if (region.special(i, j) == 110 || region.special(i, j) == 120) // If this is going to be an erg or salt pan
-                            mapelev = region.lakesurface(i, j) - sealevel; // Use the surface elevation of the erg or salt pan
-
-                        int newbase1, newbase2, newbase3, newgrass1, newgrass2, newgrass3;
-
-                        if (mapelev > 2000)
-                        {
-                            newdesert1 = world.highdesert1();
-                            newdesert2 = world.highdesert2();
-                            newdesert3 = world.highdesert3();
-                        }
-                        else
-                        {
-                            int highno = mapelev / 50;
-                            int lowno = 40 - highno;
-
-                            newdesert1 = (highno * world.highdesert1() + lowno * newdesert1) / 40;
-                            newdesert2 = (highno * world.highdesert2() + lowno * newdesert2) / 40;
-                            newdesert3 = (highno * world.highdesert3() + lowno * newdesert3) / 40;
-                        }
-
-                        if (mapelev > 3000)
-                        {
-                            newbase1 = world.highbase1();
-                            newbase2 = world.highbase2();
-                            newbase3 = world.highbase3();
-
-                            newgrass1 = world.highbase1();
-                            newgrass2 = world.highbase2();
-                            newgrass3 = world.highbase3();
-                        }
-                        else
-                        {
-                            int highno = mapelev / 75;
-                            int lowno = 40 - highno;
-
-                            newbase1 = (highno * world.highbase1() + lowno * thisbase1) / 40;
-                            newbase2 = (highno * world.highbase2() + lowno * thisbase2) / 40;
-                            newbase3 = (highno * world.highbase3() + lowno * thisbase3) / 40;
-
-                            newgrass1 = (highno * world.highbase1() + lowno * world.grass1()) / 40;
-                            newgrass2 = (highno * world.highbase2() + lowno * world.grass2()) / 40;
-                            newgrass3 = (highno * world.highbase3() + lowno * world.grass3()) / 40;
-                        }
-
-                        // Now we need to mix these according to how dry the location is.
-
-                        if (region.rivervalley(i, j) == 1) // If this is a river valley, it's wetter than it would otherwise be.
-                        {
-                            float biggestflow = 0;
-
-                            for (int k = i - 20; k <= i + 20; k++)
-                            {
-                                for (int l = j - 20; l <= j + 20; l++)
+                                if (avetemp > 3000)
                                 {
-                                    if (k >= 0 && k <= rwidth && l >= 0 && l <= rheight)
-                                    {
-                                        if (region.riverjan(k, l) + region.riverjul(k, l) > biggestflow)
-                                            biggestflow = region.riverjan(k, l) + region.riverjul(k, l);
-                                    }
+                                    thisbase1 = world.base1();
+                                    thisbase2 = world.base2();
+                                    thisbase3 = world.base3();
                                 }
-                            }
-
-                            if (biggestflow == 0)
-                            {
-                                twointegers nearest = findclosestriverquickly(region, i, j);
-
-                                if (nearest.x != -1)
-                                    biggestflow = region.riverjan(nearest.x, nearest.y) + region.riverjul(nearest.x, nearest.y);
-                            }
-
-                            if (biggestflow > 12000)
-                                biggestflow = 12000;
-
-                            float mult = totalrain;
-
-                            if (mult < 1)
-                                mult = 1;
-
-                            if (mult > 1000)
-                                mult = 1000;
-
-
-                            biggestflow = biggestflow / mult;
-                            totalrain = totalrain + biggestflow;
-                        }
-
-                        if (totalrain > 800) // 600
-                        {
-                            colour1 = newbase1;
-                            colour2 = newbase2;
-                            colour3 = newbase3;
-                        }
-                        else
-                        {
-                            if (totalrain > 200) //300
-                            {
-                                int wetno = (totalrain - 200) / 40; //20
-                                if (wetno > 20) // 40
-                                    wetno = 20;
-                                int dryno = 20 - wetno;
-
-
-                                colour1 = (wetno * newbase1 + dryno * newgrass1) / 20;
-                                colour2 = (wetno * newbase2 + dryno * newgrass2) / 20;
-                                colour3 = (wetno * newbase3 + dryno * newgrass3) / 20;
-                            }
-                            else
-                            {
-                                float ftotalrain = 200 - totalrain;
-
-                                ftotalrain = ftotalrain / 200.0;
-
-                                int powamount = totalrain - 150; // This is to make a smoother transition.
-
-                                if (powamount < 3)
-                                    powamount = 3;
-
-                                ftotalrain = pow(ftotalrain, powamount);
-
-                                ftotalrain = ftotalrain * 200;
-
-                                totalrain = 200 - ftotalrain;
-
-                                int wetno = totalrain;
-                                int dryno = 200 - wetno;
-
-                                colour1 = (wetno * newgrass1 + dryno * newdesert1) / 200;
-                                colour2 = (wetno * newgrass2 + dryno * newdesert2) / 200;
-                                colour3 = (wetno * newgrass3 + dryno * newdesert3) / 200;
-                            }
-                        }
-
-                        // Now we need to alter that according to how cold the location is.
-
-                        if (avetemp <= 0 || yy > height - 3) // This is because it has an odd tendency to show the very southernmost tiles in non-cold colours.
-                        {
-                            colour1 = world.cold1();
-                            colour2 = world.cold2();
-                            colour3 = world.cold3();
-                        }
-                        else
-                        {
-                            // Get the right tundra colour, depending on latitude.
-
-                            int lat = world.latitude(region.centrex(), region.centrey());
-                            int lat2 = 90 - lat;
-
-                            int thistundra1 = (lat * world.tundra1() + lat2 * world.eqtundra1()) / 90;
-                            int thistundra2 = (lat * world.tundra2() + lat2 * world.eqtundra2()) / 90;
-                            int thistundra3 = (lat * world.tundra3() + lat2 * world.eqtundra3()) / 90;
-
-                            if (world.snowchange() == 1) // Abrupt transition
-                            {
-                                if (avetemp < 2000)
+                                else
                                 {
-                                    if (avetemp < 600)
+                                    int hotno = avetemp / 3;
+                                    int coldno = 1000 - hotno;
+
+                                    thisbase1 = (hotno * world.base1() + coldno * world.basetemp1()) / 1000;
+                                    thisbase2 = (hotno * world.base2() + coldno * world.basetemp2()) / 1000;
+                                    thisbase3 = (hotno * world.base3() + coldno * world.basetemp3()) / 1000;
+                                }
+
+                                if (avetemp > 30)
+                                {
+                                    newdesert1 = world.desert1();
+                                    newdesert2 = world.desert2();
+                                    newdesert3 = world.desert3();
+                                }
+                                else
+                                {
+                                    if (avetemp <= 10)
                                     {
-                                        colour1 = world.cold1();
-                                        colour2 = world.cold2();
-                                        colour3 = world.cold3();
+                                        newdesert1 = world.colddesert1();
+                                        newdesert2 = world.colddesert2();
+                                        newdesert3 = world.colddesert3();
                                     }
                                     else
                                     {
-                                        if (avetemp < 1000)
-                                        {
-                                            colour1 = thistundra1;
-                                            colour2 = thistundra2;
-                                            colour3 = thistundra3;
-                                        }
-                                        else
-                                        {
-                                            int hotno = avetemp - 1000;
-                                            int coldno = 1000 - hotno;
+                                        int hotno = avetemp - 10;
+                                        int coldno = 20 - hotno;
 
-                                            colour1 = (hotno * colour1 + coldno * thistundra1) / 1000;
-                                            colour2 = (hotno * colour2 + coldno * thistundra2) / 1000;
-                                            colour3 = (hotno * colour3 + coldno * thistundra3) / 1000;
-                                        }
+                                        newdesert1 = (hotno * world.desert1() + coldno * world.colddesert1()) / 20;
+                                        newdesert2 = (hotno * world.desert2() + coldno * world.colddesert2()) / 20;
+                                        newdesert3 = (hotno * world.desert3() + coldno * world.colddesert3()) / 20;
                                     }
                                 }
-                            }
 
-                            if (world.snowchange() == 2) // Speckled transition
-                            {
-                                if (avetemp < 2000)
+                                // The closer it is to tropical rainforest, the more we intensify the rain effect.
+
+                                float rainforestmult = (float)region.mintemp(i, j) / 18.0f;
+
+                                rainforestmult = rainforestmult * (float)region.winterrain(i, j) / 80.0f; //30.0f;
+
+                                if (rainforestmult < 1.0f)
+                                    rainforestmult = 1.0f;
+
+                                totalrain = totalrain * (int)rainforestmult;
+
+                                // Now adjust the colours for height.
+
+                                int mapelev = region.map(i, j) - sealevel;
+
+                                if (region.special(i, j) == 110 || region.special(i, j) == 120) // If this is going to be an erg or salt pan
+                                    mapelev = region.lakesurface(i, j) - sealevel; // Use the surface elevation of the erg or salt pan
+
+                                int desertmapelev = mapelev; // We won't mess about with this one.
+
+                                // If it's flat here and this setting is enabled, pretend the elevation is lower than it really is.
+
+                                if (colourcliffs==1)
                                 {
-                                    if (avetemp < 600)
+                                    int biggestslope = 0;
+
+                                    for (int k = i - 1; k <= i + 1; k++)
                                     {
-                                        colour1 = world.cold1();
-                                        colour2 = world.cold2();
-                                        colour3 = world.cold3();
-                                    }
-                                    else
-                                    {
-                                        if (avetemp < 1000)
+                                        if (k >= 0 && k <= rwidth)
                                         {
-                                            if (random(600, 1000) < avetemp)
+                                            for (int l = j - 1; l <= j + 1; l++)
                                             {
-                                                colour1 = thistundra1;
-                                                colour2 = thistundra2;
-                                                colour3 = thistundra3;
+                                                if (l >= 0 && l <= rheight)
+                                                {
+                                                    int thisslope = mapelev + sealevel - region.map(k, l);
+
+                                                    if (thisslope > biggestslope)
+                                                        biggestslope = thisslope;
+                                                }
                                             }
-                                            else
+                                        }
+                                    }
+
+                                    biggestslope = biggestslope - 240; //180
+
+                                    if (biggestslope < 0)
+                                        biggestslope = 0;
+
+                                    float adjustedelev = (float)mapelev;
+
+                                    adjustedelev = adjustedelev * (biggestslope / 240.0f);
+
+                                    if (adjustedelev > (float)mapelev)
+                                        adjustedelev = (float)mapelev;
+
+                                    mapelev = (int)adjustedelev;
+                                }
+
+                                int newbase1, newbase2, newbase3, newgrass1, newgrass2, newgrass3;
+
+                                if (desertmapelev > 2000)
+                                {
+                                    newdesert1 = world.highdesert1();
+                                    newdesert2 = world.highdesert2();
+                                    newdesert3 = world.highdesert3();
+                                }
+                                else
+                                {
+                                    int highno = desertmapelev / 50;
+                                    int lowno = 40 - highno;
+
+                                    newdesert1 = (highno * world.highdesert1() + lowno * newdesert1) / 40;
+                                    newdesert2 = (highno * world.highdesert2() + lowno * newdesert2) / 40;
+                                    newdesert3 = (highno * world.highdesert3() + lowno * newdesert3) / 40;
+                                }
+
+                                if (mapelev > 3000)
+                                {
+                                    newbase1 = world.highbase1();
+                                    newbase2 = world.highbase2();
+                                    newbase3 = world.highbase3();
+
+                                    newgrass1 = world.highbase1();
+                                    newgrass2 = world.highbase2();
+                                    newgrass3 = world.highbase3();
+                                }
+                                else
+                                {
+                                    int highno = mapelev / 75;
+                                    int lowno = 40 - highno;
+
+                                    newbase1 = (highno * world.highbase1() + lowno * thisbase1) / 40;
+                                    newbase2 = (highno * world.highbase2() + lowno * thisbase2) / 40;
+                                    newbase3 = (highno * world.highbase3() + lowno * thisbase3) / 40;
+
+                                    newgrass1 = (highno * world.highbase1() + lowno * world.grass1()) / 40;
+                                    newgrass2 = (highno * world.highbase2() + lowno * world.grass2()) / 40;
+                                    newgrass3 = (highno * world.highbase3() + lowno * world.grass3()) / 40;
+                                }
+
+                                // Now we need to mix these according to how dry the location is.
+
+                                if (region.rivervalley(i, j) == 1 || region.riverdir(i,j)!=0 || region.fakedir(i,j)!=0) // If this is a river valley, it's wetter than it would otherwise be.
+                                {
+                                    float biggestflow = 0.0f;
+
+                                    for (int k = i - 20; k <= i + 20; k++)
+                                    {
+                                        for (int l = j - 20; l <= j + 20; l++)
+                                        {
+                                            if (k >= 0 && k <= rwidth && l >= 0 && l <= rheight)
+                                            {
+                                                if (region.riverjan(k, l) + region.riverjul(k, l) > biggestflow)
+                                                    biggestflow = (float)(region.riverjan(k, l) + region.riverjul(k, l));
+                                            }
+                                        }
+                                    }
+
+                                    if (biggestflow == 0.0f)
+                                    {
+                                        twointegers nearest = findclosestriverquickly(region, i, j);
+
+                                        if (nearest.x != -1)
+                                            biggestflow = (float)(region.riverjan(nearest.x, nearest.y) + region.riverjul(nearest.x, nearest.y));
+                                    }
+
+                                    if (biggestflow > 12000.0f)
+                                        biggestflow = 1200.0f;
+
+                                    float mult = (float)totalrain;
+
+                                    if (mult < 1.0f)
+                                        mult = 1.0f;
+
+                                    if (mult > 1000.0f)
+                                        mult = 1000.0f;
+
+
+                                    biggestflow = biggestflow / mult;
+                                    totalrain = totalrain + (int)biggestflow;
+                                }
+
+                                if (totalrain > 800) // 600
+                                {
+                                    colour1 = newbase1;
+                                    colour2 = newbase2;
+                                    colour3 = newbase3;
+                                }
+                                else
+                                {
+                                    if (totalrain > 200) //300
+                                    {
+                                        int wetno = (totalrain - 200) / 40; //20
+                                        if (wetno > 20) // 40
+                                            wetno = 20;
+                                        int dryno = 20 - wetno;
+
+
+                                        colour1 = (wetno * newbase1 + dryno * newgrass1) / 20;
+                                        colour2 = (wetno * newbase2 + dryno * newgrass2) / 20;
+                                        colour3 = (wetno * newbase3 + dryno * newgrass3) / 20;
+                                    }
+                                    else
+                                    {
+                                        float ftotalrain = 200.0f - (float)totalrain;
+
+                                        ftotalrain = ftotalrain / 200.0f;
+
+                                        int powamount = totalrain - 150; // This is to make a smoother transition.
+
+                                        if (powamount < 3)
+                                            powamount = 3;
+
+                                        ftotalrain = (float)pow((double)ftotalrain, (double)powamount);
+
+                                        ftotalrain = ftotalrain * 200.0f;
+
+                                        totalrain = 200 - (int)ftotalrain;
+
+                                        int wetno = totalrain;
+                                        int dryno = 200 - wetno;
+
+                                        colour1 = (wetno * newgrass1 + dryno * newdesert1) / 200;
+                                        colour2 = (wetno * newgrass2 + dryno * newdesert2) / 200;
+                                        colour3 = (wetno * newgrass3 + dryno * newdesert3) / 200;
+                                    }
+                                }
+
+                                // Now we need to alter that according to how cold the location is.
+
+                                if (avetemp <= 0 || yy > height - 3) // This is because it has an odd tendency to show the very southernmost tiles in non-cold colours.
+                                {
+                                    colour1 = world.cold1();
+                                    colour2 = world.cold2();
+                                    colour3 = world.cold3();
+                                }
+                                else
+                                {
+                                    // Get the right tundra colour, depending on latitude.
+
+                                    world.latitude(yy, lat, latminutes, latseconds, latneg);
+
+                                    lat2 = 90 - lat;
+
+                                    int thistundra1 = (lat * world.tundra1() + lat2 * world.eqtundra1()) / 90;
+                                    int thistundra2 = (lat * world.tundra2() + lat2 * world.eqtundra2()) / 90;
+                                    int thistundra3 = (lat * world.tundra3() + lat2 * world.eqtundra3()) / 90;
+
+                                    if (world.snowchange() == 1) // Abrupt transition
+                                    {
+                                        if (avetemp < 2000)
+                                        {
+                                            if (avetemp < 600)
                                             {
                                                 colour1 = world.cold1();
                                                 colour2 = world.cold2();
                                                 colour3 = world.cold3();
                                             }
+                                            else
+                                            {
+                                                if (avetemp < 1000)
+                                                {
+                                                    colour1 = thistundra1;
+                                                    colour2 = thistundra2;
+                                                    colour3 = thistundra3;
+                                                }
+                                                else
+                                                {
+                                                    int hotno = avetemp - 1000;
+                                                    int coldno = 1000 - hotno;
+
+                                                    colour1 = (hotno * colour1 + coldno * thistundra1) / 1000;
+                                                    colour2 = (hotno * colour2 + coldno * thistundra2) / 1000;
+                                                    colour3 = (hotno * colour3 + coldno * thistundra3) / 1000;
+                                                }
+                                            }
                                         }
-                                        else
+                                    }
+
+                                    if (world.snowchange() == 2) // Speckled transition
+                                    {
+                                        if (avetemp < 2000)
                                         {
-                                            int hotno = avetemp - 1000;
-                                            int coldno = 1000 - hotno;
+                                            if (avetemp < 600)
+                                            {
+                                                colour1 = world.cold1();
+                                                colour2 = world.cold2();
+                                                colour3 = world.cold3();
+                                            }
+                                            else
+                                            {
+                                                if (avetemp < 1000)
+                                                {
+                                                    if (random(600, 1000) < avetemp)
+                                                    {
+                                                        colour1 = thistundra1;
+                                                        colour2 = thistundra2;
+                                                        colour3 = thistundra3;
+                                                    }
+                                                    else
+                                                    {
+                                                        colour1 = world.cold1();
+                                                        colour2 = world.cold2();
+                                                        colour3 = world.cold3();
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    int hotno = avetemp - 1000;
+                                                    int coldno = 1000 - hotno;
 
-                                            colour1 = (hotno * colour1 + coldno * thistundra1) / 1000;
-                                            colour2 = (hotno * colour2 + coldno * thistundra2) / 1000;
-                                            colour3 = (hotno * colour3 + coldno * thistundra3) / 1000;
+                                                    colour1 = (hotno * colour1 + coldno * thistundra1) / 1000;
+                                                    colour2 = (hotno * colour2 + coldno * thistundra2) / 1000;
+                                                    colour3 = (hotno * colour3 + coldno * thistundra3) / 1000;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (world.snowchange() == 3) // Gradual transition
+                                    {
+                                        if (avetemp < 2000)
+                                        {
+                                            if (avetemp < 1000)
+                                            {
+                                                int hotno = avetemp;
+                                                int coldno = 1000 - hotno;
+
+                                                colour1 = (hotno * thistundra1 + coldno * world.cold1()) / 1000;
+                                                colour2 = (hotno * thistundra2 + coldno * world.cold2()) / 1000;
+                                                colour3 = (hotno * thistundra3 + coldno * world.cold3()) / 1000;
+                                            }
+                                            else
+                                            {
+                                                int hotno = avetemp - 1000;
+                                                int coldno = 1000 - hotno;
+
+                                                colour1 = (hotno * colour1 + coldno * thistundra1) / 1000;
+                                                colour2 = (hotno * colour2 + coldno * thistundra2) / 1000;
+                                                colour3 = (hotno * colour3 + coldno * thistundra3) / 1000;
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            if (world.snowchange() == 3) // Gradual transition
-                            {
-                                if (avetemp < 2000)
+                                // Now add dunes, if need be.
+
+                                int special = region.special(i, j);
+
+                                if (special == 120)
+                                {                                    
+                                    colour1 = (colour1 * 6 + world.erg1()) / 7;
+                                    colour2 = (colour2 * 6 + world.erg2()) / 7;
+                                    colour3 = (colour3 * 6 + world.erg3()) / 7;
+
+                                    var = 10; //4;
+                                }
+
+                                // Same thing for mud flats.
+
+                                if (region.mud(i, j))
                                 {
-                                    if (avetemp < 1000)
-                                    {
-                                        int hotno = avetemp;
-                                        int coldno = 1000 - hotno;
+                                    colour1 = (colour1 + world.mud1() * 2) / 3;
+                                    colour2 = (colour2 + world.mud2() * 2) / 3;
+                                    colour3 = (colour3 + world.mud3() * 2) / 3;
 
-                                        colour1 = (hotno * thistundra1 + coldno * world.cold1()) / 1000;
-                                        colour2 = (hotno * thistundra2 + coldno * world.cold2()) / 1000;
-                                        colour3 = (hotno * thistundra3 + coldno * world.cold3()) / 1000;
-                                    }
-                                    else
-                                    {
-                                        int hotno = avetemp - 1000;
-                                        int coldno = 1000 - hotno;
+                                    var = 10;
 
-                                        colour1 = (hotno * colour1 + coldno * thistundra1) / 1000;
-                                        colour2 = (hotno * colour2 + coldno * thistundra2) / 1000;
-                                        colour3 = (hotno * colour3 + coldno * thistundra3) / 1000;
-                                    }
+                                }
+
+                                // Now wetlands.
+
+                                if (special >= 130 && special < 140)
+                                {
+                                    colour1 = (colour1 * 2 + world.wetlands1()) / 3;
+                                    colour2 = (colour2 * 2 + world.wetlands2()) / 3;
+                                    colour3 = (colour3 * 2 + world.wetlands3()) / 3;
                                 }
                             }
-                        }
-
-                        // Now add sand, if need be.
-
-                        int special = region.special(i, j);
-
-                        if (special == 120)
-                        {
-                            colour1 = (colour1 * 6 + world.erg1()) / 7;
-                            colour2 = (colour2 * 6 + world.erg2()) / 7;
-                            colour3 = (colour3 * 6 + world.erg3()) / 7;
-
-                            var = 10; //4;
-                        }
-
-                        // Now wetlands.
-
-                        if (special >= 130 && special < 140)
-                        {
-                            colour1 = (colour1 * 2 + world.wetlands1()) / 3;
-                            colour2 = (colour2 * 2 + world.wetlands2()) / 3;
-                            colour3 = (colour3 * 2 + world.wetlands3()) / 3;
                         }
                     }
                 }
@@ -6848,16 +9402,16 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
                 //fast_srand(region.maxtemp(i,j)+region.winterrain(i,j));
                 fast_srand(region.maxtemp(i, j) + stripefractal[i][j]);
 
-                int stripevar = avetemp;
+                float stripevar = (float)avetemp;
 
-                if (stripevar > 5)
-                    stripevar = 5;
+                if (stripevar > 5.0f)
+                    stripevar = 5.0f;
 
-                if (stripevar < 0)
-                    stripevar = 0;
+                if (stripevar < 0.0f)
+                    stripevar = 0.0f;
 
                 if (region.special(i, j) > 100)
-                    stripevar = 1;
+                    stripevar = 1.0f;
 
                 if (region.sea(i, j) == 1)
                     stripevar = stripevar * seamarbling;
@@ -6869,9 +9423,9 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
                         stripevar = stripevar * landmarbling;
                 }
 
-                colour1 = colour1 + randomsign(random(0, stripevar));
-                colour2 = colour2 + randomsign(random(0, stripevar));
-                colour2 = colour2 + randomsign(random(0, stripevar));
+                colour1 = colour1 + randomsign(random(0, (int)stripevar));
+                colour2 = colour2 + randomsign(random(0, (int)stripevar));
+                colour2 = colour2 + randomsign(random(0, (int)stripevar));
             }
 
             if (colour1 > 255)
@@ -6894,37 +9448,37 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
         }
     }
 
-    for (int i = regwidthbegin + 1; i <= regwidthend - 1; i++) // Blur ergs and wetlands, and also river valleys..
+    for (int i = regwidthbegin + 1; i <= regwidthend - 1; i++) // Blur ergs, mud flats, and wetlands, and also river valleys..
     {
         for (int j = regheightbegin + 1; j <= regheightend - 1; j++)
         {
             int special = region.special(i, j);
 
-            if (special == 130 || special == 131 || special == 132) // special==120 ||
+            if ((special == 130 || special == 131 || special == 132 || region.mud(i, j)) && (region.mangrove(i, j) == 0 || world.showmangroves() == 0))
             {
                 if ((region.riverjan(i, j) + region.riverjul(i, j)) / 2 < minriverflow || (region.fakejan(i, j) + region.fakejul(i, j)) / 2 < minriverflow) // Don't do it to the rivers themselves.
                 {
-                    float colred = 0;
-                    float colgreen = 0;
-                    float colblue = 0;
+                    float colred = 0.0f;
+                    float colgreen = 0.0f;
+                    float colblue = 0.0f;
 
                     for (int k = i - 1; k <= i + 1; k++)
                     {
                         for (int l = j - 1; l <= j + 1; l++)
                         {
-                            colred = colred + reliefmap1[k][l];
-                            colgreen = colgreen + reliefmap2[k][l];
-                            colblue = colblue + reliefmap3[k][l];
+                            colred = colred + (float)reliefmap1[k][l];
+                            colgreen = colgreen + (float)reliefmap2[k][l];
+                            colblue = colblue + (float)reliefmap3[k][l];
                         }
                     }
 
-                    colred = colred / 9.0;
-                    colgreen = colgreen / 9.0;
-                    colblue = colblue / 9.0;
+                    colred = colred / 9.0f;
+                    colgreen = colgreen / 9.0f;
+                    colblue = colblue / 9.0f;
 
-                    reliefmap1[i][j] = colred;
-                    reliefmap2[i][j] = colgreen;
-                    reliefmap3[i][j] = colblue;
+                    reliefmap1[i][j] = (short)colred;
+                    reliefmap2[i][j] = (short)colgreen;
+                    reliefmap3[i][j] = (short)colblue;
                 }
             }
 
@@ -6932,11 +9486,11 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
             {
                 if (not((region.riverjan(i, j) + region.riverjul(i, j)) / 2 >= minriverflow || (region.fakejan(i, j) + region.fakejul(i, j)) / 2 >= minriverflow))
                 {
-                    float colred = 0;
-                    float colgreen = 0;
-                    float colblue = 0;
+                    float colred = 0.0f;
+                    float colgreen = 0.0f;
+                    float colblue = 0.0f;
 
-                    float crount = 0;
+                    float crount = .0f;
 
                     for (int k = i - 1; k <= i + 1; k++)
                     {
@@ -6944,9 +9498,9 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
                         {
                             if (region.riverjan(k, l) == 0 && region.riverjul(k, l) == 0 && region.fakejan(k, l) == 0 && region.fakejul(k, l) == 0 && region.deltajan(k, l) == 0 && region.deltajul(k, l) == 0)
                             {
-                                colred = colred + reliefmap1[k][l];
-                                colgreen = colgreen + reliefmap2[k][l];
-                                colblue = colblue + reliefmap3[k][l];
+                                colred = colred + (float)reliefmap1[k][l];
+                                colgreen = colgreen + (float)reliefmap2[k][l];
+                                colblue = colblue +(float)reliefmap3[k][l];
 
                                 crount++;
                             }
@@ -6957,9 +9511,9 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
                     colgreen = colgreen / crount;
                     colblue = colblue / crount;
 
-                    reliefmap1[i][j] = colred;
-                    reliefmap2[i][j] = colgreen;
-                    reliefmap3[i][j] = colblue;
+                    reliefmap1[i][j] = (short)colred;
+                    reliefmap2[i][j] = (short)colgreen;
+                    reliefmap3[i][j] = (short)colblue;
                 }
             }
         }
@@ -6986,7 +9540,6 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
                     colour1 = colour1 + randomsign(random(0, stripevar));
                     colour2 = colour2 + randomsign(random(0, stripevar));
                     colour2 = colour2 + randomsign(random(0, stripevar));
-
 
                     reliefmap1[i][j] = colour1;
                     reliefmap2[i][j] = colour2;
@@ -7061,7 +9614,7 @@ void drawregionalreliefmapimage(planet& world, region& region, sf::Image& region
                         if (region.sea(i, j) == 1)
                             thisshading = seashading;
 
-                        totalslope = totalslope * thisshading * 2;
+                        totalslope = (int)((float)totalslope * (thisshading * 2.0f));
 
                         r = r + totalslope;
                         g = g + totalslope;

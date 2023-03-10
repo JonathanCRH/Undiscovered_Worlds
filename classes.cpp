@@ -26,6 +26,20 @@ threeintegers::~threeintegers() // destructor
 {
 }
 
+fourintegers::fourintegers() : w(0), x(0), y(0), z(0) // constructor
+{
+}
+fourintegers::~fourintegers() // destructor
+{
+}
+
+fourshorts::fourshorts() : w(0), x(0), y(0), z(0) // constructor
+{
+}
+fourshorts::~fourshorts() // destructor
+{
+}
+
 twofloats::twofloats() : x(0), y(0) // constructor
 {
 }
@@ -73,10 +87,10 @@ boolshapetemplate::~boolshapetemplate()
 
 void boolshapetemplate::clear()
 {
-    for (int i=0; i<itsvector.size(); i++)
+    for (int i = 0; i < (int)itsvector.size(); i++)
     {
-        for (int j=0; j<itsvector[i].size(); j++)
-            itsvector[i][j]=0;
+        for (int j = 0; j < (int)itsvector[i].size(); j++)
+            itsvector[i][j] = 0;
     }
 }
 
@@ -91,9 +105,9 @@ byteshapetemplate::~byteshapetemplate()
 
 void byteshapetemplate::clear()
 {
-    for (int i=0; i<itsvector.size(); i++)
+    for (int i = 0; i < (int)itsvector.size(); i++)
     {
-        for (int j=0; j<itsvector[i].size(); j++)
-            itsvector[i][j]=0;
+        for (int j = 0; j < (int)itsvector[i].size(); j++)
+            itsvector[i][j] = 0;
     }
 }

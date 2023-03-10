@@ -75,455 +75,101 @@ bool planet::coast(int x, int y) const
     return 0;
 }
 
-int planet::latitude(int x, int y) const
+void planet::longitude(int x, int &degrees, int &minutes, int &seconds, bool& negative) const
 {
-    if (y<0 || y>itsheight || x<0 || x>itswidth)
-        return 0;
+    if ( x<0 || x>itswidth)
+        return;
 
-    float yy = y;
+    float fx = (float)x;
 
-    float equator = itsheight / 2;
+    float worldwidth = (float)itswidth + 1.0f;
 
-    float pixelsperlat = equator / 90.0;
+    float pixelsperlong = worldwidth / 360.0f;
 
-    float flat = yy / pixelsperlat;
+    float longitude = fx / pixelsperlong;
 
-    int lat;
+    longitude = longitude - 180.0f;
 
-    if (y < equator)
-        flat = 90.0 - flat;
+    degrees = (int)longitude;
 
+    float dec = (longitude - (float)degrees) * 60.0f;
+
+    minutes = (int)dec;
+
+    float dec2 = (dec - (float)minutes) * 60;
+
+    seconds = (int)dec2;
+
+    if (degrees < 0)
+        degrees = 0 - degrees;
+
+    if (minutes < 0)
+        minutes = 0 - minutes;
+
+    if (seconds < 0)
+        seconds = 0 - seconds;
+
+    negative = 0;
+
+    if (fx < worldwidth / 2.f)
+        negative = 1;
+
+    return;
+}
+
+void planet::latitude(int y, int& degrees, int& minutes, int& seconds, bool &negative) const
+{
+    if (y<0 || y>itsheight)
+        return;
+
+    bool hemisphere = 0; // 1 for southern
+
+    float fy = (float)y;
+
+    float worldheight = (float)itsheight;
+    float worldhalfheight = worldheight / 2.0f;
+
+    float pixelsperlat = worldhalfheight / 90.0f;
+
+    float latitude;
+
+    if (fy <= worldhalfheight)
+        latitude = (worldhalfheight - fy) / pixelsperlat;
     else
-        flat = flat - 90.0;
+    {
+        latitude = (fy - worldhalfheight) / pixelsperlat;
+        hemisphere = 1;
+    }
 
-    lat = flat;
+    degrees = (int)latitude;
 
-    return lat;
+    float dec = (latitude - (float)degrees) * 60.0f;
+
+    minutes = (int)dec;
+
+    float dec2 = (dec - (float)minutes) * 60;
+
+    seconds = (int)dec2;
+
+    negative = 0;
+
+    if (hemisphere == 1)
+        negative = 1;
+
+    return;
 }
 
 int planet::reverselatitude(int lat) const
 {
-    float flat = 90 - lat;
+    float flat = 90.0f - (float)lat;
 
-    float equator = itsheight / 2;
+    float equator = (float)itsheight / 2.0f;
 
-    float pixelsperlat = equator / 90.0;
+    float pixelsperlat = equator / 90.0f;
 
-    float yy = flat * pixelsperlat;
+    float y = flat * pixelsperlat;
 
-    int y = yy;
-
-    return y;
-}
-
-// Now wrap versions of all of those.
-
-int planet::mapwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return mapnom[x][y] + mountainheights[x][y] + extraelevmap[x][y];
-}
-
-int planet::nomwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return mapnom[x][y];
-}
-
-void planet::setnomwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    mapnom[x][y] = amount;
-}
-
-int planet::extraelevwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return extraelevmap[x][y];
-}
-
-void planet::setextraelevwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    extraelevmap[x][y] = amount;
-}
-
-int planet::maxtempwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return maxtempmap[x][y];
-}
-
-void planet::setmaxtempwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    maxtempmap[x][y] = amount;
-}
-
-int planet::mintempwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return mintempmap[x][y];
-}
-
-void planet::setmintempwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    mintempmap[x][y] = amount;
-}
-
-int planet::avetempwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return ((mintempmap[x][y] + maxtempmap[x][y]) / 2);
-}
-
-
-int planet::summerrainwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return summerrainmap[x][y];
-}
-
-void planet::setsummerrainwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    summerrainmap[x][y] = amount;
-}
-
-int planet::winterrainwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return winterrainmap[x][y];
-}
-
-void planet::setwinterrainwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    winterrainmap[x][y] = amount;
-}
-
-short planet::climatewrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return climatemap[x][y];
-}
-
-void planet::setclimatewrap(int x, int y, short amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    climatemap[x][y] = amount;
-}
-
-int planet::seaicewrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return seaicemap[x][y];
-}
-
-void planet::setseaicewrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    seaicemap[x][y] = amount;
-}
-
-int planet::riverdirwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return rivermapdir[x][y];
-}
-void planet::setriverdirwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    rivermapdir[x][y] = amount;
-}
-
-int planet::riverjanwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return rivermapjan[x][y];
-}
-
-void planet::setriverjanwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    rivermapjan[x][y] = amount;
-}
-
-int planet::riverjulwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return rivermapjul[x][y];
-}
-
-void planet::setriverjulwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    rivermapjul[x][y] = amount;
-}
-
-int planet::riveravewrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return (rivermapjan[x][y] + rivermapjul[x][y]) / 2;
-}
-
-int planet::windwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return windmap[x][y];
-}
-
-void planet::setwindwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    windmap[x][y] = amount;
-}
-
-int planet::lakesurfacewrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return lakemap[x][y];
-}
-
-void planet::setlakesurfacewrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    lakemap[x][y] = amount;
-}
-
-float planet::roughnesswrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return roughnessmap[x][y];
-}
-
-void planet::setroughnesswrap(int x, int y, float amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    roughnessmap[x][y] = amount;
-}
-
-int planet::mountainridgewrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return mountainridges[x][y];
-}
-
-void planet::setmountainridgewrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    mountainridges[x][y] = amount;
-}
-
-int planet::mountainheightwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return mountainheights[x][y];
-}
-
-void planet::setmountainheightwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    mountainheights[x][y] = amount;
-}
-
-int planet::tidewrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return tidalmap[x][y];
-}
-
-void planet::settidewrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    tidalmap[x][y] = amount;
-}
-
-int planet::riftlakesurfacewrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return riftlakemapsurface[x][y];
-}
-
-void planet::setriftlakesurfacewrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    riftlakemapsurface[x][y] = amount;
-}
-
-int planet::riftlakebedwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return riftlakemapbed[x][y];
-}
-
-void planet::setriftlakebedwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    riftlakemapbed[x][y] = amount;
-}
-
-int planet::specialwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return specials[x][y];
-}
-
-void planet::setspecialwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    specials[x][y] = amount;
-}
-
-int planet::deltadirwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return deltamapdir[x][y];
-}
-
-void planet::setdeltadirwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    deltamapdir[x][y] = amount;
-}
-
-int planet::deltajanwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return deltamapjan[x][y];
-}
-
-void planet::setdeltajanwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    deltamapjan[x][y] = amount;
-}
-
-int planet::deltajulwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return deltamapjul[x][y];
-}
-
-void planet::setdeltajulwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    deltamapjul[x][y] = amount;
-}
-
-int planet::horsewrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return horselats[x][y];
-}
-
-void planet::sethorsewrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    horselats[x][y] = amount;
+    return (int)y;
 }
 
 // slightly more complicated accessor functions
@@ -565,137 +211,12 @@ bool planet::outlinewrap(int x, int y) const
     return 0;
 }
 
-int planet::latitudewrap(int x, int y) const
+int planet::mountainheightwrap(int x, int y) const
 {
     x = wrapx(x);
     y = clipy(y);
 
-    float yy = y;
-
-    float equator = itsheight / 2;
-
-    float pixelsperlat = equator / 90.0;
-
-    float flat = yy / pixelsperlat;
-
-    int lat;
-
-    if (y < equator)
-        flat = 90.0 - flat;
-
-    else
-        flat = flat - 90.0;
-
-    lat = flat;
-
-    return lat;
-}
-
-int planet::jantempwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    if (y < itsheight / 2)
-        return(mintempmap[x][y]);
-    else
-        return(maxtempmap[x][y]);
-}
-
-void planet::setjantempwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    if (y < itsheight / 2)
-        mintempmap[x][y] = amount;
-    else
-        maxtempmap[x][y] = amount;
-}
-
-int planet::jultempwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    if (y < itsheight / 2)
-        return(maxtempmap[x][y]);
-    else
-        return(mintempmap[x][y]);
-}
-
-void planet::setjultempwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    if (y < itsheight / 2)
-        maxtempmap[x][y] = amount;
-    else
-        mintempmap[x][y] = amount;
-}
-
-int planet::janrainwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    if (y < itsheight / 2)
-        return(winterrainmap[x][y]);
-    else
-        return(summerrainmap[x][y]);
-}
-
-void planet::setjanrainwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    if (y < itsheight / 2)
-        winterrainmap[x][y] = amount;
-    else
-        summerrainmap[x][y] = amount;
-}
-
-int planet::julrainwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    if (y < itsheight / 2)
-        return(summerrainmap[x][y]);
-    else
-        return(winterrainmap[x][y]);
-}
-
-void planet::setjulrainwrap(int x, int y, int amount)
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    if (y < itsheight / 2)
-        summerrainmap[x][y] = amount;
-    else
-        winterrainmap[x][y] = amount;
-}
-
-int planet::averainwrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    return ((winterrainmap[x][y] + summerrainmap[x][y]) / 2);
-}
-
-int planet::truelakewrap(int x, int y) const
-{
-    x = wrapx(x);
-    y = clipy(y);
-
-    if (lakesurface(x, y) != 0 && special(x, y) < 110)
-        return (1);
-    else
-        return(0);
+    return mountainheights[x][y];
 }
 
 // Other public functions.
@@ -706,15 +227,15 @@ void planet::clear()
     {
         for (int j = 0; j < ARRAYHEIGHT; j++)
         {
-            maxtempmap[i][j] = 0;
-            mintempmap[i][j] = 0;
+            jantempmap[i][j] = 0;
+            jultempmap[i][j] = 0;
             climatemap[i][j] = 0;
-            summerrainmap[i][j] = 0;
-            winterrainmap[i][j] = 0;
-            wintermountainrainmap[i][j] = 0;
-            summermountainrainmap[i][j] = 0;
-            wintermountainraindirmap[i][j] = 0;
-            summermountainraindirmap[i][j] = 0;
+            janrainmap[i][j] = 0;
+            julrainmap[i][j] = 0;
+            janmountainrainmap[i][j] = 0;
+            julmountainrainmap[i][j] = 0;
+            janmountainraindirmap[i][j] = 0;
+            julmountainraindirmap[i][j] = 0;
             seaicemap[i][j] = 0;
             rivermapdir[i][j] = 0;
             rivermapjan[i][j] = 0;
@@ -724,6 +245,8 @@ void planet::clear()
             roughnessmap[i][j] = 0;
             mountainridges[i][j] = 0;
             mountainheights[i][j] = 0;
+            craterrims[i][j] = 0;
+            cratercentres[i][j] = 0;
             mapnom[i][j] = 0;
             tidalmap[i][j] = 0;
             riftlakemapsurface[i][j] = 0;
@@ -742,7 +265,7 @@ void planet::clear()
             mountainislandmap[i][j] = 0;
             volcanomap[i][j] = 0;
             stratomap[i][j] = 0;
-
+            noisemap[i][j] = 0;
             testmap[i][j] = 0;
         }
 
@@ -750,6 +273,14 @@ void planet::clear()
         {
             horselats[i][j] = 0;
         }
+    }
+
+    for (int i = 0; i < MAXCRATERS; i++)
+    {
+        cratercentreslist[i].w = 0;
+        cratercentreslist[i].x = 0;
+        cratercentreslist[i].y = 0;
+        cratercentreslist[i].z = 0;
     }
 }
 
@@ -768,6 +299,8 @@ void planet::shiftterrain(int offset)
     shift(mapnom, offset);
     shift(mountainheights, offset);
     shift(mountainridges, offset);
+    shift(craterrims, offset);
+    shift(cratercentres, offset);
     shift(extraelevmap, offset);
     shift(oceanridgemap, offset);
     shift(oceanridgeheightmap, offset);
@@ -778,12 +311,20 @@ void planet::shiftterrain(int offset)
     shift(volcanomap, offset);
     shift(stratomap, offset);
     shift(testmap, offset);
+
+    for (int i = 0; i < itscraterno; i++)
+    {
+        cratercentreslist[i].x = cratercentreslist[i].x - offset;
+
+        if (cratercentreslist[i].x < 0)
+            cratercentreslist[i].x = cratercentreslist[i].x + itswidth;
+    }
 }
 
 void planet::smoothrainmaps(int amount)
 {
-    smoothoverland(winterrainmap, amount, 0);
-    smoothoverland(summerrainmap, amount, 0);
+    smoothoverland(janrainmap, amount, 0);
+    smoothoverland(julrainmap, amount, 0);
 }
 
 void planet::setmaxriverflow()
@@ -812,15 +353,25 @@ void planet::saveworld(string filename)
     ofstream outfile;
     outfile.open(filename, ios::out);
 
+    writevariable(outfile, itssaveversion);
+    writevariable(outfile, itssize);
     writevariable(outfile, itswidth);
     writevariable(outfile, itsheight);
+    writevariable(outfile, itstype);
     writevariable(outfile, itsseed);
     writevariable(outfile, itsrotation);
     writevariable(outfile, itstilt);
+    writevariable(outfile, itseccentricity);
+    writevariable(outfile, itsperihelion);
+    writevariable(outfile, itsgravity);
+    writevariable(outfile, itslunar);
     writevariable(outfile, itstempdecrease);
-    writevariable(outfile, itsnorthpolartemperature);
-    writevariable(outfile, itssouthpolartemperature);
-    writevariable(outfile, itseqtemperature);
+    writevariable(outfile, itsnorthpolaradjust);
+    writevariable(outfile, itssouthpolaradjust);
+    writevariable(outfile, itsaveragetemp);
+    writevariable(outfile, itsnorthpolartemp);
+    writevariable(outfile, itssouthpolartemp);
+    writevariable(outfile, itseqtemp);
     writevariable(outfile, itswaterpickup);
     writevariable(outfile, itsriverfactor);
     writevariable(outfile, itsriverlandreduce);
@@ -831,6 +382,9 @@ void planet::saveworld(string filename)
     writevariable(outfile, itsclimateno);
     writevariable(outfile, itsmaxheight);
     writevariable(outfile, itssealevel);
+    writevariable(outfile, itslandtotal);
+    writevariable(outfile, itsseatotal);
+    writevariable(outfile, itscraterno);
 
     writevariable(outfile, itslandshading);
     writevariable(outfile, itslakeshading);
@@ -843,6 +397,8 @@ void planet::saveworld(string filename)
     writevariable(outfile, itsseamarbling);
     writevariable(outfile, itsminriverflowglobal);
     writevariable(outfile, itsminriverflowregional);
+    writevariable(outfile, itsmangroves);
+    writevariable(outfile, itscolourcliffs);
     writevariable(outfile, itsseaice1);
     writevariable(outfile, itsseaice2);
     writevariable(outfile, itsseaice3);
@@ -900,25 +456,31 @@ void planet::saveworld(string filename)
     writevariable(outfile, itsglacier1);
     writevariable(outfile, itsglacier2);
     writevariable(outfile, itsglacier3);
-    writevariable(outfile, itsbeach1);
-    writevariable(outfile, itsbeach2);
-    writevariable(outfile, itsbeach3);
+    writevariable(outfile, itssand1);
+    writevariable(outfile, itssand2);
+    writevariable(outfile, itssand3);
     writevariable(outfile, itsmud1);
     writevariable(outfile, itsmud2);
-    writevariable(outfile, itsmud2);
+    writevariable(outfile, itsmud3);
+    writevariable(outfile, itsshingle1);
+    writevariable(outfile, itsshingle2);
+    writevariable(outfile, itsshingle3);
+    writevariable(outfile, itsmangrove1);
+    writevariable(outfile, itsmangrove2);
+    writevariable(outfile, itsmangrove3);
     writevariable(outfile, itshighlight1);
     writevariable(outfile, itshighlight2);
     writevariable(outfile, itshighlight3);
 
-    writedata(outfile, maxtempmap);
-    writedata(outfile, mintempmap);
+    writedata(outfile, jantempmap);
+    writedata(outfile, jultempmap);
     writedata(outfile, climatemap);
-    writedata(outfile, summerrainmap);
-    writedata(outfile, winterrainmap);
-    writedata(outfile, wintermountainrainmap);
-    writedata(outfile, summermountainrainmap);
-    writedata(outfile, wintermountainraindirmap);
-    writedata(outfile, summermountainraindirmap);
+    writedata(outfile, janrainmap);
+    writedata(outfile, julrainmap);
+    writedata(outfile, janmountainrainmap);
+    writedata(outfile, julmountainrainmap);
+    writedata(outfile, janmountainraindirmap);
+    writedata(outfile, julmountainraindirmap);
     writedata(outfile, seaicemap);
     writedata(outfile, rivermapdir);
     writedata(outfile, rivermapjan);
@@ -928,6 +490,8 @@ void planet::saveworld(string filename)
     writedata(outfile, roughnessmap);
     writedata(outfile, mountainridges);
     writedata(outfile, mountainheights);
+    writedata(outfile, craterrims);
+    writedata(outfile, cratercentres);
     writedata(outfile, mapnom);
     writedata(outfile, tidalmap);
     writedata(outfile, riftlakemapsurface);
@@ -948,18 +512,21 @@ void planet::saveworld(string filename)
     writedata(outfile, volcanomap);
     writedata(outfile, stratomap);
     writedata(outfile, noshademap);
+    writedata(outfile, noisemap);
     writedata(outfile, testmap);
-
-    for (int i = 0; i < NOISEWIDTH; i++)
-    {
-        for (int j = 0; j < NOISEHEIGHT; j++)
-            writevariable(outfile, itsnoisemap[i][j]);
-    }
 
     for (int i = 0; i < ARRAYWIDTH; i++)
     {
         for (int j = 0; j < 6; j++)
             writevariable(outfile, horselats[i][j]);
+    }
+
+    for (int i = 0; i < itscraterno; i++)
+    {
+        writevariable(outfile, cratercentreslist[i].w);
+        writevariable(outfile, cratercentreslist[i].x);
+        writevariable(outfile, cratercentreslist[i].y);
+        writevariable(outfile, cratercentreslist[i].z);
     }
 
     if (!outfile.good())
@@ -968,7 +535,7 @@ void planet::saveworld(string filename)
     }
 }
 
-void planet::loadworld(string filename)
+bool planet::loadworld(string filename)
 {
 #ifdef ENABLE_PROFILER
     highres_timer_t timer("Load World"); // 9.1s => 8.8s
@@ -976,15 +543,30 @@ void planet::loadworld(string filename)
     ifstream infile;
     infile.open(filename, ios::in);
 
+    int val;
+    readvariable(infile, val);
+
+    if (val != itssaveversion) // Incompatible file format!
+        return 0;
+
+    readvariable(infile, itssize);
     readvariable(infile, itswidth);
     readvariable(infile, itsheight);
+    readvariable(infile, itstype);
     readvariable(infile, itsseed);
     readvariable(infile, itsrotation);
     readvariable(infile, itstilt);
+    readvariable(infile, itseccentricity);
+    readvariable(infile, itsperihelion);
+    readvariable(infile, itsgravity);
+    readvariable(infile, itslunar);
     readvariable(infile, itstempdecrease);
-    readvariable(infile, itsnorthpolartemperature);
-    readvariable(infile, itssouthpolartemperature);
-    readvariable(infile, itseqtemperature);
+    readvariable(infile, itsnorthpolaradjust);
+    readvariable(infile, itssouthpolaradjust);
+    readvariable(infile, itsaveragetemp);
+    readvariable(infile, itsnorthpolartemp);
+    readvariable(infile, itssouthpolartemp);
+    readvariable(infile, itseqtemp);
     readvariable(infile, itswaterpickup);
     readvariable(infile, itsriverfactor);
     readvariable(infile, itsriverlandreduce);
@@ -995,6 +577,10 @@ void planet::loadworld(string filename)
     readvariable(infile, itsclimateno);
     readvariable(infile, itsmaxheight);
     readvariable(infile, itssealevel);
+    readvariable(infile, itslandtotal);
+    readvariable(infile, itsseatotal);
+    readvariable(infile, itscraterno);
+
     readvariable(infile, itslandshading);
     readvariable(infile, itslakeshading);
     readvariable(infile, itsseashading);
@@ -1006,6 +592,8 @@ void planet::loadworld(string filename)
     readvariable(infile, itsseamarbling);
     readvariable(infile, itsminriverflowglobal);
     readvariable(infile, itsminriverflowregional);
+    readvariable(infile, itsmangroves);
+    readvariable(infile, itscolourcliffs);
     readvariable(infile, itsseaice1);
     readvariable(infile, itsseaice2);
     readvariable(infile, itsseaice3);
@@ -1063,25 +651,31 @@ void planet::loadworld(string filename)
     readvariable(infile, itsglacier1);
     readvariable(infile, itsglacier2);
     readvariable(infile, itsglacier3);
-    readvariable(infile, itsbeach1);
-    readvariable(infile, itsbeach2);
-    readvariable(infile, itsbeach3);
+    readvariable(infile, itssand1);
+    readvariable(infile, itssand2);
+    readvariable(infile, itssand3);
     readvariable(infile, itsmud1);
     readvariable(infile, itsmud2);
-    readvariable(infile, itsmud2);
+    readvariable(infile, itsmud3);
+    readvariable(infile, itsshingle1);
+    readvariable(infile, itsshingle2);
+    readvariable(infile, itsshingle3);
+    readvariable(infile, itsmangrove1);
+    readvariable(infile, itsmangrove2);
+    readvariable(infile, itsmangrove3);
     readvariable(infile, itshighlight1);
     readvariable(infile, itshighlight2);
     readvariable(infile, itshighlight3);
 
-    readdata(infile, maxtempmap);
-    readdata(infile, mintempmap);
+    readdata(infile, jantempmap);
+    readdata(infile, jultempmap);
     readdata(infile, climatemap);
-    readdata(infile, summerrainmap);
-    readdata(infile, winterrainmap);
-    readdata(infile, wintermountainrainmap);
-    readdata(infile, summermountainrainmap);
-    readdata(infile, wintermountainraindirmap);
-    readdata(infile, summermountainraindirmap);
+    readdata(infile, janrainmap);
+    readdata(infile, julrainmap);
+    readdata(infile, janmountainrainmap);
+    readdata(infile, julmountainrainmap);
+    readdata(infile, janmountainraindirmap);
+    readdata(infile, julmountainraindirmap);
     readdata(infile, seaicemap);
     readdata(infile, rivermapdir);
     readdata(infile, rivermapjan);
@@ -1091,6 +685,8 @@ void planet::loadworld(string filename)
     readdata(infile, roughnessmap);
     readdata(infile, mountainridges);
     readdata(infile, mountainheights);
+    readdata(infile, craterrims);
+    readdata(infile, cratercentres);
     readdata(infile, mapnom);
     readdata(infile, tidalmap);
     readdata(infile, riftlakemapsurface);
@@ -1111,18 +707,21 @@ void planet::loadworld(string filename)
     readdata(infile, volcanomap);
     readdata(infile, stratomap);
     readdata(infile, noshademap);
+    readdata(infile, noisemap);
     readdata(infile, testmap);
-
-    for (int i = 0; i < NOISEWIDTH; i++)
-    {
-        for (int j = 0; j < NOISEHEIGHT; j++)
-            readvariable(infile, itsnoisemap[i][j]);
-    }
 
     for (int i = 0; i < ARRAYWIDTH; i++)
     {
         for (int j = 0; j < 6; j++)
             readvariable(infile, horselats[i][j]);
+    }
+
+    for (int i = 0; i < itscraterno; i++)
+    {
+        readvariable(infile, cratercentreslist[i].w);
+        readvariable(infile, cratercentreslist[i].x);
+        readvariable(infile, cratercentreslist[i].y);
+        readvariable(infile, cratercentreslist[i].z);
     }
 
     setmaxriverflow();
@@ -1131,6 +730,8 @@ void planet::loadworld(string filename)
     {
         cerr << "Error reading world '" << filename << "'" << endl;
     }
+
+    return 1;
 }
 
 // Private member functions.
@@ -1184,16 +785,51 @@ void planet::smooth(int arr[][ARRAYHEIGHT], int amount, bool vary, bool avoidmou
 
                     for (int l = j - amount; l <= j + amount; l++)
                     {
-                        ave = ave + mapnom[kk][l];
+                        ave = ave + (int)mapnom[kk][l];
                         crount++;
                     }
                 }
                 ave = ave / crount;
 
                 if (ave > 0 && ave < itsmaxheight)
-                    mapnom[i][j] = ave;
+                    mapnom[i][j] = (short)ave;
             }
+        }
+    }
+}
 
+void planet::smooth(short arr[][ARRAYHEIGHT], int amount, bool vary, bool avoidmountains) // This smoothes the given array by the given amount.
+{
+    for (int i = 0; i <= itswidth; i++)
+    {
+        for (int j = 1; j < itsheight; j++)
+        {
+            if (avoidmountains == 0 || mountainheights[i][j] == 0)
+            {
+                int crount = 0;
+                int ave = 0;
+
+                for (int k = i - amount; k <= i + amount; k++)
+                {
+                    int kk = k;
+
+                    if (kk < 0)
+                        kk = itswidth;
+
+                    if (kk > itswidth)
+                        kk = 0;
+
+                    for (int l = j - amount; l <= j + amount; l++)
+                    {
+                        ave = ave + (int)mapnom[kk][l];
+                        crount++;
+                    }
+                }
+                ave = ave / crount;
+
+                if (ave > 0 && ave < itsmaxheight)
+                    mapnom[i][j] = (short)ave;
+            }
         }
     }
 }
@@ -1240,6 +876,54 @@ void planet::smoothoverland(int arr[][ARRAYHEIGHT], int amount, bool uponly)
                         {
                             if (ave > arr[i][j])
                                 arr[i][j] = ave;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void planet::smoothoverland(short arr[][ARRAYHEIGHT], int amount, bool uponly)
+{
+    for (int i = 0; i <= itswidth; i++)
+    {
+        for (int j = 1; j < itsheight; j++)
+        {
+            if (sea(i, j) == 0)
+            {
+                int crount = 0;
+                int ave = 0;
+
+                for (int k = i - amount; k <= i + amount; k++)
+                {
+                    int kk = k;
+
+                    if (kk < 0)
+                        kk = itswidth;
+
+                    if (kk > itswidth)
+                        kk = 0;
+
+                    for (int l = j - amount; l <= j + amount; l++)
+                    {
+                        ave = ave + (int)arr[kk][l];
+                        crount++;
+                    }
+                }
+
+                if (crount > 0)
+                {
+                    ave = ave / crount;
+
+                    if (ave > 0 && ave < itsmaxheight)
+                    {
+                        if (uponly == 0)
+                            arr[i][j] = (short)ave;
+                        else
+                        {
+                            if (ave > arr[i][j])
+                                arr[i][j] = (short)ave;
                         }
                     }
                 }
@@ -1303,9 +987,9 @@ template<typename T> void planet::writevariable(ofstream& outfile, T val)
 
 template<typename T> void planet::writedata(ofstream& outfile, T const arr[ARRAYWIDTH][ARRAYHEIGHT])
 {
-    for (int i = 0; i < ARRAYWIDTH; i++)
+    for (int i = 0; i <= itswidth; i++)
     {
-        for (int j = 0; j < ARRAYHEIGHT; j++)
+        for (int j = 0; j <= itsheight; j++)
         {
             write_val(arr[i][j], outfile);
             outfile.put('\n');
@@ -1315,20 +999,37 @@ template<typename T> void planet::writedata(ofstream& outfile, T const arr[ARRAY
 
 // Functions for loading member variables.
 
-void read_val(string const& line, int& val) {
+void read_val(string const& line, int& val)
+{
     val = stoi(line);
 }
-void read_val(string const& line, bool& val) {
+void read_val(string const& line, bool& val)
+{
     val = stob(line);
 }
-void read_val(string const& line, short& val) {
+void read_val(string const& line, short& val)
+{
     val = stos(line);
 }
-void read_val(string const& line, float& val) {
+void read_val(string const& line, unsigned short& val)
+{
+    val = stous(line);
+}
+void read_val(string const& line, float& val)
+{
     val = stof(line);
 }
-void read_val(string const& line, long& val) {
+void read_val(string const& line, long& val)
+{
     val = stol(line);
+}
+void read_val(string const& line, char& val)
+{
+    val = stoc(line);
+}
+void read_val(string const& line, unsigned char& val)
+{
+    val = stouc(line);
 }
 
 template<typename T> void planet::readvariable(ifstream& infile, T& val)
@@ -1341,9 +1042,9 @@ template<typename T> void planet::readvariable(ifstream& infile, T& val)
 
 template<typename T> void planet::readdata(ifstream& infile, T arr[ARRAYWIDTH][ARRAYHEIGHT])
 {
-    for (int i = 0; i < ARRAYWIDTH; i++)
+    for (int i = 0; i <= itswidth; i++)
     {
-        for (int j = 0; j < ARRAYHEIGHT; j++)
+        for (int j = 0; j <= itsheight; j++)
         {
             getline(infile, line_for_file_read);
             read_val(line_for_file_read, arr[i][j]);

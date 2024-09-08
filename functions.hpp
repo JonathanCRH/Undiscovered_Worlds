@@ -6,24 +6,16 @@
 //
 //  The code for this project is released under the GNU General Public Licence v3.0f - https://choosealicense.com/licenses/gpl-3.0/
 //
-//  Please note that this code requires the following libraries to work:
+//  Please note that this code uses Dear ImGui and Raylib, and requires the following library to work:
 // 
-//  SFML - https://www.sfml-dev.org/
-//  Dear ImGui - https://github.com/ocornut/imgui
-//  ImGui-SFML - https://github.com/eliasdaler/imgui-sfml
-//  ImGuiFileDialog - https://github.com/aiekick/ImGuiFileDialog
+//  rlImGui - https://github.com/raylib-extras/rlImGui
 //
 //  main.cpp contains the functions for drawing the map images (as well as the main loop, of course), and all functions that require external libraries.
 //  misc.cpp contains various utility functions that are used throughout the program.
 //  globalterrain.cpp contains the functions used to generate the global terrain.
 //  globalclimate.cpp contains the functions used to calculate the global precipitation and temperature, as well as rivers, lakes, etc.
-//  regionalmap.cpp contains the functions used to generate the regional terrain.
 //
-//  There are no asset files other than the app icon and font. The code uses a number of templates, but these are stored in the code itself, in assetdata.cpp.
-//
-//  The global terrain/climate information is stored in an object of the planet class. The regional terrain/climate information is stored in an object of the region class. Both of these classes are defined in the relevant hpp/cpp files.
-//
-//  One oddity to be aware of: variables that hold the width/height of objects typically hold the index number of the final item, rather than the actual size. E.g. if planet.width() is set to 100, that means the width has 101 elements, with the index of the last one being 100. Hence the frequent use of loops such as for (int i=0; i<=width; i++). I'm aware that this is eccentric but I find it more intuitive.
+//  There are no asset files other than the app icon and font, and the shaders. The code uses a number of templates, but these are stored in the code itself, in assetdata.cpp.
 
 
 #ifndef functions_hpp

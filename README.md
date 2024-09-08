@@ -9,6 +9,9 @@ It is not possible to save/load worlds or to create custom worlds.
 This project requires the rlImGui library to function: https://github.com/raylib-extras/rlImGui
 
 Known issues (causes all unknown!):
+
 The same seed does not always produce the same planet.
+
 Occasionally, the program crashes at an early stage of planet generation.
+
 The location of the highlight marker on the planet's surface is not always accurate.

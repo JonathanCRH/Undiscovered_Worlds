@@ -480,7 +480,7 @@ int main()
         globalnormaltexture[n] = LoadTextureFromImage(globalnormalimage[n]);
     }
 
-    Image testimage = LoadImage("resources\\parrots.png");
+    //Image testimage = LoadImage("resources\\parrots.png");
 
     drawglobalpickingimage(*world, globaltexturesize, globalpickingimage);
 
@@ -1044,8 +1044,8 @@ int main()
 
     // Set up test regions
 
-    for (int n = 0; n < maxregions; n++)
-        regionaltexture[n] = LoadTextureFromImage(testimage);
+    //for (int n = 0; n < maxregions; n++)
+        //regionaltexture[n] = LoadTextureFromImage(testimage);
 
 
     // Set up lots of threads for creating regions.
